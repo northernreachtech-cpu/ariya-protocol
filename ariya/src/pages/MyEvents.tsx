@@ -1,20 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
-  // MapPin,
   Users,
-  //   Clock,
-  //   Star,
   QrCode,
   Trophy,
   ChevronLeft,
   ChevronRight,
   Star,
   CheckCircle,
-  MessageCircle,
   RefreshCw,
-  //Loader2,
 } from "lucide-react";
 import {
   useCurrentAccount,
@@ -95,12 +90,13 @@ const MyEvents = () => {
   const attendanceRegistryId = useNetworkVariable("attendanceRegistryId");
   const nftRegistryId = useNetworkVariable("nftRegistryId");
   const ratingRegistryId = useNetworkVariable("ratingRegistryId");
-  const communityRegistryId = useNetworkVariable("communityRegistryId");
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
 
   const [activeTab, setActiveTab] = useState("attending");
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasFetchedRef = useRef(false);
   const [showQR, setShowQR] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [qrData, setQrData] = useState("");
@@ -117,7 +113,6 @@ const MyEvents = () => {
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingError, setRatingError] = useState("");
   const [ratingSuccess, setRatingSuccess] = useState("");
-  const [joiningCommunity, setJoiningCommunity] = useState<string | null>(null);
 
   const handleShowQR = async (event: any) => {
     try {
@@ -225,373 +220,166 @@ const MyEvents = () => {
 
   const refreshEvents = async () => {
     console.log("🔄 Force refreshing events...");
-    if (currentAccount) {
-      const loadEvents = async () => {
-        try {
-          setLoading(true);
-          let eventList: any[] = [];
-          // Get all events and filter by registration status
-          const allEvents = await sdk.eventManagement.getActiveEvents();
-          // Fetch all organizer profiles
-          const allProfiles = await sdk.eventManagement.getAllOrganizers();
-          // Log all organizer profiles for debugging
-          console.log("[EIA] All organizer profiles:", allProfiles);
-          const eventsWithStatus = await Promise.all(
-            allEvents.map(async (event) => {
-              // Get registration status
-              const registration =
-                await sdk.identityAccess.getRegistrationStatus(
-                  event.id,
-                  currentAccount.address,
-                  registrationRegistryId
-                );
-              // Get attendance status from contract
-              let attendanceState = 0;
-              let hasRecord = false;
-              let checkInTime = 0;
-              let checkOutTime = 0;
-              try {
-                const tx = new Transaction();
-                tx.moveCall({
-                  target: `${sdk.attendanceVerification.getPackageId()}::attendance_verification::get_attendance_status`,
-                  arguments: [
-                    tx.pure.address(currentAccount.address),
-                    tx.pure.id(event.id),
-                    tx.object(attendanceRegistryId),
-                  ],
-                });
-                const result = await suiClient.devInspectTransactionBlock({
-                  transactionBlock: tx,
-                  sender: currentAccount.address,
-                });
-                // Parse result: [hasRecord, state, checkInTime, checkOutTime]
-                if (result && result.results && result.results.length > 0) {
-                  const returnVals = result.results[0].returnValues;
-                  if (Array.isArray(returnVals) && returnVals.length >= 4) {
-                    hasRecord = Array.isArray(returnVals[0])
-                      ? returnVals[0].length > 0
-                      : !!returnVals[0];
-                    attendanceState = (
-                      Array.isArray(returnVals[1])
-                        ? returnVals[1][0]
-                        : parseInt(returnVals[1]) || 0
-                    ) as number;
-                    checkInTime = (
-                      Array.isArray(returnVals[2])
-                        ? returnVals[2][0]
-                        : parseInt(returnVals[2]) || 0
-                    ) as number;
-                    checkOutTime = (
-                      Array.isArray(returnVals[3])
-                        ? returnVals[3][0]
-                        : parseInt(returnVals[3]) || 0
-                    ) as number;
-                  }
-                }
-              } catch (e) {
-                attendanceState = 0;
-                hasRecord = false;
-                checkInTime = 0;
-                checkOutTime = 0;
-              }
-
-              // Console log attendance state for debugging
-              console.log(
-                `[MyEvents] Event ${event.id} - User ${currentAccount.address}:`,
-                {
-                  attendanceState,
-                  hasRecord,
-                  checkInTime,
-                  checkOutTime,
-                  eventName: event.name,
-                }
-              );
-
-              // Attach organizer_profile_id
-              const normalize = (addr: string) => {
-                if (!addr) return "";
-                return addr.toLowerCase().startsWith("0x")
-                  ? addr.toLowerCase()
-                  : `0x${addr.toLowerCase()}`;
-              };
-              const organizerProfile = allProfiles.find(
-                (profile) =>
-                  normalize(profile.address) === normalize(event.organizer)
-              );
-              if (!organizerProfile) {
-                console.warn(
-                  "[EIA] No organizer profile found for event",
-                  event.id,
-                  "organizer:",
-                  event.organizer
-                );
-                // Log all profile addresses being compared
-                console.log(
-                  "[EIA] All profile addresses:",
-                  allProfiles.map((p) => p.address)
-                );
-                // Log the full profile object if any profile address matches after normalization
-                const matchingProfile = allProfiles.find(
-                  (profile) =>
-                    normalize(profile.address) === normalize(event.organizer)
-                );
-                if (matchingProfile) {
-                  console.log(
-                    "[EIA] Matching profile object:",
-                    matchingProfile
-                  );
-                }
-              }
-              const organizer_profile_id = organizerProfile
-                ? organizerProfile.id
-                : undefined;
-              return {
-                ...event,
-                isRegistered: !!registration,
-                attendanceState,
-                hasRecord,
-                checkInTime,
-                checkOutTime,
-                organizer_profile_id,
-              };
-            })
-          );
-          eventList = eventsWithStatus.filter((event) => event.isRegistered);
-          setEvents(eventList);
-        } catch (error) {
-          console.error("Error loading events:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-      await loadEvents();
-    }
+    hasFetchedRef.current = false;
+    await loadEvents();
   };
 
-  const handleJoinCommunity = async (event: any) => {
-    if (!currentAccount || !communityRegistryId || !nftRegistryId) return;
-    setJoiningCommunity(event.id);
+  const loadEvents = async () => {
+    console.log("🔄 MyEvents loadEvents triggered");
+    console.log("currentAccount:", currentAccount?.address);
+
+    if (!currentAccount) {
+      console.log("❌ No currentAccount, skipping loadEvents");
+      return;
+    }
+
+    // Don't fetch if we already have data and it's not a forced refresh
+    if (hasFetchedRef.current) {
+      console.log("✅ Data already fetched, skipping");
+      return;
+    }
+
+    // Small delay to ensure wallet connection is fully established
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     try {
-      // First check if there are communities for this event
-      const communities = await sdk.communityAccess.getEventCommunities(
-        event.id,
-        communityRegistryId
-      );
-
-      if (communities.length === 0) {
-        setSuccessMessage(
-          "No community available for this event yet. The organizer may create one during the event."
-        );
-        setShowSuccessModal(true);
-        return;
-      }
-
-      // For now, join the first community (could be enhanced with community selection)
-      const communityId = communities[0].id;
-
-      // Check if user is already an active member
-      const membershipCheck = await sdk.communityAccess.isActiveCommunityMember(
-        communityId,
-        currentAccount.address,
-        communityRegistryId,
-        nftRegistryId
-      );
-
-      if (membershipCheck.isActive) {
-        // User is already an active member, navigate directly to community
-        setSuccessMessage(
-          "You're already a member of this community! Redirecting you now."
-        );
-        setShowSuccessModal(true);
-        setTimeout(() => {
-          navigate(`/community/${communityId}`);
-        }, 1500);
-        return;
-      }
-
-      // User needs to join or rejoin the community
-      const tx = sdk.communityAccess.requestCommunityAccess(
-        communityId,
-        currentAccount.address,
-        nftRegistryId,
-        communityRegistryId
-      );
-
-      await signAndExecute({ transaction: tx });
-      setSuccessMessage(
-        "Successfully joined the event community! You can now access forums and resources."
-      );
-      setShowSuccessModal(true);
-      navigate(`/community/${communityId}`);
-    } catch (e: any) {
-      let message = e.message || "Failed to join community.";
-
-      // Handle specific Move abort codes
-      if (message.includes("MoveAbort") && message.includes("4")) {
-        message =
-          "You need either a PoA (Proof of Attendance) NFT or Completion NFT to join this community. If you've checked in, mint your PoA NFT. If you've checked out, mint your Completion NFT.";
-      } else if (message.includes("MoveAbort") && message.includes("2")) {
-        message = "Community not found or inactive.";
-      } else if (message.includes("MoveAbort") && message.includes("3")) {
-        message = "You're already a member of this community.";
-      } else if (message.includes("NFT required")) {
-        message =
-          "You need either a PoA NFT or Completion NFT to join this community. Make sure you've checked in or checked out of the event.";
-      }
-
-      setSuccessMessage(message);
-      setShowSuccessModal(true);
-    } finally {
-      setJoiningCommunity(null);
-    }
-  };
-
-  useEffect(() => {
-    const loadEvents = async () => {
-      console.log("🔄 MyEvents useEffect triggered");
-      console.log("currentAccount:", currentAccount?.address);
-
-      if (!currentAccount) {
-        console.log("❌ No currentAccount, skipping loadEvents");
-        return;
-      }
-
-      // Small delay to ensure wallet connection is fully established
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      try {
-        setLoading(true);
-        let eventList: any[] = [];
-        // Get all events and filter by registration status
-        const allEvents = await sdk.eventManagement.getActiveEvents();
-        // Fetch all organizer profiles
-        const allProfiles = await sdk.eventManagement.getAllOrganizers();
-        // Log all organizer profiles for debugging
-        console.log("[EIA] All organizer profiles:", allProfiles);
-        const eventsWithStatus = await Promise.all(
-          allEvents.map(async (event) => {
-            // Get registration status
-            const registration = await sdk.identityAccess.getRegistrationStatus(
-              event.id,
-              currentAccount.address,
-              registrationRegistryId
-            );
-            // Get attendance status from contract
-            let attendanceState = 0;
-            let hasRecord = false;
-            let checkInTime = 0;
-            let checkOutTime = 0;
-            try {
-              const tx = new Transaction();
-              tx.moveCall({
-                target: `${sdk.attendanceVerification.getPackageId()}::attendance_verification::get_attendance_status`,
-                arguments: [
-                  tx.pure.address(currentAccount.address),
-                  tx.pure.id(event.id),
-                  tx.object(attendanceRegistryId),
-                ],
-              });
-              const result = await suiClient.devInspectTransactionBlock({
-                transactionBlock: tx,
-                sender: currentAccount.address,
-              });
-              // Parse result: [hasRecord, state, checkInTime, checkOutTime]
-              if (result && result.results && result.results.length > 0) {
-                const returnVals = result.results[0].returnValues;
-                if (Array.isArray(returnVals) && returnVals.length >= 4) {
-                  hasRecord = Array.isArray(returnVals[0])
-                    ? returnVals[0].length > 0
-                    : !!returnVals[0];
-                  attendanceState = (
-                    Array.isArray(returnVals[1])
-                      ? returnVals[1][0]
-                      : parseInt(returnVals[1]) || 0
-                  ) as number;
-                  checkInTime = (
-                    Array.isArray(returnVals[2])
-                      ? returnVals[2][0]
-                      : parseInt(returnVals[2]) || 0
-                  ) as number;
-                  checkOutTime = (
-                    Array.isArray(returnVals[3])
-                      ? returnVals[3][0]
-                      : parseInt(returnVals[3]) || 0
-                  ) as number;
-                }
-              }
-            } catch (e) {
-              attendanceState = 0;
-              hasRecord = false;
-              checkInTime = 0;
-              checkOutTime = 0;
-            }
-
-            // Console log attendance state for debugging
-            console.log(
-              `[MyEvents] Event ${event.id} - User ${currentAccount.address}:`,
-              {
-                attendanceState,
-                hasRecord,
-                checkInTime,
-                checkOutTime,
-                eventName: event.name,
-              }
-            );
-
-            // Attach organizer_profile_id
-            const normalize = (addr: string) => {
-              if (!addr) return "";
-              return addr.toLowerCase().startsWith("0x")
-                ? addr.toLowerCase()
-                : `0x${addr.toLowerCase()}`;
-            };
-            const organizerProfile = allProfiles.find(
-              (profile) =>
-                normalize(profile.address) === normalize(event.organizer)
-            );
-            if (!organizerProfile) {
-              console.warn(
-                "[EIA] No organizer profile found for event",
-                event.id,
-                "organizer:",
-                event.organizer
-              );
-              // Log all profile addresses being compared
-              console.log(
-                "[EIA] All profile addresses:",
-                allProfiles.map((p) => p.address)
-              );
-              // Log the full profile object if any profile address matches after normalization
-              const matchingProfile = allProfiles.find(
-                (profile) =>
-                  normalize(profile.address) === normalize(event.organizer)
-              );
-              if (matchingProfile) {
-                console.log("[EIA] Matching profile object:", matchingProfile);
+      setLoading(true);
+      setRefreshing(true);
+      let eventList: any[] = [];
+      // Get all events and filter by registration status
+      const allEvents = await sdk.eventManagement.getActiveEvents();
+      // Fetch all organizer profiles
+      const allProfiles = await sdk.eventManagement.getAllOrganizers();
+      // Log all organizer profiles for debugging
+      console.log("[EIA] All organizer profiles:", allProfiles);
+      const eventsWithStatus = await Promise.all(
+        allEvents.map(async (event) => {
+          // Get registration status
+          const registration = await sdk.identityAccess.getRegistrationStatus(
+            event.id,
+            currentAccount.address,
+            registrationRegistryId
+          );
+          // Get attendance status from contract
+          let attendanceState = 0;
+          let hasRecord = false;
+          let checkInTime = 0;
+          let checkOutTime = 0;
+          try {
+            const tx = new Transaction();
+            tx.moveCall({
+              target: `${sdk.attendanceVerification.getPackageId()}::attendance_verification::get_attendance_status`,
+              arguments: [
+                tx.pure.address(currentAccount.address),
+                tx.pure.id(event.id),
+                tx.object(attendanceRegistryId),
+              ],
+            });
+            const result = await suiClient.devInspectTransactionBlock({
+              transactionBlock: tx,
+              sender: currentAccount.address,
+            });
+            // Parse result: [hasRecord, state, checkInTime, checkOutTime]
+            if (result && result.results && result.results.length > 0) {
+              const returnVals = result.results[0].returnValues;
+              if (Array.isArray(returnVals) && returnVals.length >= 4) {
+                hasRecord = Array.isArray(returnVals[0])
+                  ? returnVals[0].length > 0
+                  : !!returnVals[0];
+                attendanceState = (
+                  Array.isArray(returnVals[1])
+                    ? returnVals[1][0]
+                    : parseInt(returnVals[1]) || 0
+                ) as number;
+                checkInTime = (
+                  Array.isArray(returnVals[2])
+                    ? returnVals[2][0]
+                    : parseInt(returnVals[2]) || 0
+                ) as number;
+                checkOutTime = (
+                  Array.isArray(returnVals[3])
+                    ? returnVals[3][0]
+                    : parseInt(returnVals[3]) || 0
+                ) as number;
               }
             }
-            const organizer_profile_id = organizerProfile
-              ? organizerProfile.id
-              : undefined;
-            return {
-              ...event,
-              isRegistered: !!registration,
+          } catch (e) {
+            attendanceState = 0;
+            hasRecord = false;
+            checkInTime = 0;
+            checkOutTime = 0;
+          }
+
+          // Console log attendance state for debugging
+          console.log(
+            `[MyEvents] Event ${event.id} - User ${currentAccount.address}:`,
+            {
               attendanceState,
               hasRecord,
               checkInTime,
               checkOutTime,
-              organizer_profile_id,
-            };
-          })
-        );
-        eventList = eventsWithStatus.filter((event) => event.isRegistered);
-        setEvents(eventList);
-      } catch (error) {
-        console.error("Error loading events:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+              eventName: event.name,
+            }
+          );
+
+          // Attach organizer_profile_id
+          const normalize = (addr: string) => {
+            if (!addr) return "";
+            return addr.toLowerCase().startsWith("0x")
+              ? addr.toLowerCase()
+              : `0x${addr.toLowerCase()}`;
+          };
+          const organizerProfile = allProfiles.find(
+            (profile) =>
+              normalize(profile.address) === normalize(event.organizer)
+          );
+          if (!organizerProfile) {
+            console.warn(
+              "[EIA] No organizer profile found for event",
+              event.id,
+              "organizer:",
+              event.organizer
+            );
+            // Log all profile addresses being compared
+            console.log(
+              "[EIA] All profile addresses:",
+              allProfiles.map((p) => p.address)
+            );
+            // Log the full profile object if any profile address matches after normalization
+            const matchingProfile = allProfiles.find(
+              (profile) =>
+                normalize(profile.address) === normalize(event.organizer)
+            );
+            if (matchingProfile) {
+              console.log("[EIA] Matching profile object:", matchingProfile);
+            }
+          }
+          const organizer_profile_id = organizerProfile
+            ? organizerProfile.id
+            : undefined;
+          return {
+            ...event,
+            isRegistered: !!registration,
+            attendanceState,
+            hasRecord,
+            checkInTime,
+            checkOutTime,
+            organizer_profile_id,
+          };
+        })
+      );
+      eventList = eventsWithStatus.filter((event) => event.isRegistered);
+      setEvents(eventList);
+      hasFetchedRef.current = true;
+    } catch (error) {
+      console.error("Error loading events:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
     loadEvents();
   }, [
     currentAccount,
@@ -683,17 +471,6 @@ const MyEvents = () => {
     setCurrentPage(1);
   }, [activeTab]);
 
-  // Refresh data when user returns to the page
-  useEffect(() => {
-    const handleFocus = () => {
-      console.log("🔄 Page focused, refreshing data...");
-      refreshEvents();
-    };
-
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [currentAccount]);
-
   if (!currentAccount) {
     return (
       <div className="min-h-screen bg-background pt-20 pb-6 sm:pb-10">
@@ -729,7 +506,7 @@ const MyEvents = () => {
                 className="ml-4"
               >
                 <RefreshCw
-                  className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                  className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
                 />
                 Refresh
               </Button>
@@ -807,28 +584,14 @@ const MyEvents = () => {
                     {(Array.isArray(event.attendanceState)
                       ? event.attendanceState[0]
                       : event.attendanceState) === 1 && (
-                      <>
-                        <Button
-                          size="sm"
-                          className="w-full"
-                          onClick={() => handleShowQR(event)}
-                        >
-                          <QrCode className="mr-2 h-4 w-4" />
-                          Show QR Code
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="w-full"
-                          variant="secondary"
-                          onClick={() => handleJoinCommunity(event)}
-                          disabled={joiningCommunity === event.id}
-                        >
-                          <MessageCircle className="mr-2 h-4 w-4" />
-                          {joiningCommunity === event.id
-                            ? "Joining..."
-                            : "Join Community"}
-                        </Button>
-                      </>
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={() => handleShowQR(event)}
+                      >
+                        <QrCode className="mr-2 h-4 w-4" />
+                        Show QR Code
+                      </Button>
                     )}
                     {(Array.isArray(event.attendanceState)
                       ? event.attendanceState[0]

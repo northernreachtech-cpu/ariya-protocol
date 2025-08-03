@@ -13,7 +13,6 @@ import EventDetails from "./pages/EventDetails";
 import ConvenerMarketplace from "./pages/ConvenerMarketplace";
 import OrganizerDashboard from "./pages/OrganizerDashboard";
 import SponsorDashboard from "./pages/SponsorDashboard";
-import CommunityHub from "./pages/CommunityHub";
 import CreateOrganizerProfile from "./pages/CreateOrganizerProfile";
 import useScrollToTop from "./hooks/useScrollToTop";
 import SUIWorkshop from "./pages/SUIWorkshop";
@@ -47,7 +46,6 @@ function AppContent() {
         />
         <Route path="/dashboard/organizer" element={<OrganizerDashboard />} />
         <Route path="/dashboard/sponsor" element={<SponsorDashboard />} />
-        <Route path="/community" element={<CommunityHub />} />
         <Route path="/community/:communityId" element={<Community />} />
         <Route path="/communities" element={<Communities />} />
         <Route path="/sui-workshop" element={<SUIWorkshop />} />

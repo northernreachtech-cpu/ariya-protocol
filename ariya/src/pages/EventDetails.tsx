@@ -29,31 +29,31 @@ import { EscrowSettlementSDK } from "../lib/sdk";
 
 // Skeleton loader components for EventDetails
 const EventDetailsSkeleton = () => (
-  <div className="min-h-screen bg-black pt-20 pb-6 sm:pb-10">
+  <div className="min-h-screen bg-background pt-20 pb-6 sm:pb-10">
     <div className="container mx-auto px-4 py-6 sm:py-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6 sm:space-y-8">
           {/* About Section */}
           <Card className="p-4 sm:p-6 animate-pulse">
-            <div className="h-8 bg-white/10 rounded mb-4 w-1/3"></div>
+            <div className="h-8 bg-foreground-muted rounded mb-4 w-1/3"></div>
             <div className="space-y-2">
-              <div className="h-4 bg-white/10 rounded w-full"></div>
-              <div className="h-4 bg-white/10 rounded w-5/6"></div>
-              <div className="h-4 bg-white/10 rounded w-4/6"></div>
+              <div className="h-4 bg-foreground-muted rounded w-full"></div>
+              <div className="h-4 bg-foreground-muted rounded w-5/6"></div>
+              <div className="h-4 bg-foreground-muted rounded w-4/6"></div>
             </div>
           </Card>
 
           {/* Organizer Section */}
           <Card className="p-4 sm:p-6 animate-pulse">
-            <div className="h-8 bg-white/10 rounded mb-4 w-1/3"></div>
+            <div className="h-8 bg-foreground-muted rounded mb-4 w-1/3"></div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-0">
-              <div className="w-16 h-16 rounded-full bg-white/10"></div>
+              <div className="w-16 h-16 rounded-full bg-foreground-muted"></div>
               <div className="flex-1 min-w-0">
-                <div className="h-5 bg-white/10 rounded w-24 mb-2"></div>
-                <div className="h-4 bg-white/10 rounded w-48"></div>
+                <div className="h-5 bg-foreground-muted rounded w-24 mb-2"></div>
+                <div className="h-4 bg-foreground-muted rounded w-48"></div>
               </div>
-              <div className="h-8 bg-white/10 rounded w-24"></div>
+              <div className="h-8 bg-foreground-muted rounded w-24"></div>
             </div>
           </Card>
         </div>
@@ -63,50 +63,50 @@ const EventDetailsSkeleton = () => (
           {/* Action Card */}
           <Card className="p-4 sm:p-6 animate-pulse">
             <div className="text-center mb-6">
-              <div className="h-8 bg-white/10 rounded w-16 mx-auto mb-1"></div>
-              <div className="h-4 bg-white/10 rounded w-20 mx-auto"></div>
+              <div className="h-8 bg-foreground-muted rounded w-16 mx-auto mb-1"></div>
+              <div className="h-4 bg-foreground-muted rounded w-20 mx-auto"></div>
             </div>
 
             <div className="space-y-4 mb-6">
-              <div className="h-12 bg-white/10 rounded"></div>
-              <div className="h-12 bg-white/10 rounded"></div>
+              <div className="h-12 bg-foreground-muted rounded"></div>
+              <div className="h-12 bg-foreground-muted rounded"></div>
             </div>
 
-            <div className="border-t border-white/10 pt-4 space-y-3">
+            <div className="border-t border-border pt-4 space-y-3">
               <div className="flex justify-between">
-                <div className="h-4 bg-white/10 rounded w-20"></div>
-                <div className="h-4 bg-white/10 rounded w-16"></div>
+                <div className="h-4 bg-foreground-muted rounded w-20"></div>
+                <div className="h-4 bg-foreground-muted rounded w-16"></div>
               </div>
               <div className="flex justify-between">
-                <div className="h-4 bg-white/10 rounded w-16"></div>
-                <div className="h-4 bg-white/10 rounded w-20"></div>
+                <div className="h-4 bg-foreground-muted rounded w-16"></div>
+                <div className="h-4 bg-foreground-muted rounded w-20"></div>
               </div>
               <div className="flex justify-between">
-                <div className="h-4 bg-white/10 rounded w-20"></div>
-                <div className="h-4 bg-white/10 rounded w-16"></div>
+                <div className="h-4 bg-foreground-muted rounded w-20"></div>
+                <div className="h-4 bg-foreground-muted rounded w-16"></div>
               </div>
             </div>
           </Card>
 
           {/* Event Details */}
           <Card className="p-4 sm:p-6 animate-pulse">
-            <div className="h-6 bg-white/10 rounded mb-4 w-1/2"></div>
+            <div className="h-6 bg-foreground-muted rounded mb-4 w-1/2"></div>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <div className="h-4 bg-white/10 rounded w-16"></div>
-                <div className="h-4 bg-white/10 rounded w-20"></div>
+                <div className="h-4 bg-foreground-muted rounded w-16"></div>
+                <div className="h-4 bg-foreground-muted rounded w-20"></div>
               </div>
               <div className="flex justify-between">
-                <div className="h-4 bg-white/10 rounded w-20"></div>
-                <div className="h-4 bg-white/10 rounded w-16"></div>
+                <div className="h-4 bg-foreground-muted rounded w-20"></div>
+                <div className="h-4 bg-foreground-muted rounded w-16"></div>
               </div>
               <div className="flex justify-between">
-                <div className="h-4 bg-white/10 rounded w-16"></div>
-                <div className="h-4 bg-white/10 rounded w-20"></div>
+                <div className="h-4 bg-foreground-muted rounded w-16"></div>
+                <div className="h-4 bg-foreground-muted rounded w-20"></div>
               </div>
               <div className="flex justify-between">
-                <div className="h-4 bg-white/10 rounded w-20"></div>
-                <div className="h-4 bg-white/10 rounded w-16"></div>
+                <div className="h-4 bg-foreground-muted rounded w-20"></div>
+                <div className="h-4 bg-foreground-muted rounded w-16"></div>
               </div>
             </div>
           </Card>
@@ -932,11 +932,13 @@ const EventDetails = () => {
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-black pt-20 pb-6 sm:pb-10">
+      <div className="min-h-screen bg-background pt-20 pb-6 sm:pb-10">
         <div className="container mx-auto px-4">
           <div className="text-center py-12">
-            <h2 className="text-2xl font-semibold mb-4">Event not found</h2>
-            <p className="text-white/60">
+            <h2 className="text-2xl font-semibold mb-4 text-foreground">
+              Event not found
+            </h2>
+            <p className="text-foreground-secondary">
               The event you're looking for doesn't exist.
             </p>
           </div>
@@ -946,7 +948,7 @@ const EventDetails = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-background">
       {/* Absolutely positioned back button above hero section */}
       <div className="container mx-auto px-4 pt-16">
         <button
@@ -971,9 +973,9 @@ const EventDetails = () => {
       </div>
       {/* Hero Section */}
       <div className="relative h-96 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/30 z-10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/70 to-background/30 z-10" />
         <div className="relative z-20 container mx-auto px-4 h-full flex items-end pb-8">
-          <div className="text-white">
+          <div className="text-foreground">
             <div className="flex items-center mb-4">
               <span
                 className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
@@ -1000,7 +1002,7 @@ const EventDetails = () => {
                 Refresh
               </Button>
             </div>
-            <div className="flex flex-wrap items-center gap-6 text-white/80">
+            <div className="flex flex-wrap items-center gap-6 text-foreground-secondary">
               <div className="flex items-center">
                 <Calendar className="mr-2 h-5 w-5" />
                 <span>
@@ -1029,22 +1031,28 @@ const EventDetails = () => {
           <div className="lg:col-span-2 space-y-6 sm:space-y-8">
             {/* About Section */}
             <Card className="p-4 sm:p-6">
-              <h2 className="text-2xl font-semibold mb-4">About This Event</h2>
-              <p className="text-white/80 leading-relaxed">
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">
+                About This Event
+              </h2>
+              <p className="text-foreground-secondary leading-relaxed">
                 {event.description}
               </p>
             </Card>
 
             {/* Organizer Section */}
             <Card className="p-4 sm:p-6">
-              <h2 className="text-2xl font-semibold mb-4">Event Organizer</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">
+                Event Organizer
+              </h2>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-0">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white font-bold text-lg mr-0 sm:mr-4">
                   {event.organizer.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-medium">Organizer</h3>
-                  <p className="text-white/60 text-sm break-all whitespace-pre-line">
+                  <h3 className="text-lg font-medium text-foreground">
+                    Organizer
+                  </h3>
+                  <p className="text-foreground-secondary text-sm break-all whitespace-pre-line">
                     {event.organizer}
                   </p>
                 </div>
@@ -1071,7 +1079,7 @@ const EventDetails = () => {
                 <div className="text-3xl font-bold text-primary mb-1">
                   {event.current_attendees}
                 </div>
-                <div className="text-white/60">attending</div>
+                <div className="text-foreground-secondary">attending</div>
                 {attendanceState !== null && (
                   <div className="mt-2">
                     <span
@@ -1236,10 +1244,10 @@ const EventDetails = () => {
               </div>
 
               {/* Event Stats */}
-              <div className="border-t border-white/10 pt-4 space-y-3">
+              <div className="border-t border-border pt-4 space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/60">Event State</span>
-                  <span className="font-medium">
+                  <span className="text-foreground-secondary">Event State</span>
+                  <span className="font-medium text-foreground">
                     {getStatusText(event.state)}
                   </span>
                 </div>
@@ -1254,14 +1262,14 @@ const EventDetails = () => {
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/60">Created</span>
-                  <span className="font-medium">
+                  <span className="text-foreground-secondary">Created</span>
+                  <span className="font-medium text-foreground">
                     {formatDate(event.created_at)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/60">End Time</span>
-                  <span className="font-medium">
+                  <span className="text-foreground-secondary">End Time</span>
+                  <span className="font-medium text-foreground">
                     {formatDate(event.end_time)}
                   </span>
                 </div>
@@ -1270,11 +1278,15 @@ const EventDetails = () => {
 
             {/* Event Details */}
             <Card className="p-4 sm:p-6">
-              <h3 className="text-lg font-semibold mb-4">Event Details</h3>
+              <h3 className="text-lg font-semibold mb-4 text-foreground">
+                Event Details
+              </h3>
               <div className="space-y-4">
                 <div>
-                  <div className="text-white/60 text-sm mb-1">Date & Time</div>
-                  <div className="font-medium">
+                  <div className="text-foreground-secondary text-sm mb-1">
+                    Date & Time
+                  </div>
+                  <div className="font-medium text-foreground">
                     {formatDate(event.start_time)}
                     <br />
                     {formatTime(event.start_time)}
@@ -1282,13 +1294,19 @@ const EventDetails = () => {
                 </div>
 
                 <div>
-                  <div className="text-white/60 text-sm mb-1">Location</div>
-                  <div className="font-medium">{event.location}</div>
+                  <div className="text-foreground-secondary text-sm mb-1">
+                    Location
+                  </div>
+                  <div className="font-medium text-foreground">
+                    {event.location}
+                  </div>
                 </div>
 
                 <div>
-                  <div className="text-white/60 text-sm mb-1">Capacity</div>
-                  <div className="font-medium">
+                  <div className="text-foreground-secondary text-sm mb-1">
+                    Capacity
+                  </div>
+                  <div className="font-medium text-foreground">
                     {event.current_attendees} / {event.capacity} people
                   </div>
                 </div>
@@ -1309,8 +1327,8 @@ const EventDetails = () => {
       )}
       {/* Mint result modal */}
       {mintResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-white rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
             <h3
               className={`text-xl font-semibold mb-4 ${
                 mintResult.success ? "text-green-600" : "text-red-600"
@@ -1318,7 +1336,7 @@ const EventDetails = () => {
             >
               {mintResult.success ? "Success" : "Error"}
             </h3>
-            <p className="text-gray-800 mb-6">{mintResult.message}</p>
+            <p className="text-foreground mb-6">{mintResult.message}</p>
             <Button onClick={() => setMintResult(null)} className="w-full">
               Close
             </Button>
@@ -1326,12 +1344,12 @@ const EventDetails = () => {
         </div>
       )}
       {showShareModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-white rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
             <h3 className="text-xl font-semibold mb-4 text-primary">
               Share Event
             </h3>
-            <p className="text-gray-800 mb-4 break-all">{shareEventLink}</p>
+            <p className="text-foreground mb-4 break-all">{shareEventLink}</p>
             <Button
               onClick={() => {
                 navigator.clipboard.writeText(shareEventLink);
@@ -1352,8 +1370,8 @@ const EventDetails = () => {
       )}
       {/* Organizer Profile Modal */}
       {showProfileModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="relative bg-white/20 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-2xl max-w-md w-full mx-4 p-0 overflow-hidden animate-slide-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-fade-in">
+          <div className="relative bg-card/80 backdrop-blur-2xl border border-border shadow-2xl rounded-2xl max-w-md w-full mx-4 p-0 overflow-hidden animate-slide-up">
             <div className="flex flex-col items-center justify-center pt-8 pb-2 bg-gradient-to-r from-primary/80 to-secondary/80">
               <span className="text-5xl mb-2">👤</span>
               <h3 className="text-2xl font-bold text-white drop-shadow mb-1">
@@ -1364,7 +1382,9 @@ const EventDetails = () => {
               {profileLoading ? (
                 <div className="flex flex-col items-center justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                  <span className="text-white/80">Loading profile...</span>
+                  <span className="text-foreground-secondary">
+                    Loading profile...
+                  </span>
                 </div>
               ) : profileError ? (
                 <div className="text-red-500 text-center">{profileError}</div>
@@ -1377,14 +1397,14 @@ const EventDetails = () => {
                     <div className="text-xl font-semibold text-primary mb-1">
                       {organizerProfile.name || "Unnamed Organizer"}
                     </div>
-                    <div className="text-xs text-white/60 break-all mb-2">
+                    <div className="text-xs text-foreground-secondary break-all mb-2">
                       {organizerProfile.address}
                     </div>
                   </div>
-                  <div className="mb-2 text-white/80 text-sm whitespace-pre-line">
+                  <div className="mb-2 text-foreground-secondary text-sm whitespace-pre-line">
                     {organizerProfile.bio}
                   </div>
-                  <div className="flex flex-wrap gap-3 justify-center text-xs text-white/80 mb-2">
+                  <div className="flex flex-wrap gap-3 justify-center text-xs text-foreground-secondary mb-2">
                     <div>
                       <span className="font-bold text-primary">
                         {organizerProfile.total_events}
@@ -1406,11 +1426,11 @@ const EventDetails = () => {
                   </div>
                   <div className="flex items-center justify-center gap-1 mb-2">
                     <Star className="h-4 w-4 text-yellow-400" />
-                    <span className="text-white/80 font-semibold">
+                    <span className="text-foreground-secondary font-semibold">
                       {(organizerProfile.avg_rating / 100).toFixed(1)} / 5.0
                     </span>
                   </div>
-                  <div className="text-xs text-white/50 text-center mb-2">
+                  <div className="text-xs text-foreground-muted text-center mb-2">
                     Profile created:{" "}
                     {new Date(organizerProfile.created_at).toLocaleDateString()}
                   </div>
@@ -1429,8 +1449,8 @@ const EventDetails = () => {
       )}
       {/* Sponsor Modal */}
       {showSponsorModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="relative bg-white/20 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-2xl max-w-md w-full mx-4 p-0 overflow-hidden animate-slide-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-fade-in">
+          <div className="relative bg-card/80 backdrop-blur-2xl border border-border shadow-2xl rounded-2xl max-w-md w-full mx-4 p-0 overflow-hidden animate-slide-up">
             <div className="flex flex-col items-center justify-center pt-8 pb-2 bg-gradient-to-r from-primary/80 to-secondary/80">
               <span className="text-5xl mb-2">💸</span>
               <h3 className="text-2xl font-bold text-white drop-shadow mb-1 font-livvic">
@@ -1442,14 +1462,14 @@ const EventDetails = () => {
               </p>
             </div>
             <div className="px-8 py-6 flex flex-col gap-4 font-open-sans">
-              <label className="text-white/80 text-sm font-semibold mb-1 font-livvic">
+              <label className="text-foreground-secondary text-sm font-semibold mb-1 font-livvic">
                 Sponsorship Amount (SUI)
               </label>
               <input
                 type="number"
                 min={0.01}
                 step={0.01}
-                className="w-full p-3 rounded-lg border border-white/20 bg-white/60 text-gray-900 font-semibold text-lg focus:ring-2 focus:ring-primary/40 outline-none"
+                className="w-full p-3 rounded-lg border border-border bg-card text-foreground font-semibold text-lg focus:ring-2 focus:ring-primary/40 outline-none"
                 value={sponsorAmount}
                 onChange={(e) => setSponsorAmount(Number(e.target.value))}
                 disabled={sponsorLoading}
@@ -1517,7 +1537,7 @@ const EventDetails = () => {
                 <Button
                   variant="outline"
                   onClick={() => setShowSponsorModal(false)}
-                  className="flex-1 border-0 bg-white/60 text-gray-700 font-semibold py-2 rounded-xl hover:bg-white/80 transition-all text-base min-w-0 font-livvic"
+                  className="flex-1 border-0 bg-card-secondary text-foreground font-semibold py-2 rounded-xl hover:bg-card transition-all text-base min-w-0 font-livvic"
                   disabled={sponsorLoading}
                 >
                   Cancel

@@ -216,23 +216,23 @@ const CreateEvent = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex items-center gap-2">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="text-white">Loading profile...</span>
+          <span className="text-foreground">Loading profile...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black pt-20 pb-6 sm:pb-10">
+    <div className="min-h-screen bg-background pt-20 pb-6 sm:pb-10">
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl font-livvic font-bold mb-2 sm:mb-4">
+          <h1 className="text-3xl sm:text-4xl font-livvic font-bold mb-2 sm:mb-4 text-foreground">
             Create New Event
           </h1>
-          <p className="text-white/80 text-sm sm:text-base">
+          <p className="text-foreground-secondary text-sm sm:text-base">
             Set up your decentralized event in a few simple steps
           </p>
         </div>
@@ -250,7 +250,7 @@ const CreateEvent = () => {
                     ${
                       currentStep >= step.id
                         ? "bg-gradient-to-r from-primary to-secondary text-white"
-                        : "bg-white/10 text-white/50"
+                        : "bg-card border border-border text-foreground-muted"
                     }
                   `}
                   >
@@ -258,7 +258,9 @@ const CreateEvent = () => {
                   </div>
                   <span
                     className={`ml-2 text-sm ${
-                      currentStep >= step.id ? "text-white" : "text-white/50"
+                      currentStep >= step.id
+                        ? "text-foreground"
+                        : "text-foreground-muted"
                     }`}
                   >
                     {step.title}
@@ -266,7 +268,7 @@ const CreateEvent = () => {
                   {index < steps.length - 1 && (
                     <div
                       className={`w-8 h-0.5 mx-4 ${
-                        currentStep > step.id ? "bg-primary" : "bg-white/20"
+                        currentStep > step.id ? "bg-primary" : "bg-border"
                       }`}
                     />
                   )}
@@ -276,28 +278,28 @@ const CreateEvent = () => {
           </div>
 
           {/* Mobile version - current step indicator */}
-          <div className="flex sm:hidden justify-between items-center bg-white/5 rounded-lg p-4">
+          <div className="flex sm:hidden justify-between items-center bg-card border border-border rounded-lg p-4">
             <div className="flex items-center">
               <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-sm font-bold mr-3">
                 {currentStep}
               </div>
               <div>
-                <div className="text-sm font-semibold">
+                <div className="text-sm font-semibold text-foreground">
                   {steps[currentStep - 1].title}
                 </div>
-                <div className="text-xs text-white/60">
+                <div className="text-xs text-foreground-muted">
                   Step {currentStep} of {steps.length}
                 </div>
               </div>
             </div>
-            <div className="text-xs text-white/60">
+            <div className="text-xs text-foreground-muted">
               {Math.round((currentStep / steps.length) * 100)}%
             </div>
           </div>
 
           {/* Mobile progress bar */}
           <div className="sm:hidden mt-3">
-            <div className="w-full bg-white/10 rounded-full h-1">
+            <div className="w-full bg-border rounded-full h-1">
               <div
                 className="bg-gradient-to-r from-primary to-secondary h-1 rounded-full transition-all duration-300"
                 style={{ width: `${(currentStep / steps.length) * 100}%` }}
@@ -310,25 +312,25 @@ const CreateEvent = () => {
           {/* Step 1: Basic Info */}
           {currentStep === 1 && (
             <div className="space-y-4 sm:space-y-6">
-              <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+              <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-foreground">
                 Event Basic Information
               </h3>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium mb-2 text-foreground">
                   Event Title
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => handleInputChange("title", e.target.value)}
-                  className="w-full px-4 py-3 sm:py-3 bg-white/5 border border-white/20 rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base"
+                  className="w-full px-4 py-3 sm:py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground placeholder-foreground-muted"
                   placeholder="Enter event title"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium mb-2 text-foreground">
                   Description
                 </label>
                 <textarea
@@ -337,7 +339,7 @@ const CreateEvent = () => {
                     handleInputChange("description", e.target.value)
                   }
                   rows={4}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base resize-none"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base resize-none text-foreground placeholder-foreground-muted"
                   placeholder="Describe your event"
                 />
               </div>
@@ -347,12 +349,12 @@ const CreateEvent = () => {
           {/* Step 2: Details */}
           {currentStep === 2 && (
             <div className="space-y-4 sm:space-y-6">
-              <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+              <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-foreground">
                 Event Details
               </h3>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium mb-2 text-foreground">
                   Location
                 </label>
                 <input
@@ -361,34 +363,38 @@ const CreateEvent = () => {
                   onChange={(e) =>
                     handleInputChange("location", e.target.value)
                   }
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground placeholder-foreground-muted"
                   placeholder="Enter event location"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Date</label>
+                  <label className="block text-sm font-medium mb-2 text-foreground">
+                    Date
+                  </label>
                   <input
                     type="date"
                     value={formData.date}
                     onChange={(e) => handleInputChange("date", e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base"
+                    className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Time</label>
+                  <label className="block text-sm font-medium mb-2 text-foreground">
+                    Time
+                  </label>
                   <input
                     type="time"
                     value={formData.time}
                     onChange={(e) => handleInputChange("time", e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base"
+                    className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium mb-2 text-foreground">
                   Max Attendees (Optional)
                 </label>
                 <input
@@ -397,7 +403,7 @@ const CreateEvent = () => {
                   onChange={(e) =>
                     handleInputChange("maxAttendees", e.target.value)
                   }
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground placeholder-foreground-muted"
                   placeholder="No limit"
                 />
               </div>
@@ -407,17 +413,17 @@ const CreateEvent = () => {
           {/* Step 3: Media */}
           {currentStep === 3 && (
             <div className="space-y-4 sm:space-y-6">
-              <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+              <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-foreground">
                 Event Media
               </h3>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium mb-2 text-foreground">
                   Banner Image
                 </label>
                 <label
                   htmlFor="banner-upload"
-                  className="block border-2 border-dashed border-white/20 rounded-lg p-6 sm:p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                  className="block border-2 border-dashed border-border rounded-lg p-6 sm:p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-card"
                   onDrop={(e) => {
                     e.preventDefault();
                     const file = e.dataTransfer.files[0];
@@ -432,17 +438,17 @@ const CreateEvent = () => {
                         alt="Preview"
                         className="max-h-48 mx-auto mb-2 rounded"
                       />
-                      <p className="text-sm text-white/70">
+                      <p className="text-sm text-foreground-secondary">
                         Click or drag to replace
                       </p>
                     </div>
                   ) : (
                     <>
-                      <Image className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-white/50" />
-                      <p className="text-white/70 mb-2 text-sm sm:text-base">
+                      <Image className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-foreground-muted" />
+                      <p className="text-foreground-secondary mb-2 text-sm sm:text-base">
                         Drop your banner image here or click to browse
                       </p>
-                      <p className="text-xs sm:text-sm text-white/50">
+                      <p className="text-xs sm:text-sm text-foreground-muted">
                         PNG, JPG up to 10MB
                       </p>
                     </>
@@ -471,62 +477,62 @@ const CreateEvent = () => {
           {/* Step 4: Review */}
           {currentStep === 4 && (
             <div className="space-y-4 sm:space-y-6">
-              <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+              <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-foreground">
                 Review Your Event
               </h3>
 
               <div className="space-y-3 sm:space-y-4">
-                <div className="border border-white/20 rounded-lg p-3 sm:p-4">
+                <div className="border border-border rounded-lg p-3 sm:p-4 bg-card">
                   <h4 className="font-semibold text-primary text-sm sm:text-base">
                     Event Title
                   </h4>
-                  <p className="text-sm sm:text-base">
+                  <p className="text-sm sm:text-base text-foreground">
                     {formData.title || "Not specified"}
                   </p>
                 </div>
 
-                <div className="border border-white/20 rounded-lg p-3 sm:p-4">
+                <div className="border border-border rounded-lg p-3 sm:p-4 bg-card">
                   <h4 className="font-semibold text-primary text-sm sm:text-base">
                     Description
                   </h4>
-                  <p className="text-sm sm:text-base">
+                  <p className="text-sm sm:text-base text-foreground">
                     {formData.description || "Not specified"}
                   </p>
                 </div>
 
-                <div className="border border-white/20 rounded-lg p-3 sm:p-4">
+                <div className="border border-border rounded-lg p-3 sm:p-4 bg-card">
                   <h4 className="font-semibold text-primary text-sm sm:text-base">
                     Location
                   </h4>
-                  <p className="text-sm sm:text-base">
+                  <p className="text-sm sm:text-base text-foreground">
                     {formData.location || "Not specified"}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div className="border border-white/20 rounded-lg p-3 sm:p-4">
+                  <div className="border border-border rounded-lg p-3 sm:p-4 bg-card">
                     <h4 className="font-semibold text-primary text-sm sm:text-base">
                       Date
                     </h4>
-                    <p className="text-sm sm:text-base">
+                    <p className="text-sm sm:text-base text-foreground">
                       {formData.date || "Not specified"}
                     </p>
                   </div>
-                  <div className="border border-white/20 rounded-lg p-3 sm:p-4">
+                  <div className="border border-border rounded-lg p-3 sm:p-4 bg-card">
                     <h4 className="font-semibold text-primary text-sm sm:text-base">
                       Time
                     </h4>
-                    <p className="text-sm sm:text-base">
+                    <p className="text-sm sm:text-base text-foreground">
                       {formData.time || "Not specified"}
                     </p>
                   </div>
                 </div>
 
-                <div className="border border-white/20 rounded-lg p-3 sm:p-4">
+                <div className="border border-border rounded-lg p-3 sm:p-4 bg-card">
                   <h4 className="font-semibold text-primary text-sm sm:text-base">
                     Max Attendees
                   </h4>
-                  <p className="text-sm sm:text-base">
+                  <p className="text-sm sm:text-base text-foreground">
                     {formData.maxAttendees || "Unlimited"}
                   </p>
                 </div>

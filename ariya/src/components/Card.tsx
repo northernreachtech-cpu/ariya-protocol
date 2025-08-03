@@ -1,5 +1,5 @@
-import React from 'react';
-import { cn } from '../utils/cn';
+import React from "react";
+import { cn } from "../utils/cn";
 
 interface CardProps {
   children: React.ReactNode;
@@ -11,8 +11,9 @@ const Card = ({ children, className, hover = false }: CardProps) => {
   return (
     <div
       className={cn(
-        'bg-card border border-border rounded-lg p-6 backdrop-blur-sm',
-        hover && 'hover:bg-card-secondary hover:scale-105 cursor-pointer transition-all duration-300',
+        "bg-card border border-border rounded-lg p-6 backdrop-blur-sm",
+        hover &&
+          "hover:bg-card-hover hover:scale-105 cursor-pointer transition-all duration-300",
         className
       )}
     >
@@ -21,4 +22,4 @@ const Card = ({ children, className, hover = false }: CardProps) => {
   );
 };
 
-export default Card; 
+export default Card;

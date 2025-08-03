@@ -1,30 +1,41 @@
 import { useEffect, useState } from "react";
 import {
   useCurrentAccount,
-  useSignAndExecuteTransaction,
+  // useSignAndExecuteTransaction,
 } from "@mysten/dapp-kit";
 import { useAriyaSDK } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
+import { Transaction } from "@mysten/sui/transactions";
+import { suiClient } from "../config/sui";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, CheckCircle, XCircle, Clock } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Users, Lock, Unlock } from "lucide-react";
 
 const Communities = () => {
   const currentAccount = useCurrentAccount();
-  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
+  // const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const sdk = useAriyaSDK();
   const communityRegistryId = useNetworkVariable("communityRegistryId");
   const nftRegistryId = useNetworkVariable("nftRegistryId");
+  const registrationRegistryId = useNetworkVariable("registrationRegistryId");
+  const attendanceRegistryId = useNetworkVariable("attendanceRegistryId");
   const [allCommunities, setAllCommunities] = useState<any[]>([]);
   const [userCommunities, setUserCommunities] = useState<any[]>([]);
   const [_activeUserCommunities, setActiveUserCommunities] = useState<any[]>(
     []
   );
   const [loading, setLoading] = useState(true);
-  const [joining, setJoining] = useState<string | null>(null);
+  // const [_joining, setJoining] = useState<string | null>(null);
   const [membershipChecks, setMembershipChecks] = useState<{
     [key: string]: { isActive: boolean; reason?: string };
+  }>({});
+  const [userEventStatuses, setUserEventStatuses] = useState<{
+    [eventId: string]: {
+      isRegistered: boolean;
+      attendanceState: number;
+      hasPoANFT: boolean;
+    };
   }>({});
   const navigate = useNavigate();
 
@@ -68,6 +79,14 @@ const Communities = () => {
           checks[community.id] = check;
         }
         setMembershipChecks(checks);
+
+        // Check user event statuses for all communities
+        const eventStatusPromises = all.map(async (community) => {
+          if (community.event_id) {
+            await checkUserEventStatus(community.event_id);
+          }
+        });
+        await Promise.all(eventStatusPromises);
       } catch (e) {
         console.error("Error fetching communities:", e);
         setAllCommunities([]);
@@ -80,32 +99,93 @@ const Communities = () => {
     fetchCommunities();
   }, [currentAccount, sdk, communityRegistryId, nftRegistryId]);
 
-  const handleJoin = async (community: any) => {
-    if (!currentAccount || !nftRegistryId || !communityRegistryId) return;
-    setJoining(community.id);
-    try {
-      const tx = sdk.communityAccess.requestCommunityAccess(
-        community.id,
-        currentAccount.address,
-        nftRegistryId,
-        communityRegistryId
-      );
-      await signAndExecute({ transaction: tx });
-      setUserCommunities((prev) => [...prev, community]);
-      // Refresh membership checks
-      const check = await sdk.communityAccess.isActiveCommunityMember(
-        community.id,
-        currentAccount.address,
-        communityRegistryId,
-        nftRegistryId
-      );
-      setMembershipChecks((prev) => ({ ...prev, [community.id]: check }));
-    } catch (e) {
-      console.error("Failed to join community:", e);
-    } finally {
-      setJoining(null);
-    }
-  };
+  // Check for PoA NFT membership after event statuses are loaded
+  useEffect(() => {
+    const checkPoANFTMembership = async () => {
+      if (
+        !currentAccount ||
+        !communityRegistryId ||
+        !nftRegistryId ||
+        allCommunities.length === 0
+      )
+        return;
+
+      for (const community of allCommunities) {
+        if (community.event_id) {
+          const eventStatus = userEventStatuses[community.event_id];
+          if (
+            eventStatus &&
+            eventStatus.hasPoANFT &&
+            eventStatus.attendanceState >= 1
+          ) {
+            // User has PoA NFT and is checked in - check if they should be a member
+            const shouldBeMember =
+              eventStatus.isRegistered && eventStatus.hasPoANFT;
+            if (shouldBeMember && !isJoined(community.id)) {
+              // User should be a member but isn't - add them to user communities
+              console.log(
+                `🔍 User should be member of ${community.id} based on PoA NFT`
+              );
+              setUserCommunities((prev) => {
+                if (!prev.some((c) => c.id === community.id)) {
+                  return [...prev, community];
+                }
+                return prev;
+              });
+
+              // Check their membership status
+              const check = await sdk.communityAccess.isActiveCommunityMember(
+                community.id,
+                currentAccount.address,
+                communityRegistryId,
+                nftRegistryId
+              );
+              setMembershipChecks((prev) => ({
+                ...prev,
+                [community.id]: check,
+              }));
+            }
+          }
+        }
+      }
+    };
+
+    checkPoANFTMembership();
+  }, [
+    userEventStatuses,
+    allCommunities,
+    currentAccount,
+    sdk,
+    communityRegistryId,
+    nftRegistryId,
+  ]);
+
+  // const handleJoin = async (community: any) => {
+  //   if (!currentAccount || !nftRegistryId || !communityRegistryId) return;
+  //   setJoining(community.id);
+  //   try {
+  //     const tx = sdk.communityAccess.requestCommunityAccess(
+  //       community.id,
+  //       currentAccount.address,
+  //       nftRegistryId,
+  //       communityRegistryId
+  //     );
+  //     await signAndExecute({ transaction: tx });
+  //     setUserCommunities((prev) => [...prev, community]);
+  //     // Refresh membership checks
+  //     const check = await sdk.communityAccess.isActiveCommunityMember(
+  //       community.id,
+  //       currentAccount.address,
+  //       communityRegistryId,
+  //       nftRegistryId
+  //     );
+  //     setMembershipChecks((prev) => ({ ...prev, [community.id]: check }));
+  //   } catch (e) {
+  //     console.error("Failed to join community:", e);
+  //   } finally {
+  //     setJoining(null);
+  //   }
+  // };
 
   const isJoined = (communityId: string) => {
     const joined = userCommunities.some((c) => c.id === communityId);
@@ -120,6 +200,95 @@ const Communities = () => {
 
   // const isActiveMember = (communityId: string) =>
   //   activeUserCommunities.some((c) => c.id === communityId);
+
+  const checkUserEventStatus = async (eventId: string) => {
+    if (
+      !currentAccount ||
+      !registrationRegistryId ||
+      !attendanceRegistryId ||
+      !nftRegistryId
+    ) {
+      return;
+    }
+
+    try {
+      // Check registration status
+      const registration = await sdk.identityAccess.getRegistrationStatus(
+        eventId,
+        currentAccount.address,
+        registrationRegistryId
+      );
+
+      // Check attendance status
+      let attendanceState = 0;
+      try {
+        const tx = new Transaction();
+        tx.moveCall({
+          target: `${sdk.attendanceVerification.getPackageId()}::attendance_verification::get_attendance_status`,
+          arguments: [
+            tx.pure.address(currentAccount.address),
+            tx.pure.id(eventId),
+            tx.object(attendanceRegistryId),
+          ],
+        });
+        const result = await suiClient.devInspectTransactionBlock({
+          transactionBlock: tx,
+          sender: currentAccount.address,
+        });
+
+        if (result && result.results && result.results.length > 0) {
+          const returnVals = result.results[0].returnValues;
+          if (Array.isArray(returnVals) && returnVals.length >= 4) {
+            attendanceState = Array.isArray(returnVals[1])
+              ? (returnVals[1][0] as unknown as number)
+              : parseInt(returnVals[1] as string) || 0;
+          }
+        }
+      } catch (e) {
+        attendanceState = 0;
+      }
+
+      // Check PoA NFT ownership
+      let hasPoANFT = false;
+      try {
+        const tx = new Transaction();
+        tx.moveCall({
+          target: `${sdk.attendanceVerification.getPackageId()}::nft_minting::has_proof_of_attendance`,
+          arguments: [
+            tx.pure.address(currentAccount.address),
+            tx.pure.id(eventId),
+            tx.object(nftRegistryId),
+          ],
+        });
+        const result = await suiClient.devInspectTransactionBlock({
+          transactionBlock: tx,
+          sender: currentAccount.address,
+        });
+
+        if (result && result.results && result.results.length > 0) {
+          const returnVals = result.results[0].returnValues;
+          if (Array.isArray(returnVals) && returnVals.length > 0) {
+            hasPoANFT = Array.isArray(returnVals[0])
+              ? returnVals[0].length > 0
+              : !!returnVals[0];
+          }
+        }
+      } catch (e) {
+        hasPoANFT = false;
+      }
+
+      setUserEventStatuses((prev) => ({
+        ...prev,
+        [eventId]: {
+          isRegistered: !!registration,
+          attendanceState,
+          hasPoANFT,
+        },
+      }));
+    } catch (e) {
+      console.error(`Error checking event status for ${eventId}:`, e);
+    }
+  };
 
   const getMembershipStatus = (communityId: string) => {
     // Check if user has joined this community
@@ -144,6 +313,144 @@ const Communities = () => {
       icon: XCircle,
       color: "text-red-400",
       reason: check.reason,
+    };
+  };
+
+  const getCommunityButtonState = (community: any) => {
+    const membershipStatus = getMembershipStatus(community.id);
+    const eventStatus = userEventStatuses[community.event_id];
+
+    // If user is an active member, show "Open Community"
+    if (membershipStatus.status === "active") {
+      return {
+        text: "Open Community",
+        icon: Users,
+        variant: "primary" as const,
+        onClick: () => navigate(`/community/${community.id}`),
+        disabled: false,
+        color: "text-green-400",
+        message: "You have full access to this community",
+      };
+    }
+
+    // If user has joined but is inactive, show "Rejoin Community"
+    if (membershipStatus.status === "inactive") {
+      return {
+        text: "Rejoin Community",
+        icon: Lock,
+        variant: "secondary" as const,
+        onClick: () => navigate(`/event/${community.event_id}`),
+        disabled: false,
+        color: "text-red-400",
+        message: membershipStatus.reason || "Membership expired or invalid",
+      };
+    }
+
+    // If user hasn't joined, check their event status
+    if (!eventStatus) {
+      return {
+        text: "Checking...",
+        icon: Clock,
+        variant: "secondary" as const,
+        onClick: () => {},
+        disabled: true,
+        color: "text-yellow-400",
+        message: "Checking your event status...",
+      };
+    }
+
+    // User hasn't registered for the event
+    if (!eventStatus.isRegistered) {
+      return {
+        text: "Register for Event First",
+        icon: Lock,
+        variant: "secondary" as const,
+        onClick: () => navigate(`/event/${community.event_id}`),
+        disabled: false,
+        color: "text-red-400",
+        message: "You need to register for the event first",
+      };
+    }
+
+    // User is registered but hasn't checked in
+    if (eventStatus.attendanceState === 0) {
+      return {
+        text: "Check In to Event First",
+        icon: Lock,
+        variant: "secondary" as const,
+        onClick: () => navigate(`/event/${community.event_id}`),
+        disabled: false,
+        color: "text-yellow-400",
+        message: "You need to check in to the event first",
+      };
+    }
+
+    // User is checked in but hasn't minted PoA NFT
+    if (eventStatus.attendanceState >= 1 && !eventStatus.hasPoANFT) {
+      return {
+        text: "Mint PoA NFT First",
+        icon: Lock,
+        variant: "secondary" as const,
+        onClick: () => navigate(`/event/${community.event_id}`),
+        disabled: false,
+        color: "text-yellow-400",
+        message: "You need to mint your Proof of Attendance NFT first",
+      };
+    }
+
+    // User has PoA NFT - check if they should already be a member
+    if (eventStatus.hasPoANFT) {
+      // Check if user should already be a member based on PoA NFT ownership
+      const shouldBeMember =
+        eventStatus.attendanceState >= 1 && eventStatus.hasPoANFT;
+
+      if (shouldBeMember && !isJoined(community.id)) {
+        // User has PoA NFT but isn't a member - they might need to join
+        return {
+          text: "Join Community",
+          icon: Unlock,
+          variant: "secondary" as const,
+          onClick: () => navigate(`/event/${community.event_id}`),
+          disabled: false,
+          color: "text-green-400",
+          message: "You're eligible to join this community",
+        };
+      } else if (shouldBeMember && isJoined(community.id)) {
+        // User has PoA NFT and should be a member - check if membership is active
+        const check = membershipChecks[community.id];
+        if (check && check.isActive) {
+          return {
+            text: "Open Community",
+            icon: Users,
+            variant: "primary" as const,
+            onClick: () => navigate(`/community/${community.id}`),
+            disabled: false,
+            color: "text-green-400",
+            message: "You have full access to this community",
+          };
+        } else {
+          return {
+            text: "Rejoin Community",
+            icon: Lock,
+            variant: "secondary" as const,
+            onClick: () => navigate(`/event/${community.event_id}`),
+            disabled: false,
+            color: "text-red-400",
+            message: "Membership needs to be renewed",
+          };
+        }
+      }
+    }
+
+    // Fallback - navigate to event details
+    return {
+      text: "View Event Details",
+      icon: Lock,
+      variant: "secondary" as const,
+      onClick: () => navigate(`/event/${community.event_id}`),
+      disabled: false,
+      color: "text-white/50",
+      message: "View event details to join community",
     };
   };
 
@@ -178,6 +485,8 @@ const Communities = () => {
             {allCommunities.map((community) => {
               const membershipStatus = getMembershipStatus(community.id);
               const StatusIcon = membershipStatus.icon;
+              const buttonState = getCommunityButtonState(community);
+              const ButtonIcon = buttonState.icon;
 
               return (
                 <Card
@@ -204,57 +513,32 @@ const Communities = () => {
                       Community ID: {community.id.slice(0, 8)}...
                     </div>
 
-                    {/* Membership Status Details */}
-                    {membershipStatus.status === "inactive" &&
-                      membershipStatus.reason && (
-                        <div className="flex items-center gap-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg mb-3">
-                          <AlertCircle className="h-4 w-4 text-red-400" />
-                          <span className="text-xs text-red-300">
-                            {membershipStatus.reason}
-                          </span>
-                        </div>
-                      )}
-
-                    {membershipStatus.status === "checking" && (
-                      <div className="flex items-center gap-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg mb-3">
-                        <Clock className="h-4 w-4 text-yellow-400" />
-                        <span className="text-xs text-yellow-300">
-                          Checking membership status...
-                        </span>
-                      </div>
-                    )}
+                    {/* Status Message */}
+                    <div
+                      className={`flex items-center gap-2 p-2 rounded-lg mb-3 text-xs ${
+                        buttonState.color === "text-green-400"
+                          ? "bg-green-500/10 border border-green-500/20 text-green-300"
+                          : buttonState.color === "text-yellow-400"
+                          ? "bg-yellow-500/10 border border-yellow-500/20 text-yellow-300"
+                          : buttonState.color === "text-red-400"
+                          ? "bg-red-500/10 border border-red-500/20 text-red-300"
+                          : "bg-gray-500/10 border border-gray-500/20 text-gray-300"
+                      }`}
+                    >
+                      <ButtonIcon className="h-4 w-4" />
+                      <span>{buttonState.message}</span>
+                    </div>
                   </div>
-                  <div className="mt-4 flex gap-2">
-                    {membershipStatus.status === "active" ? (
-                      <Button
-                        className="flex-1"
-                        onClick={() => navigate(`/community/${community.id}`)}
-                      >
-                        Access Community
-                      </Button>
-                    ) : membershipStatus.status === "inactive" ? (
-                      <Button
-                        className="flex-1"
-                        variant="secondary"
-                        onClick={() => handleJoin(community)}
-                        disabled={joining === community.id}
-                      >
-                        {joining === community.id
-                          ? "Joining..."
-                          : "Rejoin Community"}
-                      </Button>
-                    ) : (
-                      <Button
-                        className="flex-1"
-                        variant="secondary"
-                        onClick={() => handleJoin(community)}
-                        disabled={joining === community.id}
-                      >
-                        {joining === community.id
-                          ? "Joining..."
-                          : "Join Community"}
-                      </Button>
-                    )}
+                  <div className="mt-4">
+                    <Button
+                      className="w-full"
+                      variant={buttonState.variant}
+                      onClick={buttonState.onClick}
+                      disabled={buttonState.disabled}
+                    >
+                      <ButtonIcon className="mr-2 h-4 w-4" />
+                      {buttonState.text}
+                    </Button>
                   </div>
                 </Card>
               );

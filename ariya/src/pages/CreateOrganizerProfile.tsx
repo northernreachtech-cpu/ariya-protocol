@@ -159,16 +159,16 @@ const CreateOrganizerProfile = () => {
 
   if (!currentAccount) {
     return (
-      <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-background pt-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
           <Card className="p-8 text-center">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <User className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
               Connect Your Wallet
             </h2>
-            <p className="text-white/60 mb-6">
+            <p className="text-foreground-secondary mb-6">
               You need to connect your wallet to create an organizer profile
             </p>
             <Button onClick={() => navigate("/")} variant="outline">
@@ -182,16 +182,16 @@ const CreateOrganizerProfile = () => {
 
   if (isChecking) {
     return (
-      <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-background pt-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
           <Card className="p-8 text-center">
             <div className="flex items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-            <h2 className="text-2xl font-bold text-white mt-4">
+            <h2 className="text-2xl font-bold text-foreground mt-4">
               Checking Profile Status
             </h2>
-            <p className="text-white/60 mt-2">
+            <p className="text-foreground-secondary mt-2">
               Please wait while we check your profile status...
             </p>
           </Card>
@@ -202,16 +202,16 @@ const CreateOrganizerProfile = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-background pt-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
           <Card className="p-8 text-center">
             <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="h-8 w-8 text-green-500" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
               Profile Created Successfully!
             </h2>
-            <p className="text-white/60 mb-6">
+            <p className="text-foreground-secondary mb-6">
               Your organizer profile has been created on the blockchain.
               Redirecting to your dashboard...
             </p>
@@ -225,13 +225,13 @@ const CreateOrganizerProfile = () => {
   }
 
   return (
-    <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background pt-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Create Organizer Profile
           </h1>
-          <p className="text-white/60">
+          <p className="text-foreground-secondary">
             Set up your organizer profile to start creating and managing events
             on the EIA Protocol
           </p>
@@ -241,7 +241,7 @@ const CreateOrganizerProfile = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Name Field */}
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 <User className="inline h-4 w-4 mr-2" />
                 Organizer Name
               </label>
@@ -251,7 +251,7 @@ const CreateOrganizerProfile = () => {
                 value={formData.name}
                 onChange={handleInputChange}
                 placeholder="Enter your name or organization name"
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                className="w-full px-4 py-3 bg-card border border-border rounded-lg text-foreground placeholder-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                 disabled={isSubmitting}
                 required
               />
@@ -259,7 +259,7 @@ const CreateOrganizerProfile = () => {
 
             {/* Bio Field */}
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 <FileText className="inline h-4 w-4 mr-2" />
                 Bio
               </label>
@@ -269,20 +269,20 @@ const CreateOrganizerProfile = () => {
                 onChange={handleInputChange}
                 placeholder="Tell us about yourself and your experience organizing events..."
                 rows={4}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all resize-none"
+                className="w-full px-4 py-3 bg-card border border-border rounded-lg text-foreground placeholder-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all resize-none"
                 disabled={isSubmitting}
                 required
               />
             </div>
 
             {/* Connected Wallet Info */}
-            <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
+            <div className="p-4 bg-card-secondary border border-border rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-medium text-white">
+                  <div className="text-sm font-medium text-foreground">
                     Connected Wallet
                   </div>
-                  <div className="text-xs text-white/60 font-mono">
+                  <div className="text-xs text-foreground-secondary font-mono">
                     {currentAccount.address.slice(0, 8)}...
                     {currentAccount.address.slice(-8)}
                   </div>
@@ -294,7 +294,9 @@ const CreateOrganizerProfile = () => {
             {/* Error Message */}
             {error && (
               <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-                <p className="text-red-400 text-sm">{error}</p>
+                <p className="text-red-600 dark:text-red-400 text-sm">
+                  {error}
+                </p>
               </div>
             )}
 
@@ -321,7 +323,7 @@ const CreateOrganizerProfile = () => {
 
             {/* Info Box */}
             <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-              <p className="text-blue-400 text-sm">
+              <p className="text-blue-600 dark:text-blue-400 text-sm">
                 <strong>Note:</strong> Creating an organizer profile requires a
                 blockchain transaction. This will establish your identity on the
                 EIA Protocol and allow you to create events.

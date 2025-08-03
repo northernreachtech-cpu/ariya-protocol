@@ -55,13 +55,13 @@ const SuccessModal = ({
 }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center z-50">
       <div
         onClick={onClose}
-        className="bg-white rounded-lg p-8 max-w-sm mx-4 shadow-lg"
+        className="bg-card border border-border rounded-lg p-8 max-w-sm mx-4 shadow-lg"
       >
         <h3 className="text-xl font-semibold text-green-600 mb-4">Success</h3>
-        <p className="text-gray-800 mb-6">{message}</p>
+        <p className="text-foreground mb-6">{message}</p>
         <Button onClick={onClose} className="w-full">
           Close
         </Button>
@@ -75,52 +75,52 @@ const OrganizerEventSkeleton = () => (
   <Card className="p-4 sm:p-6 animate-pulse">
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
       {/* Event Info */}
-      <div className="flex flex-col justify-between bg-white/5 rounded-lg p-4 h-full">
+      <div className="flex flex-col justify-between bg-card-secondary rounded-lg p-4 h-full">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
           <div>
-            <div className="h-6 bg-white/10 rounded mb-2 w-3/4"></div>
-            <div className="h-4 bg-white/10 rounded w-1/2"></div>
+            <div className="h-6 bg-skeleton rounded mb-2 w-3/4"></div>
+            <div className="h-4 bg-skeleton rounded w-1/2"></div>
           </div>
-          <div className="h-5 bg-white/10 rounded w-16"></div>
+          <div className="h-5 bg-skeleton rounded w-16"></div>
         </div>
 
         {/* Progress Bar */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <div className="h-4 bg-white/10 rounded w-16"></div>
-            <div className="h-4 bg-white/10 rounded w-12"></div>
+            <div className="h-4 bg-skeleton rounded w-16"></div>
+            <div className="h-4 bg-skeleton rounded w-12"></div>
           </div>
-          <div className="w-full bg-white/10 rounded-full h-2">
-            <div className="bg-white/10 h-2 rounded-full w-1/3"></div>
+          <div className="w-full bg-border rounded-full h-2">
+            <div className="bg-skeleton h-2 rounded-full w-1/3"></div>
           </div>
-          <div className="h-3 bg-white/10 rounded w-12 mt-1"></div>
+          <div className="h-3 bg-skeleton rounded w-12 mt-1"></div>
         </div>
       </div>
 
       {/* Event Stats */}
-      <div className="flex flex-col justify-center bg-white/5 rounded-lg p-4 h-full min-w-[180px]">
+      <div className="flex flex-col justify-center bg-card-secondary rounded-lg p-4 h-full min-w-[180px]">
         <div className="flex flex-row items-center justify-between gap-4 mb-2">
-          <div className="flex-1 text-center p-2 rounded bg-white/10">
-            <div className="h-3 bg-white/10 rounded w-12 mb-1"></div>
-            <div className="h-4 bg-white/10 rounded w-16"></div>
+          <div className="flex-1 text-center p-2 rounded bg-skeleton">
+            <div className="h-3 bg-skeleton rounded w-12 mb-1"></div>
+            <div className="h-4 bg-skeleton rounded w-16"></div>
           </div>
-          <div className="flex-1 text-center p-2 rounded bg-white/10">
-            <div className="h-3 bg-white/10 rounded w-16 mb-1"></div>
-            <div className="h-4 bg-white/10 rounded w-12"></div>
+          <div className="flex-1 text-center p-2 rounded bg-skeleton">
+            <div className="h-3 bg-skeleton rounded w-16 mb-1"></div>
+            <div className="h-4 bg-skeleton rounded w-12"></div>
           </div>
         </div>
-        <div className="text-center p-2 rounded bg-white/10 mt-2">
-          <div className="h-3 bg-white/10 rounded w-12 mb-2"></div>
-          <div className="h-4 bg-white/10 rounded w-20"></div>
+        <div className="text-center p-2 rounded bg-skeleton mt-2">
+          <div className="h-3 bg-skeleton rounded w-12 mb-2"></div>
+          <div className="h-4 bg-skeleton rounded w-20"></div>
         </div>
       </div>
     </div>
     {/* Actions Footer */}
-    <div className="flex flex-wrap gap-2 mt-6 border-t border-white/10 pt-4">
-      <div className="h-8 bg-white/10 rounded flex-1"></div>
-      <div className="h-8 bg-white/10 rounded flex-1"></div>
-      <div className="h-8 bg-white/10 rounded flex-1"></div>
-      <div className="h-8 bg-white/10 rounded flex-1"></div>
+    <div className="flex flex-wrap gap-2 mt-6 border-t border-border pt-4">
+      <div className="h-8 bg-skeleton rounded flex-1"></div>
+      <div className="h-8 bg-skeleton rounded flex-1"></div>
+      <div className="h-8 bg-skeleton rounded flex-1"></div>
+      <div className="h-8 bg-skeleton rounded flex-1"></div>
     </div>
   </Card>
 );
@@ -169,6 +169,9 @@ const OrganizerDashboard = () => {
     [eventId: string]: any;
   }>({});
   const [checkingCommunities, setCheckingCommunities] = useState<{
+    [eventId: string]: boolean;
+  }>({});
+  const [eventsWithNFTEnabled, setEventsWithNFTEnabled] = useState<{
     [eventId: string]: boolean;
   }>({});
 
@@ -477,6 +480,30 @@ const OrganizerDashboard = () => {
     }
   };
 
+  const checkNFTMintingStatus = async (eventId: string) => {
+    if (!nftRegistryId) return;
+
+    try {
+      // Check if event has NFT metadata set by trying to get it
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${sdk.attendanceVerification.getPackageId()}::nft_minting::get_event_metadata`,
+        arguments: [tx.pure.id(eventId), tx.object(nftRegistryId)],
+      });
+
+      // If this call succeeds, NFT minting is enabled
+      await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: currentAccount?.address || "0x0",
+      });
+
+      setEventsWithNFTEnabled((prev) => ({ ...prev, [eventId]: true }));
+    } catch (e) {
+      // If this call fails, NFT minting is not enabled
+      setEventsWithNFTEnabled((prev) => ({ ...prev, [eventId]: false }));
+    }
+  };
+
   const handleCreateCommunity = async (event: any) => {
     // Check if community already exists
     await checkEventCommunity(event.id);
@@ -618,6 +645,11 @@ const OrganizerDashboard = () => {
           await checkEventCommunity(event.id);
         }
       }
+
+      // Check NFT minting status for each event
+      for (const event of transformedEvents) {
+        await checkNFTMintingStatus(event.id);
+      }
     } catch (error) {
       // Only keep error log if needed for debugging
     } finally {
@@ -631,10 +663,10 @@ const OrganizerDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex items-center gap-2">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="text-white">Loading dashboard...</span>
+          <span className="text-foreground">Loading dashboard...</span>
         </div>
       </div>
     );
@@ -655,38 +687,38 @@ const OrganizerDashboard = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "text-green-400 bg-green-400/20";
+        return "text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-400/20";
       case "completed":
-        return "text-blue-400 bg-blue-400/20";
+        return "text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-400/20";
       case "upcoming":
-        return "text-yellow-400 bg-yellow-400/20";
+        return "text-yellow-600 bg-yellow-100 dark:text-yellow-400 dark:bg-yellow-400/20";
       default:
-        return "text-white/60 bg-white/10";
+        return "text-foreground-muted bg-card-secondary";
     }
   };
 
   const getEscrowStatusColor = (status: string) => {
     switch (status) {
       case "released":
-        return "text-green-400";
+        return "text-green-600 dark:text-green-400";
       case "pending":
-        return "text-yellow-400";
+        return "text-yellow-600 dark:text-yellow-400";
       case "locked":
-        return "text-red-400";
+        return "text-red-600 dark:text-red-400";
       default:
-        return "text-white/60";
+        return "text-foreground-muted";
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 sm:pb-12">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div>
             <h1 className="text-3xl sm:text-4xl font-livvic font-bold bg-gradient-to-r from-primary to-secondary text-transparent bg-clip-text mb-2">
               Organizer Dashboard
             </h1>
-            <p className="text-white/60 text-sm sm:text-base">
+            <p className="text-foreground-secondary text-sm sm:text-base">
               Manage your events and track performance
             </p>
           </div>
@@ -736,19 +768,19 @@ const OrganizerDashboard = () => {
 
         <div className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-white">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">
               Your Events
             </h2>
           </div>
           {events.length === 0 ? (
             <div className="text-center py-12 sm:py-16">
               <div className="mb-6">
-                <Calendar className="h-16 w-16 mx-auto text-white/30" />
+                <Calendar className="h-16 w-16 mx-auto text-foreground-muted" />
               </div>
-              <h3 className="text-xl font-semibold mb-2 text-white/70">
+              <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
                 No events yet
               </h3>
-              <p className="text-white/50 mb-6 max-w-md mx-auto">
+              <p className="text-foreground-muted mb-6 max-w-md mx-auto">
                 Create your first event to get started as an organizer.
               </p>
               <Button onClick={() => navigate("/event/create")}>
@@ -771,13 +803,13 @@ const OrganizerDashboard = () => {
                       >
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                           {/* Event Info */}
-                          <div className="flex flex-col justify-between bg-white/5 rounded-lg p-4 h-full">
+                          <div className="flex flex-col justify-between bg-card-secondary rounded-lg p-4 h-full">
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
                               <div>
-                                <h3 className="text-lg sm:text-xl font-semibold text-white mb-1 sm:mb-2">
+                                <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-1 sm:mb-2">
                                   {event.title}
                                 </h3>
-                                <p className="text-white/60 text-sm">
+                                <p className="text-foreground-secondary text-sm">
                                   {new Date(event.date).toLocaleDateString(
                                     "en-US",
                                     {
@@ -805,14 +837,14 @@ const OrganizerDashboard = () => {
                             {/* Progress Bar */}
                             <div className="mb-4">
                               <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm text-white/70">
+                                <span className="text-sm text-foreground-secondary">
                                   Check-ins
                                 </span>
-                                <span className="text-sm text-white">
+                                <span className="text-sm text-foreground">
                                   {event.checkedIn} / {event.totalCapacity}
                                 </span>
                               </div>
-                              <div className="w-full bg-white/10 rounded-full h-2">
+                              <div className="w-full bg-border rounded-full h-2">
                                 <div
                                   className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-500"
                                   style={{
@@ -824,7 +856,7 @@ const OrganizerDashboard = () => {
                                   }}
                                 ></div>
                               </div>
-                              <p className="text-xs text-white/60 mt-1">
+                              <p className="text-xs text-foreground-muted mt-1">
                                 {Math.round(
                                   (event.checkedIn / event.totalCapacity) * 100
                                 )}
@@ -834,11 +866,11 @@ const OrganizerDashboard = () => {
                           </div>
 
                           {/* Event Stats */}
-                          <div className="flex flex-col justify-center bg-white/5 rounded-lg p-4 h-full min-w-[180px]">
+                          <div className="flex flex-col justify-center bg-card-secondary rounded-lg p-4 h-full min-w-[180px]">
                             <div className="flex flex-row items-center justify-between gap-4 mb-2">
                               {/* Escrow Status */}
-                              <div className="flex-1 text-center p-2 rounded bg-white/10">
-                                <div className="text-xs text-white/60 mb-1">
+                              <div className="flex-1 text-center p-2 rounded bg-foreground-muted">
+                                <div className="text-xs text-foreground-muted mb-1">
                                   Escrow
                                 </div>
                                 <div
@@ -851,19 +883,19 @@ const OrganizerDashboard = () => {
                                 </div>
                               </div>
                               {/* Revenue */}
-                              <div className="flex-1 text-center p-2 rounded bg-white/10">
-                                <div className="text-xs text-white/60 mb-1">
+                              <div className="flex-1 text-center p-2 rounded bg-foreground-muted">
+                                <div className="text-xs text-foreground-muted mb-1">
                                   Revenue
                                 </div>
-                                <div className="text-sm font-medium text-white">
+                                <div className="text-sm font-medium text-foreground">
                                   ${event.revenue.toLocaleString()}
                                 </div>
                               </div>
                             </div>
                             {/* Rating */}
                             {event.rating > 0 && (
-                              <div className="text-center p-2 rounded bg-white/10 mt-2">
-                                <div className="text-xs text-white/60 mb-2">
+                              <div className="text-center p-2 rounded bg-foreground-muted mt-2">
+                                <div className="text-xs text-foreground-muted mb-2">
                                   Rating
                                 </div>
                                 <RatingStars
@@ -876,7 +908,7 @@ const OrganizerDashboard = () => {
                           </div>
                         </div>
                         {/* Actions Footer */}
-                        <div className="flex flex-wrap gap-2 mt-6 border-t border-white/10 pt-4">
+                        <div className="flex flex-wrap gap-2 mt-6 border-t border-border pt-4">
                           {event.state === 0 && (
                             <Button
                               size="sm"
@@ -1010,15 +1042,22 @@ const OrganizerDashboard = () => {
                             size="sm"
                             className="flex-1"
                             onClick={() => handleSetEventMetadata(event)}
-                            disabled={settingMetadataEvent === event.id}
+                            disabled={
+                              settingMetadataEvent === event.id ||
+                              eventsWithNFTEnabled[event.id]
+                            }
                           >
                             {settingMetadataEvent === event.id ? (
                               <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            ) : eventsWithNFTEnabled[event.id] ? (
+                              <CheckCircle className="mr-1 h-3 w-3" />
                             ) : (
                               <Settings className="mr-1 h-3 w-3" />
                             )}
                             {settingMetadataEvent === event.id
                               ? "Enabling..."
+                              : eventsWithNFTEnabled[event.id]
+                              ? "NFT Minting Enabled"
                               : "Enable NFT Minting"}
                           </Button>
                         </div>
@@ -1037,7 +1076,7 @@ const OrganizerDashboard = () => {
                   >
                     Previous
                   </Button>
-                  <span className="text-white/70 text-sm">
+                  <span className="text-foreground-secondary text-sm">
                     Page {currentPage} of {totalPages}
                   </span>
                   <Button
@@ -1087,12 +1126,12 @@ const OrganizerDashboard = () => {
         />
         {/* Complete Event Confirmation Modal */}
         {showCompleteModal && eventToComplete && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-            <div className="bg-white rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+            <div className="bg-card border border-border rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
               <h3 className="text-xl font-semibold mb-4 text-primary">
                 Complete Event
               </h3>
-              <p className="text-gray-800 mb-6">
+              <p className="text-foreground mb-6">
                 Are you sure you want to mark{" "}
                 <span className="font-bold">{eventToComplete.title}</span> as
                 completed? This action cannot be undone and will allow attendees
@@ -1120,12 +1159,12 @@ const OrganizerDashboard = () => {
           </div>
         )}
         {showShareModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-            <div className="bg-white rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+            <div className="bg-card border border-border rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
               <h3 className="text-xl font-semibold mb-4 text-primary">
                 Share Event
               </h3>
-              <p className="text-gray-800 mb-4 break-all">{shareEventLink}</p>
+              <p className="text-foreground mb-4 break-all">{shareEventLink}</p>
               <Button
                 onClick={() => {
                   navigator.clipboard.writeText(shareEventLink);
@@ -1147,8 +1186,8 @@ const OrganizerDashboard = () => {
 
         {/* Community Creation Modal */}
         {showCommunityModal && communityEvent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-            <div className="relative bg-white/20 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-2xl max-w-md w-full mx-4 p-0 overflow-hidden">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+            <div className="relative bg-card backdrop-blur-2xl border border-border shadow-2xl rounded-2xl max-w-md w-full mx-4 p-0 overflow-hidden">
               <div className="flex flex-col items-center justify-center pt-8 pb-2 bg-gradient-to-r from-primary/80 to-secondary/80">
                 <span className="text-5xl mb-2">🌐</span>
                 <h3 className="text-2xl font-bold text-white drop-shadow mb-1 font-livvic">
@@ -1160,30 +1199,30 @@ const OrganizerDashboard = () => {
               </div>
               <div className="px-8 py-6 flex flex-col gap-4 font-open-sans">
                 <div>
-                  <label className="text-white/80 text-sm font-semibold mb-1 font-livvic block">
+                  <label className="text-foreground-secondary text-sm font-semibold mb-1 font-livvic block">
                     Community Name
                   </label>
                   <input
                     type="text"
-                    className="w-full p-3 rounded-lg border border-white/20 bg-white/60 text-gray-900 font-semibold focus:ring-2 focus:ring-primary/40 outline-none"
+                    className="w-full p-3 rounded-lg border border-border bg-card-secondary text-foreground font-semibold focus:ring-2 focus:ring-primary/40 outline-none"
                     value={communityName}
                     onChange={(e) => setCommunityName(e.target.value)}
                     disabled={creatingCommunity}
                   />
                 </div>
                 <div>
-                  <label className="text-white/80 text-sm font-semibold mb-1 font-livvic block">
+                  <label className="text-foreground-secondary text-sm font-semibold mb-1 font-livvic block">
                     Description
                   </label>
                   <textarea
-                    className="w-full p-3 rounded-lg border border-white/20 bg-white/60 text-gray-900 font-semibold focus:ring-2 focus:ring-primary/40 outline-none"
+                    className="w-full p-3 rounded-lg border border-border bg-card-secondary text-foreground font-semibold focus:ring-2 focus:ring-primary/40 outline-none"
                     rows={3}
                     value={communityDescription}
                     onChange={(e) => setCommunityDescription(e.target.value)}
                     disabled={creatingCommunity}
                   />
                 </div>
-                <div className="text-sm text-white/70 bg-white/10 p-3 rounded-lg">
+                <div className="text-sm text-foreground-secondary bg-card-secondary p-3 rounded-lg">
                   <p>
                     <strong>Access:</strong> PoA or Completion NFT holders
                   </p>
@@ -1205,7 +1244,7 @@ const OrganizerDashboard = () => {
                   <Button
                     variant="outline"
                     onClick={() => setShowCommunityModal(false)}
-                    className="flex-1 border-0 bg-white/60 text-gray-700 font-semibold py-2 rounded-xl hover:bg-white/80 transition-all text-base min-w-0 font-livvic"
+                    className="flex-1 border-0 bg-card-secondary text-foreground font-semibold py-2 rounded-xl hover:bg-card transition-all text-base min-w-0 font-livvic"
                     disabled={creatingCommunity}
                   >
                     Cancel

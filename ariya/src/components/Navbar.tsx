@@ -86,11 +86,6 @@ const Navbar = () => {
           href: "/communities",
           icon: <Users size={16} />,
         },
-        {
-          name: "Community Hub",
-          href: "/community",
-          icon: <Users size={16} />,
-        },
       ],
     },
     {

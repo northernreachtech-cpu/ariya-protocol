@@ -1,7 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Search, MapPin, Calendar, Users, Star } from "lucide-react";
+import {
+  Search,
+  MapPin,
+  Calendar,
+  Users,
+  Star,
+  RefreshCw,
+  ArrowRight,
+} from "lucide-react";
 import { useCurrentAccount } from "@mysten/dapp-kit";
+import { useNavigate } from "react-router-dom";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import useScrollToTop from "../hooks/useScrollToTop";
@@ -26,6 +35,7 @@ interface Event {
 
 const Events = () => {
   useScrollToTop();
+  const navigate = useNavigate();
   const currentAccount = useCurrentAccount();
   const sdk = useAriyaSDK();
   const [events, setEvents] = useState<Event[]>([]);
@@ -33,6 +43,8 @@ const Events = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasFetchedRef = useRef(false);
 
   const categories = [
     "all",
@@ -46,9 +58,15 @@ const Events = () => {
   ];
 
   // Fetch real events from blockchain
-  const loadEvents = async () => {
+  const loadEvents = async (forceRefresh = false) => {
+    // Don't fetch if we already have data and it's not a forced refresh
+    if (hasFetchedRef.current && !forceRefresh) {
+      return;
+    }
+
     try {
       setLoading(true);
+      setRefreshing(forceRefresh);
       const allEvents = await sdk.eventManagement.getActiveEvents();
       const allProfiles = await sdk.eventManagement.getAllOrganizers();
 
@@ -82,17 +100,28 @@ const Events = () => {
 
       setEvents(transformedEvents);
       setFilteredEvents(transformedEvents);
+      hasFetchedRef.current = true;
     } catch (error) {
       console.error("Error loading events:", error);
       setEvents([]);
       setFilteredEvents([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
+  // Handle manual refresh
+  const handleRefresh = () => {
+    hasFetchedRef.current = false;
+    loadEvents(true);
+  };
+
   useEffect(() => {
-    loadEvents();
+    // Only fetch if we haven't fetched before or if account/sdk changes
+    if (!hasFetchedRef.current) {
+      loadEvents();
+    }
   }, [currentAccount, sdk]);
 
   useEffect(() => {
@@ -146,9 +175,23 @@ const Events = () => {
           transition={{ duration: 0.8 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-livvic font-bold mb-4 text-foreground">
-            Discover Events
-          </h1>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-livvic font-bold text-foreground">
+              Discover Events
+            </h1>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="ml-4"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
+          </div>
           <p className="text-lg sm:text-xl text-foreground-secondary max-w-3xl mx-auto leading-relaxed">
             Find and join amazing events happening around you
           </p>
@@ -224,54 +267,66 @@ const Events = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                 >
-                  <Card className="h-full hover:shadow-lg transition-all duration-300 group">
-                    {/* Event Image */}
-                    <div className="relative h-48 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-t-lg overflow-hidden mb-4">
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-secondary/10 group-hover:from-primary/20 group-hover:to-secondary/20 transition-all duration-300" />
-                      <div className="absolute top-4 right-4">
-                        <span className="px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-sm font-medium text-foreground">
-                          {event.price}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Event Content */}
-                    <div className="p-6">
-                      <div className="mb-4">
-                        <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors duration-200">
-                          {event.title}
-                        </h3>
-                        <p className="text-foreground-muted text-sm leading-relaxed">
-                          {event.description}
-                        </p>
-                      </div>
-
-                      {/* Event Details */}
-                      <div className="space-y-3 mb-6">
-                        <div className="flex items-center text-sm text-foreground-secondary">
-                          <MapPin className="h-4 w-4 mr-2" />
-                          {event.location}
-                        </div>
-                        <div className="flex items-center text-sm text-foreground-secondary">
-                          <Calendar className="h-4 w-4 mr-2" />
-                          {formatDate(event.date)} at {event.time}
-                        </div>
-                        <div className="flex items-center text-sm text-foreground-secondary">
-                          <Users className="h-4 w-4 mr-2" />
-                          {event.attendees}/{event.maxAttendees} attendees
-                        </div>
-                        <div className="flex items-center text-sm text-foreground-secondary">
-                          <Star className="h-4 w-4 mr-2 text-yellow-500" />
-                          {event.rating} rating
+                  <div
+                    className="h-full hover:shadow-lg transition-all duration-300 group cursor-pointer"
+                    onClick={() => navigate(`/event/${event.id}`)}
+                  >
+                    <Card className="h-full" hover={true}>
+                      {/* Event Image */}
+                      <div className="relative h-48 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-t-lg overflow-hidden mb-4">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-secondary/10 group-hover:from-primary/20 group-hover:to-secondary/20 transition-all duration-300" />
+                        <div className="absolute top-4 right-4">
+                          <span className="px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-sm font-medium text-foreground">
+                            {event.price}
+                          </span>
                         </div>
                       </div>
 
-                      {/* Action Button */}
-                      <Button className="w-full" size="lg">
-                        Join Event
-                      </Button>
-                    </div>
-                  </Card>
+                      {/* Event Content */}
+                      <div className="p-6">
+                        <div className="mb-4">
+                          <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors duration-200">
+                            {event.title}
+                          </h3>
+                          <p className="text-foreground-muted text-sm leading-relaxed">
+                            {event.description}
+                          </p>
+                        </div>
+
+                        {/* Event Details */}
+                        <div className="space-y-3 mb-6">
+                          <div className="flex items-center text-sm text-foreground-secondary">
+                            <MapPin className="h-4 w-4 mr-2" />
+                            {event.location}
+                          </div>
+                          <div className="flex items-center text-sm text-foreground-secondary">
+                            <Calendar className="h-4 w-4 mr-2" />
+                            {formatDate(event.date)} at {event.time}
+                          </div>
+                          <div className="flex items-center text-sm text-foreground-secondary">
+                            <Users className="h-4 w-4 mr-2" />
+                            {event.attendees}/{event.maxAttendees} attendees
+                          </div>
+                          <div className="flex items-center text-sm text-foreground-secondary">
+                            <Star className="h-4 w-4 mr-2 text-yellow-500" />
+                            {event.rating} rating
+                          </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <Button
+                          className="w-full group-hover:bg-primary/90 transition-all duration-200"
+                          size="lg"
+                          onClick={() => {
+                            navigate(`/event/${event.id}`);
+                          }}
+                        >
+                          <span>View Details</span>
+                          <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
+                        </Button>
+                      </div>
+                    </Card>
+                  </div>
                 </motion.div>
               ))}
             </div>

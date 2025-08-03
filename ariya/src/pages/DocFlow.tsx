@@ -239,34 +239,34 @@ const DocFlow = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-yellow-500/20 border-yellow-500/30 text-yellow-300";
+        return "bg-yellow-100 border-yellow-300 text-yellow-700 dark:bg-yellow-500/20 dark:border-yellow-500/30 dark:text-yellow-300";
       case "review":
-        return "bg-blue-500/20 border-blue-500/30 text-blue-300";
+        return "bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-500/20 dark:border-blue-500/30 dark:text-blue-300";
       case "editing":
-        return "bg-orange-500/20 border-orange-500/30 text-orange-300";
+        return "bg-orange-100 border-orange-300 text-orange-700 dark:bg-orange-500/20 dark:border-orange-500/30 dark:text-orange-300";
       case "collaborate":
-        return "bg-green-500/20 border-green-500/30 text-green-300";
+        return "bg-green-100 border-green-300 text-green-700 dark:bg-green-500/20 dark:border-green-500/30 dark:text-green-300";
       case "approved":
-        return "bg-emerald-500/20 border-emerald-500/30 text-emerald-300";
+        return "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-300";
       case "distributed":
-        return "bg-purple-500/20 border-purple-500/30 text-purple-300";
+        return "bg-purple-100 border-purple-300 text-purple-700 dark:bg-purple-500/20 dark:border-purple-500/30 dark:text-purple-300";
       default:
-        return "bg-gray-500/20 border-gray-500/30 text-gray-300";
+        return "bg-gray-100 border-gray-300 text-gray-700 dark:bg-gray-500/20 dark:border-gray-500/30 dark:text-gray-300";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "urgent":
-        return "bg-red-500/20 border-red-500/30 text-red-300";
+        return "bg-red-100 border-red-300 text-red-700 dark:bg-red-500/20 dark:border-red-500/30 dark:text-red-300";
       case "high":
-        return "bg-orange-500/20 border-orange-500/30 text-orange-300";
+        return "bg-orange-100 border-orange-300 text-orange-700 dark:bg-orange-500/20 dark:border-orange-500/30 dark:text-orange-300";
       case "medium":
-        return "bg-yellow-500/20 border-yellow-500/30 text-yellow-300";
+        return "bg-yellow-100 border-yellow-300 text-yellow-700 dark:bg-yellow-500/20 dark:border-yellow-500/30 dark:text-yellow-300";
       case "low":
-        return "bg-green-500/20 border-green-500/30 text-green-300";
+        return "bg-green-100 border-green-300 text-green-700 dark:bg-green-500/20 dark:border-green-500/30 dark:text-green-300";
       default:
-        return "bg-gray-500/20 border-gray-500/30 text-gray-300";
+        return "bg-gray-100 border-gray-300 text-gray-700 dark:bg-gray-500/20 dark:border-gray-500/30 dark:text-gray-300";
     }
   };
 
@@ -306,7 +306,7 @@ const DocFlow = () => {
   // };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pt-20">
       {/* Header */}
       <div className="bg-card/20 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-4 py-6">
@@ -315,7 +315,7 @@ const DocFlow = () => {
               <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
                 Doc Flow Pipeline
               </h1>
-              <p className="text-foreground-muted mt-2">
+              <p className="text-foreground-secondary mt-2">
                 {viewMode === "pipeline"
                   ? "Watch new documents flow through the pipeline"
                   : "All documents in active workflows"}
@@ -445,15 +445,17 @@ const DocFlow = () => {
                       ></div>
                     </div>
 
-                    <h3 className="text-sm font-semibold text-white mb-1">
+                    <h3 className="text-sm font-semibold text-foreground mb-1">
                       {stage.name}
                     </h3>
-                    <p className="text-xs text-white/60">{stage.description}</p>
+                    <p className="text-xs text-foreground-secondary">
+                      {stage.description}
+                    </p>
 
                     {/* Document Count */}
                     <div className="mt-2">
                       <motion.span
-                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white/10 text-white/80"
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-card-secondary text-foreground-secondary"
                         animate={{
                           scale:
                             pipelineDocuments.filter(
@@ -518,10 +520,10 @@ const DocFlow = () => {
                               {getFileTypeIcon(doc.type)}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <h3 className="font-semibold text-white text-xs truncate">
+                              <h3 className="font-semibold text-foreground text-xs truncate">
                                 {doc.name}
                               </h3>
-                              <p className="text-xs text-white/60">
+                              <p className="text-xs text-foreground-secondary">
                                 {doc.size}
                               </p>
                             </div>
@@ -548,14 +550,14 @@ const DocFlow = () => {
                         {/* Progress Bar */}
                         <div className="mb-3">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs text-white/70">
+                            <span className="text-xs text-foreground-secondary">
                               Progress
                             </span>
-                            <span className="text-xs text-white">
+                            <span className="text-xs text-foreground">
                               {doc.progress}%
                             </span>
                           </div>
-                          <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+                          <div className="w-full bg-border rounded-full h-1.5 overflow-hidden">
                             <motion.div
                               className="h-full bg-gradient-to-r from-primary to-secondary rounded-full"
                               initial={{ width: 0 }}
@@ -568,12 +570,20 @@ const DocFlow = () => {
                         {/* Document Info */}
                         <div className="space-y-1 mb-3">
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-white/60">By:</span>
-                            <span className="text-white">{doc.uploadedBy}</span>
+                            <span className="text-foreground-secondary">
+                              By:
+                            </span>
+                            <span className="text-foreground">
+                              {doc.uploadedBy}
+                            </span>
                           </div>
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-white/60">Time:</span>
-                            <span className="text-white">{doc.uploadedAt}</span>
+                            <span className="text-foreground-secondary">
+                              Time:
+                            </span>
+                            <span className="text-foreground">
+                              {doc.uploadedAt}
+                            </span>
                           </div>
                         </div>
 
@@ -681,8 +691,10 @@ const DocFlow = () => {
                         {getFileTypeIcon(doc.type)}
                       </div>
                       <div>
-                        <h3 className="font-semibold text-white">{doc.name}</h3>
-                        <p className="text-sm text-white/60">
+                        <h3 className="font-semibold text-foreground">
+                          {doc.name}
+                        </h3>
+                        <p className="text-sm text-foreground-secondary">
                           {doc.uploadedBy} • {doc.uploadedAt}
                         </p>
                       </div>
