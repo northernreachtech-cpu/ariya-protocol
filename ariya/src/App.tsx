@@ -1,0 +1,80 @@
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { SuiClientProvider, WalletProvider } from "@mysten/dapp-kit";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { networkConfig } from "./config/sui";
+import { ThemeProvider } from "./contexts/ThemeContext";
+
+import Navbar from "./components/Navbar";
+import LandingPage from "./pages/LandingPage";
+import CreateEvent from "./pages/CreateEvent";
+import Events from "./pages/Events";
+import MyEventsPage from "./pages/MyEvents";
+import EventDetails from "./pages/EventDetails";
+import ConvenerMarketplace from "./pages/ConvenerMarketplace";
+import OrganizerDashboard from "./pages/OrganizerDashboard";
+import SponsorDashboard from "./pages/SponsorDashboard";
+import CommunityHub from "./pages/CommunityHub";
+import CreateOrganizerProfile from "./pages/CreateOrganizerProfile";
+import useScrollToTop from "./hooks/useScrollToTop";
+import SUIWorkshop from "./pages/SUIWorkshop";
+import AdminWorkshopResponses from "./pages/AdminWorkshopResponses";
+import Community from "./pages/Community";
+import Communities from "./pages/Communities";
+import DocFlow from "./pages/DocFlow";
+
+import "@mysten/dapp-kit/dist/index.css";
+import "./styles/theme.css";
+
+const queryClient = new QueryClient();
+
+// Main App Component with scroll-to-top
+function AppContent() {
+  useScrollToTop();
+
+  return (
+    <div className="min-h-screen bg-background text-foreground px-4 py-2 sm:px-6 sm:py-4 lg:px-8 lg:py-6 font-open-sans">
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/my-events" element={<MyEventsPage />} />
+        <Route path="/event/create" element={<CreateEvent />} />
+        <Route path="/event/:id" element={<EventDetails />} />
+        <Route path="/organizers" element={<ConvenerMarketplace />} />
+        <Route
+          path="/profile/organizer/create"
+          element={<CreateOrganizerProfile />}
+        />
+        <Route path="/dashboard/organizer" element={<OrganizerDashboard />} />
+        <Route path="/dashboard/sponsor" element={<SponsorDashboard />} />
+        <Route path="/community" element={<CommunityHub />} />
+        <Route path="/community/:communityId" element={<Community />} />
+        <Route path="/communities" element={<Communities />} />
+        <Route path="/sui-workshop" element={<SUIWorkshop />} />
+        <Route
+          path="/admin/workshop-responses"
+          element={<AdminWorkshopResponses />}
+        />
+        <Route path="/docflow" element={<DocFlow />} />
+      </Routes>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
+        <WalletProvider autoConnect>
+          <ThemeProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </ThemeProvider>
+        </WalletProvider>
+      </SuiClientProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
