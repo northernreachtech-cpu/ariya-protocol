@@ -36,24 +36,24 @@ const EventDetailsSkeleton = () => (
         <div className="lg:col-span-2 space-y-6 sm:space-y-8">
           {/* About Section */}
           <Card className="p-4 sm:p-6 animate-pulse">
-            <div className="h-8 bg-foreground-muted rounded mb-4 w-1/3"></div>
+            <div className="h-8 bg-skeleton rounded mb-4 w-1/3"></div>
             <div className="space-y-2">
-              <div className="h-4 bg-foreground-muted rounded w-full"></div>
-              <div className="h-4 bg-foreground-muted rounded w-5/6"></div>
-              <div className="h-4 bg-foreground-muted rounded w-4/6"></div>
+              <div className="h-4 bg-skeleton rounded w-full"></div>
+              <div className="h-4 bg-skeleton rounded w-5/6"></div>
+              <div className="h-4 bg-skeleton rounded w-4/6"></div>
             </div>
           </Card>
 
           {/* Organizer Section */}
           <Card className="p-4 sm:p-6 animate-pulse">
-            <div className="h-8 bg-foreground-muted rounded mb-4 w-1/3"></div>
+            <div className="h-8 bg-skeleton rounded mb-4 w-1/3"></div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-0">
-              <div className="w-16 h-16 rounded-full bg-foreground-muted"></div>
+              <div className="w-16 h-16 rounded-full bg-skeleton"></div>
               <div className="flex-1 min-w-0">
-                <div className="h-5 bg-foreground-muted rounded w-24 mb-2"></div>
-                <div className="h-4 bg-foreground-muted rounded w-48"></div>
+                <div className="h-5 bg-skeleton rounded w-24 mb-2"></div>
+                <div className="h-4 bg-skeleton rounded w-48"></div>
               </div>
-              <div className="h-8 bg-foreground-muted rounded w-24"></div>
+              <div className="h-8 bg-skeleton rounded w-24"></div>
             </div>
           </Card>
         </div>
@@ -63,50 +63,50 @@ const EventDetailsSkeleton = () => (
           {/* Action Card */}
           <Card className="p-4 sm:p-6 animate-pulse">
             <div className="text-center mb-6">
-              <div className="h-8 bg-foreground-muted rounded w-16 mx-auto mb-1"></div>
-              <div className="h-4 bg-foreground-muted rounded w-20 mx-auto"></div>
+              <div className="h-8 bg-skeleton rounded w-16 mx-auto mb-1"></div>
+              <div className="h-4 bg-skeleton rounded w-20 mx-auto"></div>
             </div>
 
             <div className="space-y-4 mb-6">
-              <div className="h-12 bg-foreground-muted rounded"></div>
-              <div className="h-12 bg-foreground-muted rounded"></div>
+              <div className="h-12 bg-skeleton rounded"></div>
+              <div className="h-12 bg-skeleton rounded"></div>
             </div>
 
             <div className="border-t border-border pt-4 space-y-3">
               <div className="flex justify-between">
-                <div className="h-4 bg-foreground-muted rounded w-20"></div>
-                <div className="h-4 bg-foreground-muted rounded w-16"></div>
+                <div className="h-4 bg-skeleton rounded w-20"></div>
+                <div className="h-4 bg-skeleton rounded w-16"></div>
               </div>
               <div className="flex justify-between">
-                <div className="h-4 bg-foreground-muted rounded w-16"></div>
-                <div className="h-4 bg-foreground-muted rounded w-20"></div>
+                <div className="h-4 bg-skeleton rounded w-16"></div>
+                <div className="h-4 bg-skeleton rounded w-20"></div>
               </div>
               <div className="flex justify-between">
-                <div className="h-4 bg-foreground-muted rounded w-20"></div>
-                <div className="h-4 bg-foreground-muted rounded w-16"></div>
+                <div className="h-4 bg-skeleton rounded w-20"></div>
+                <div className="h-4 bg-skeleton rounded w-16"></div>
               </div>
             </div>
           </Card>
 
           {/* Event Details */}
           <Card className="p-4 sm:p-6 animate-pulse">
-            <div className="h-6 bg-foreground-muted rounded mb-4 w-1/2"></div>
+            <div className="h-6 bg-skeleton rounded mb-4 w-1/2"></div>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <div className="h-4 bg-foreground-muted rounded w-16"></div>
-                <div className="h-4 bg-foreground-muted rounded w-20"></div>
+                <div className="h-4 bg-skeleton rounded w-16"></div>
+                <div className="h-4 bg-skeleton rounded w-20"></div>
               </div>
               <div className="flex justify-between">
-                <div className="h-4 bg-foreground-muted rounded w-20"></div>
-                <div className="h-4 bg-foreground-muted rounded w-16"></div>
+                <div className="h-4 bg-skeleton rounded w-20"></div>
+                <div className="h-4 bg-skeleton rounded w-16"></div>
               </div>
               <div className="flex justify-between">
-                <div className="h-4 bg-foreground-muted rounded w-16"></div>
-                <div className="h-4 bg-foreground-muted rounded w-20"></div>
+                <div className="h-4 bg-skeleton rounded w-16"></div>
+                <div className="h-4 bg-skeleton rounded w-20"></div>
               </div>
               <div className="flex justify-between">
-                <div className="h-4 bg-foreground-muted rounded w-20"></div>
-                <div className="h-4 bg-foreground-muted rounded w-16"></div>
+                <div className="h-4 bg-skeleton rounded w-20"></div>
+                <div className="h-4 bg-skeleton rounded w-16"></div>
               </div>
             </div>
           </Card>

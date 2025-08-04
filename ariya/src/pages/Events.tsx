@@ -13,6 +13,7 @@ import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useNavigate } from "react-router-dom";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import EventCardSkeleton from "../components/EventCardSkeleton";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { useAriyaSDK } from "../lib/sdk";
 
@@ -157,8 +158,35 @@ const Events = () => {
     return (
       <div className="min-h-screen bg-background pt-24">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-foreground">Loading events...</div>
+          {/* Header Skeleton */}
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <div className="h-12 bg-skeleton rounded w-64"></div>
+              <div className="w-20 h-8 bg-skeleton rounded"></div>
+            </div>
+            <div className="h-6 bg-skeleton rounded w-96 mx-auto"></div>
+          </div>
+
+          {/* Search and Filters Skeleton */}
+          <div className="mb-8">
+            <div className="max-w-4xl mx-auto">
+              <div className="h-14 bg-skeleton rounded-lg mb-6"></div>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-20 h-10 bg-skeleton rounded-lg"
+                  ></div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Events Grid Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <EventCardSkeleton key={index} />
+            ))}
           </div>
         </div>
       </div>

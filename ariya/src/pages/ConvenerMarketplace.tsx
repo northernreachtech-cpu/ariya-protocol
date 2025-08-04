@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Search, Star, Users, Calendar, Loader2 } from "lucide-react";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import OrganizerCardSkeleton from "../components/OrganizerCardSkeleton";
 import { useNavigate } from "react-router-dom";
 import { useAriyaSDK } from "../lib/sdk";
 import useScrollToTop from "../hooks/useScrollToTop";
@@ -90,11 +91,26 @@ const ConvenerMarketplace = () => {
       <div className="min-h-screen bg-background pt-20 pb-6 sm:pb-10">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                <span className="text-foreground">Loading organizers...</span>
+            {/* Header Skeleton */}
+            <div className="text-center mb-8 sm:mb-12">
+              <div className="h-8 bg-skeleton rounded w-64 mx-auto mb-4"></div>
+              <div className="h-5 bg-skeleton rounded w-96 mx-auto"></div>
+            </div>
+
+            {/* Search Skeleton */}
+            <div className="mb-8">
+              <div className="max-w-2xl mx-auto">
+                <div className="relative">
+                  <div className="h-12 bg-skeleton rounded-lg"></div>
+                </div>
               </div>
+            </div>
+
+            {/* Organizers Grid Skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <OrganizerCardSkeleton key={index} />
+              ))}
             </div>
           </div>
         </div>

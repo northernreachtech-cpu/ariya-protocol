@@ -3,6 +3,7 @@ import { EventManagementSDK } from "./eventManagement";
 import { IdentityAccessSDK } from "./identityAccess";
 import { AttendanceVerificationSDK } from "./attendanceVerification";
 import { CommunityAccessSDK } from "./communityAccess";
+import { AirdropDistributionSDK } from "./airdropDistribution";
 import { useNetworkVariable } from "../../config/sui";
 
 // Main SDK class that combines all modules
@@ -11,12 +12,14 @@ export class AriyaSDK {
   public identityAccess: IdentityAccessSDK;
   public attendanceVerification: AttendanceVerificationSDK;
   public communityAccess: CommunityAccessSDK;
+  public airdropDistribution: AirdropDistributionSDK;
 
   constructor(packageId: string) {
     this.eventManagement = new EventManagementSDK(packageId);
     this.identityAccess = new IdentityAccessSDK(packageId);
     this.attendanceVerification = new AttendanceVerificationSDK(packageId);
     this.communityAccess = new CommunityAccessSDK(packageId);
+    this.airdropDistribution = new AirdropDistributionSDK(packageId);
   }
 }
 
@@ -51,6 +54,17 @@ export {
   type CommunityInfo,
   type AccessPass,
 } from "./communityAccess";
+
+export {
+  AirdropDistributionSDK,
+  AIRDROP_DISTRIBUTION_TYPES,
+  type AirdropDistributionType,
+  type AirdropEligibilityCriteria,
+  type AirdropConfig,
+  type AirdropDetails,
+  type ClaimStatus,
+  type ClaimRecord,
+} from "./airdropDistribution";
 
 // Add export for EscrowSettlementSDK (to be implemented)
 export { EscrowSettlementSDK } from "./escrowSettlement";

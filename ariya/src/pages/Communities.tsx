@@ -9,6 +9,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { suiClient } from "../config/sui";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import CommunityCardSkeleton from "../components/CommunityCardSkeleton";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle, XCircle, Clock, Users, Lock, Unlock } from "lucide-react";
 
@@ -467,9 +468,10 @@ const Communities = () => {
           </p>
         </div>
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="text-foreground-muted mt-4">Loading communities...</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <CommunityCardSkeleton key={index} />
+            ))}
           </div>
         ) : allCommunities.length === 0 ? (
           <div className="text-center py-12">

@@ -13,6 +13,7 @@ import {
   Share2,
   MessageCircle,
   CheckCircle,
+  Gift,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -25,10 +26,19 @@ import { Transaction } from "@mysten/sui/transactions";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import StatCard from "../components/StatCard";
+import AirdropCreationModal from "../components/AirdropCreationModal";
+import AirdropManagement from "../components/AirdropManagement";
+import ErrorModal from "../components/ErrorModal";
+
 import RatingStars from "../components/RatingStars";
 import QRScanner from "../components/QRScanner";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { suiClient } from "../config/sui";
+import {
+  type AirdropConfig,
+  type AirdropDetails,
+  type ClaimStatus,
+} from "../lib/sdk";
 
 interface Event {
   id: string;
@@ -136,6 +146,8 @@ const OrganizerDashboard = () => {
   const registrationRegistryId = useNetworkVariable("registrationRegistryId");
   const nftRegistryId = useNetworkVariable("nftRegistryId");
   const communityRegistryId = useNetworkVariable("communityRegistryId");
+  const airdropRegistryId = useNetworkVariable("airdropRegistryId");
+  const ratingRegistryId = useNetworkVariable("ratingRegistryId");
 
   const [loading, setLoading] = useState(true);
   const [activatingEvent, setActivatingEvent] = useState<string | null>(null);
@@ -174,6 +186,30 @@ const OrganizerDashboard = () => {
   const [eventsWithNFTEnabled, setEventsWithNFTEnabled] = useState<{
     [eventId: string]: boolean;
   }>({});
+  const [showAirdropModal, setShowAirdropModal] = useState(false);
+  const [selectedEventForAirdrop, setSelectedEventForAirdrop] =
+    useState<any>(null);
+  const [creatingAirdrop, setCreatingAirdrop] = useState(false);
+
+  // Airdrop validation state
+  const [eventEligibleRecipients, setEventEligibleRecipients] = useState<{
+    [eventId: string]: {
+      checkedIn: number;
+      checkedOut: number;
+      totalAttendees: number;
+    };
+  }>({});
+  const [validatingAirdrop, setValidatingAirdrop] = useState<{
+    [eventId: string]: boolean;
+  }>({});
+
+  // Error modal state
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [errorDetails, setErrorDetails] = useState<Error | null>(null);
+  const [errorRetryAction, setErrorRetryAction] = useState<(() => void) | null>(
+    null
+  );
 
   const eventsPerPage = 5;
   const [currentPage, setCurrentPage] = useState(1);
@@ -589,6 +625,140 @@ const OrganizerDashboard = () => {
     }
   };
 
+  const handleCreateAirdrop = async (event: any) => {
+    // Check eligible recipients first
+    await checkEligibleRecipients(event.id);
+
+    const recipients = eventEligibleRecipients[event.id];
+
+    // If no eligible recipients, show error modal instead
+    if (!recipients || recipients.totalAttendees === 0) {
+      setErrorMessage(
+        "No eligible recipients found for this event. Ensure attendees have checked in or completed the event."
+      );
+      setErrorDetails(new Error("No eligible recipients"));
+      setShowErrorModal(true);
+      return;
+    }
+
+    setSelectedEventForAirdrop(event);
+    setShowAirdropModal(true);
+  };
+
+  const checkEligibleRecipients = async (eventId: string) => {
+    if (!attendanceRegistryId) return;
+
+    setValidatingAirdrop((prev) => ({ ...prev, [eventId]: true }));
+
+    try {
+      // Query attendance stats for the event
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${sdk.attendanceVerification.getPackageId()}::attendance_verification::get_event_stats`,
+        arguments: [tx.pure.id(eventId), tx.object(attendanceRegistryId)],
+      });
+
+      const result = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: currentAccount?.address || "0x0",
+      });
+
+      if (result && result.results && result.results.length > 0) {
+        const returnVals = result.results[0].returnValues;
+        if (Array.isArray(returnVals) && returnVals.length >= 3) {
+          const checkedIn = Array.isArray(returnVals[0])
+            ? (returnVals[0] as unknown as number[])[0] || 0
+            : parseInt(returnVals[0] as string) || 0;
+          const checkedOut = Array.isArray(returnVals[1])
+            ? (returnVals[1] as unknown as number[])[0] || 0
+            : parseInt(returnVals[1] as string) || 0;
+          const totalAttendees = checkedIn + checkedOut;
+
+          setEventEligibleRecipients((prev) => ({
+            ...prev,
+            [eventId]: {
+              checkedIn,
+              checkedOut,
+              totalAttendees,
+            },
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Error checking eligible recipients:", error);
+      // Set default values if query fails
+      setEventEligibleRecipients((prev) => ({
+        ...prev,
+        [eventId]: {
+          checkedIn: 0,
+          checkedOut: 0,
+          totalAttendees: 0,
+        },
+      }));
+    } finally {
+      setValidatingAirdrop((prev) => ({ ...prev, [eventId]: false }));
+    }
+  };
+
+  const handleAirdropSubmit = async (config: AirdropConfig, amount: number) => {
+    if (
+      !selectedEventForAirdrop ||
+      !currentAccount ||
+      !airdropRegistryId ||
+      !attendanceRegistryId
+    ) {
+      return;
+    }
+
+    setCreatingAirdrop(true);
+    try {
+      // Convert amount to SUI units (1 SUI = 1,000,000,000 MIST)
+      const amountInMist = Math.floor(amount * 1000000000);
+
+      // Get SUI coin from user's wallet
+      const coinsResponse = await suiClient.getCoins({
+        owner: currentAccount.address,
+        coinType: "0x2::sui::SUI",
+      });
+
+      // Find a coin with sufficient balance
+      const coinWithBalance = coinsResponse.data?.find(
+        (coin: any) => parseInt(coin.balance) >= amountInMist
+      );
+
+      if (!coinWithBalance) {
+        throw new Error("Insufficient SUI balance for airdrop");
+      }
+
+      const tx = sdk.airdropDistribution.createAirdrop(
+        selectedEventForAirdrop.id,
+        config,
+        coinWithBalance.coinObjectId,
+        airdropRegistryId,
+        attendanceRegistryId,
+        "0x6" // CLOCK_ID
+      );
+
+      await signAndExecute({ transaction: tx });
+
+      setSuccessMessage("Airdrop created successfully!");
+      setShowSuccessModal(true);
+      setShowAirdropModal(false);
+      setSelectedEventForAirdrop(null);
+
+      // Refresh organizer data to show new airdrop
+      await loadOrganizerData();
+    } catch (error: any) {
+      console.error("Failed to create airdrop:", error);
+      setErrorMessage(error.message || "Failed to create airdrop");
+      setErrorDetails(error);
+      setErrorRetryAction(() => () => handleAirdropSubmit(config, amount));
+      setShowErrorModal(true);
+    } finally {
+      setCreatingAirdrop(false);
+    }
+  };
+
   const loadOrganizerData = async () => {
     if (!currentAccount) return;
 
@@ -663,10 +833,45 @@ const OrganizerDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="text-foreground">Loading dashboard...</span>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 sm:pb-12">
+          {/* Header Skeleton */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <div>
+              <div className="h-8 bg-skeleton rounded w-64 mb-2"></div>
+              <div className="h-5 bg-skeleton rounded w-48"></div>
+            </div>
+            <div className="w-32 h-10 bg-skeleton rounded"></div>
+          </div>
+
+          {/* Stats Cards Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={index}
+                className="bg-card border border-border rounded-lg p-4 sm:p-6 animate-pulse"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-4 bg-skeleton rounded w-20"></div>
+                  <div className="w-8 h-8 bg-skeleton rounded"></div>
+                </div>
+                <div className="h-8 bg-skeleton rounded w-16 mb-2"></div>
+                <div className="h-3 bg-skeleton rounded w-24"></div>
+              </div>
+            ))}
+          </div>
+
+          {/* Events Section Skeleton */}
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
+              <div className="h-6 bg-skeleton rounded w-32"></div>
+            </div>
+            <div className="grid gap-4 sm:gap-6">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <OrganizerEventSkeleton key={index} />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -708,6 +913,53 @@ const OrganizerDashboard = () => {
       default:
         return "text-foreground-muted";
     }
+  };
+
+  const getAirdropButtonStatus = (event: any) => {
+    const recipients = eventEligibleRecipients[event.id];
+    const isValidating = validatingAirdrop[event.id];
+
+    if (isValidating) {
+      return {
+        disabled: true,
+        text: "Checking Recipients...",
+        icon: Loader2,
+        variant: "outline" as const,
+        className: "opacity-50",
+        tooltip: "Validating eligible recipients...",
+      };
+    }
+
+    if (!recipients) {
+      return {
+        disabled: false,
+        text: "Create Airdrop",
+        icon: Gift,
+        variant: "outline" as const,
+        className: "",
+        tooltip: "Click to check eligible recipients",
+      };
+    }
+
+    if (recipients.totalAttendees === 0) {
+      return {
+        disabled: true,
+        text: "No Recipients",
+        icon: Gift,
+        variant: "outline" as const,
+        className: "opacity-50 cursor-not-allowed",
+        tooltip: `No eligible recipients found. Checked in: ${recipients.checkedIn}, Checked out: ${recipients.checkedOut}`,
+      };
+    }
+
+    return {
+      disabled: false,
+      text: `Create Airdrop (${recipients.totalAttendees} eligible)`,
+      icon: Gift,
+      variant: "outline" as const,
+      className: "",
+      tooltip: `${recipients.checkedIn} checked in, ${recipients.checkedOut} checked out`,
+    };
   };
 
   return (
@@ -908,158 +1160,201 @@ const OrganizerDashboard = () => {
                           </div>
                         </div>
                         {/* Actions Footer */}
-                        <div className="flex flex-wrap gap-2 mt-6 border-t border-border pt-4">
-                          {event.state === 0 && (
-                            <Button
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => handleActivateEvent(event.id)}
-                              disabled={activatingEvent === event.id}
-                            >
-                              {activatingEvent === event.id ? (
-                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                              ) : (
-                                <Play className="mr-1 h-3 w-3" />
-                              )}
-                              {activatingEvent === event.id
-                                ? "Activating..."
-                                : "Activate"}
-                            </Button>
-                          )}
-
-                          {event.state === 1 && (
-                            <>
+                        <div className="mt-6 border-t border-border pt-4 space-y-3">
+                          {/* Primary Actions Group */}
+                          <div className="flex flex-wrap gap-2">
+                            {event.state === 0 && (
                               <Button
                                 size="sm"
-                                className="flex-1"
-                                onClick={() => handleCheckIn(event.id)}
+                                className="flex-1 min-w-[120px]"
+                                onClick={() => handleActivateEvent(event.id)}
+                                disabled={activatingEvent === event.id}
                               >
-                                <QrCode className="mr-1 h-3 w-3" />
-                                Check-in
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="flex-1"
-                                variant="secondary"
-                                onClick={() => handleCheckOut(event.id)}
-                              >
-                                <QrCode className="mr-1 h-3 w-3" />
-                                Check-out
-                              </Button>
-                              {(() => {
-                                const existingCommunity =
-                                  eventCommunities[event.id];
-                                const isChecking =
-                                  checkingCommunities[event.id];
-
-                                if (isChecking) {
-                                  return (
-                                    <Button
-                                      size="sm"
-                                      className="flex-1"
-                                      variant="outline"
-                                      disabled={true}
-                                    >
-                                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                                      Checking...
-                                    </Button>
-                                  );
-                                }
-
-                                if (existingCommunity) {
-                                  return (
-                                    <Button
-                                      size="sm"
-                                      className="flex-1"
-                                      variant="outline"
-                                      disabled={true}
-                                    >
-                                      <CheckCircle className="mr-1 h-3 w-3" />
-                                      Community Exists
-                                    </Button>
-                                  );
-                                }
-
-                                return (
-                                  <Button
-                                    size="sm"
-                                    className="flex-1"
-                                    variant="outline"
-                                    onClick={() => handleCreateCommunity(event)}
-                                    disabled={creatingCommunity}
-                                  >
-                                    <MessageCircle className="mr-1 h-3 w-3" />
-                                    {creatingCommunity
-                                      ? "Creating..."
-                                      : "Create Community"}
-                                  </Button>
-                                );
-                              })()}
-                              <Button
-                                size="sm"
-                                className="flex-1"
-                                variant="outline"
-                                onClick={() => handleCompleteEvent(event)}
-                                disabled={completingEvent === event.id}
-                              >
-                                {completingEvent === event.id ? (
+                                {activatingEvent === event.id ? (
                                   <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                                 ) : (
                                   <Play className="mr-1 h-3 w-3" />
                                 )}
-                                {completingEvent === event.id
-                                  ? "Completing..."
-                                  : "Complete Event"}
+                                {activatingEvent === event.id
+                                  ? "Activating..."
+                                  : "Activate"}
                               </Button>
-                            </>
-                          )}
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => {
-                              setShareEventLink(
-                                window.location.origin + "/event/" + event.id
-                              );
-                              setShowShareModal(true);
-                            }}
-                          >
-                            <Share2 className="mr-1 h-3 w-3" />
-                            Share
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => navigate(`/event/${event.id}`)}
-                          >
-                            <Eye className="mr-1 h-3 w-3" />
-                            View
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => handleSetEventMetadata(event)}
-                            disabled={
-                              settingMetadataEvent === event.id ||
-                              eventsWithNFTEnabled[event.id]
-                            }
-                          >
-                            {settingMetadataEvent === event.id ? (
-                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            ) : eventsWithNFTEnabled[event.id] ? (
-                              <CheckCircle className="mr-1 h-3 w-3" />
-                            ) : (
-                              <Settings className="mr-1 h-3 w-3" />
                             )}
-                            {settingMetadataEvent === event.id
-                              ? "Enabling..."
-                              : eventsWithNFTEnabled[event.id]
-                              ? "NFT Minting Enabled"
-                              : "Enable NFT Minting"}
-                          </Button>
+
+                            {event.state === 1 && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="flex-1 min-w-[120px]"
+                                  onClick={() => handleCheckIn(event.id)}
+                                >
+                                  <QrCode className="mr-1 h-3 w-3" />
+                                  Check-in
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="flex-1 min-w-[120px]"
+                                  variant="secondary"
+                                  onClick={() => handleCheckOut(event.id)}
+                                >
+                                  <QrCode className="mr-1 h-3 w-3" />
+                                  Check-out
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="flex-1 min-w-[120px]"
+                                  variant="outline"
+                                  onClick={() => handleCompleteEvent(event)}
+                                  disabled={completingEvent === event.id}
+                                >
+                                  {completingEvent === event.id ? (
+                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Play className="mr-1 h-3 w-3" />
+                                  )}
+                                  {completingEvent === event.id
+                                    ? "Completing..."
+                                    : "Complete Event"}
+                                </Button>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Management Actions Group */}
+                          <div className="flex flex-wrap gap-2">
+                            {event.state === 1 && (
+                              <>
+                                {(() => {
+                                  const existingCommunity =
+                                    eventCommunities[event.id];
+                                  const isChecking =
+                                    checkingCommunities[event.id];
+
+                                  if (isChecking) {
+                                    return (
+                                      <Button
+                                        size="sm"
+                                        className="flex-1 min-w-[140px]"
+                                        variant="outline"
+                                        disabled={true}
+                                      >
+                                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                        Checking...
+                                      </Button>
+                                    );
+                                  }
+
+                                  if (existingCommunity) {
+                                    return (
+                                      <Button
+                                        size="sm"
+                                        className="flex-1 min-w-[140px]"
+                                        variant="outline"
+                                        disabled={true}
+                                      >
+                                        <CheckCircle className="mr-1 h-3 w-3" />
+                                        Community Exists
+                                      </Button>
+                                    );
+                                  }
+
+                                  return (
+                                    <Button
+                                      size="sm"
+                                      className="flex-1 min-w-[140px]"
+                                      variant="outline"
+                                      onClick={() =>
+                                        handleCreateCommunity(event)
+                                      }
+                                      disabled={creatingCommunity}
+                                    >
+                                      <MessageCircle className="mr-1 h-3 w-3" />
+                                      {creatingCommunity
+                                        ? "Creating..."
+                                        : "Create Community"}
+                                    </Button>
+                                  );
+                                })()}
+                                {(() => {
+                                  const airdropStatus =
+                                    getAirdropButtonStatus(event);
+                                  const AirdropIcon = airdropStatus.icon;
+
+                                  return (
+                                    <Button
+                                      size="sm"
+                                      className={`flex-1 min-w-[140px] ${airdropStatus.className}`}
+                                      variant={airdropStatus.variant}
+                                      onClick={() => handleCreateAirdrop(event)}
+                                      disabled={
+                                        airdropStatus.disabled ||
+                                        creatingAirdrop
+                                      }
+                                    >
+                                      {validatingAirdrop[event.id] ? (
+                                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <AirdropIcon className="mr-1 h-3 w-3" />
+                                      )}
+                                      {creatingAirdrop
+                                        ? "Creating..."
+                                        : airdropStatus.text}
+                                    </Button>
+                                  );
+                                })()}
+                              </>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 min-w-[140px]"
+                              onClick={() => handleSetEventMetadata(event)}
+                              disabled={
+                                settingMetadataEvent === event.id ||
+                                eventsWithNFTEnabled[event.id]
+                              }
+                            >
+                              {settingMetadataEvent === event.id ? (
+                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                              ) : eventsWithNFTEnabled[event.id] ? (
+                                <CheckCircle className="mr-1 h-3 w-3" />
+                              ) : (
+                                <Settings className="mr-1 h-3 w-3" />
+                              )}
+                              {settingMetadataEvent === event.id
+                                ? "Enabling..."
+                                : eventsWithNFTEnabled[event.id]
+                                ? "NFT Minting Enabled"
+                                : "Enable NFT Minting"}
+                            </Button>
+                          </div>
+
+                          {/* Utility Actions Group */}
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 min-w-[100px]"
+                              onClick={() => {
+                                setShareEventLink(
+                                  window.location.origin + "/event/" + event.id
+                                );
+                                setShowShareModal(true);
+                              }}
+                            >
+                              <Share2 className="mr-1 h-3 w-3" />
+                              Share
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 min-w-[100px]"
+                              onClick={() => navigate(`/event/${event.id}`)}
+                            >
+                              <Eye className="mr-1 h-3 w-3" />
+                              View
+                            </Button>
+                          </div>
                         </div>
                       </Card>
                     ))}
@@ -1123,6 +1418,20 @@ const OrganizerDashboard = () => {
           isOpen={showSuccessModal}
           message={successMessage}
           onClose={() => setShowSuccessModal(false)}
+        />
+        {/* Error Modal */}
+        <ErrorModal
+          isOpen={showErrorModal}
+          message={errorMessage}
+          error={errorDetails}
+          onRetry={errorRetryAction || undefined}
+          onClose={() => {
+            setShowErrorModal(false);
+            setErrorMessage("");
+            setErrorDetails(null);
+            setErrorRetryAction(null);
+          }}
+          showDetails={true}
         />
         {/* Complete Event Confirmation Modal */}
         {showCompleteModal && eventToComplete && (
@@ -1253,6 +1562,21 @@ const OrganizerDashboard = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Airdrop Creation Modal */}
+        {showAirdropModal && selectedEventForAirdrop && (
+          <AirdropCreationModal
+            isOpen={showAirdropModal}
+            onClose={() => {
+              setShowAirdropModal(false);
+              setSelectedEventForAirdrop(null);
+              setCreatingAirdrop(false);
+            }}
+            onSubmit={handleAirdropSubmit}
+            eventName={selectedEventForAirdrop.title}
+            loading={creatingAirdrop}
+          />
         )}
       </div>
     </div>
