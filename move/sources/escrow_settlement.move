@@ -1,4 +1,4 @@
-module eia::escrow_settlement;
+module ariya::escrow_settlement;
 
 use std::string::{Self, String};
 use sui::coin::{Self, Coin};
@@ -7,9 +7,9 @@ use sui::balance::{Self, Balance};
 use sui::table::{Self, Table};
 use sui::event;
 use sui::clock::{Self, Clock};
-use eia::event_management::{Self, Event, SponsorConditions, OrganizerProfile};
-use eia::attendance_verification::{Self, AttendanceRegistry};
-use eia::rating_reputation::{Self, RatingRegistry};
+use ariya::event_management::{Self, Event, SponsorConditions, OrganizerProfile};
+use ariya::attendance_verification::{Self, AttendanceRegistry};
+use ariya::rating_reputation::{Self, RatingRegistry};
 
 // Error codes
 const EInsufficientFunds: u64 = 1;

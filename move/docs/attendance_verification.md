@@ -1,15 +1,15 @@
-# EIA Attendance Verification Contract Documentation
+# Ariya Attendance Verification Contract Documentation
 
 ## Overview
 
-The EIA Attendance Verification contract manages the check-in and check-out process for event attendees within the Ephemeral Identity & Attendance (EIA) Protocol. This contract validates ephemeral passes, tracks attendance status, implements fraud detection mechanisms, and generates capabilities for NFT minting upon attendance milestones.
+The ariya Attendance Verification contract manages the check-in and check-out process for event attendees within the Ephemeral Identity & Attendance (ariya) Protocol. This contract validates ephemeral passes, tracks attendance status, implements fraud detection mechanisms, and generates capabilities for NFT minting upon attendance milestones.
 
 ## Module Information
 
-- **Module**: `eia::attendance_verification`
+- **Module**: `ariya::attendance_verification`
 - **Network**: Sui Blockchain
 - **Language**: Move
-- **Dependencies**: `eia::event_management`, `eia::identity_access`
+- **Dependencies**: `ariya::event_management`, `ariya::identity_access`
 
 ## Core Data Structures
 
@@ -673,4 +673,4 @@ async function safeCheckIn(passHash: Uint8Array, eventId: string) {
 3. **Location Verification**: Implement robust location verification when required
 4. **Rate Limiting**: Prevent abuse of check-in/check-out functions
 
-This contract provides a comprehensive, secure foundation for attendance verification within the EIA Protocol, enabling verifiable event participation while maintaining user privacy and preventing fraud.
+This contract provides a comprehensive, secure foundation for attendance verification within the ariya Protocol, enabling verifiable event participation while maintaining user privacy and preventing fraud.

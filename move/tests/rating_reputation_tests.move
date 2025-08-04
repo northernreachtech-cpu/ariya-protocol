@@ -1,27 +1,28 @@
 #[test_only]
-module eia::rating_reputation_tests;
+module ariya::rating_reputation_tests;
 
 use std::string;
 use sui::test_scenario::{Self, Scenario};
 use sui::clock::{Self, Clock};
-use eia::rating_reputation::{
+use ariya::rating_reputation::{
     Self, 
     RatingRegistry,
 };
-use eia::event_management::{
+use ariya::event_management::{
     Self, 
     Event, 
     EventRegistry, 
     OrganizerProfile,
 };
-use eia::identity_access::{
+use ariya::identity_access::{
     Self,
     RegistrationRegistry,
 };
-use eia::attendance_verification::{
+use ariya::attendance_verification::{
     Self,
     AttendanceRegistry,
 };
+use ariya::subscription::{Self, UserSubscription, SubscriptionRegistry};
 
 // Rating constants
 const MAX_RATING: u64 = 500; // 5.0 * 100
@@ -49,11 +50,39 @@ fun setup_test_environment(scenario: &mut Scenario) {
         identity_access::init_for_testing(test_scenario::ctx(scenario));
         attendance_verification::init_for_testing(test_scenario::ctx(scenario));
         rating_reputation::init_for_testing(test_scenario::ctx(scenario));
+        subscription::init_for_testing(test_scenario::ctx(scenario));
         
         // Create and share clock
         let mut clock = clock::create_for_testing(test_scenario::ctx(scenario));
         clock::set_for_testing(&mut clock, 1000000);
         clock::share_for_testing(clock);
+    };
+    
+    test_scenario::next_tx(scenario, ORGANIZER);
+    {
+        // Create subscriptions 
+        create_test_free_subscription(scenario, ORGANIZER);
+        create_test_free_subscription(scenario, USER1);
+        create_test_free_subscription(scenario, USER2);
+        create_test_free_subscription(scenario, VERIFIER);
+    };
+}
+
+fun create_test_free_subscription(scenario: &mut Scenario, user: address) {
+    test_scenario::next_tx(scenario, user);
+    {
+        let clock = test_scenario::take_shared<Clock>(scenario);
+        let mut registry = test_scenario::take_shared<SubscriptionRegistry>(scenario);
+        
+        subscription::create_free_subscription(
+            user,
+            &clock,
+            &mut registry,
+            test_scenario::ctx(scenario)
+        );
+        
+        test_scenario::return_shared(clock);
+        test_scenario::return_shared(registry);
     };
 }
 
@@ -100,6 +129,7 @@ fun create_and_activate_test_event(
             current_time + start_offset,
             current_time + start_offset + (4 * HOUR_IN_MS),
             capacity,
+            0,
             10, // min_attendees
             8000, // min_completion_rate (80%)
             400, // min_avg_rating (4.0)
@@ -163,12 +193,16 @@ fun simulate_user_attendance(scenario: &mut Scenario, user: address, event_id: I
     {
         let mut event = test_scenario::take_shared_by_id<Event>(scenario, event_id);
         let mut registry = test_scenario::take_shared<RegistrationRegistry>(scenario);
+        let user_subscription = test_scenario::take_shared<UserSubscription>(scenario);
+        let organizer_profile = test_scenario::take_shared<OrganizerProfile>(scenario);
         let clock = test_scenario::take_shared<Clock>(scenario);
-        
-        identity_access::register_for_event(&mut event, &mut registry, &clock, test_scenario::ctx(scenario));
-        
+
+        identity_access::register_for_free_event(&mut event, &mut registry, &user_subscription, &organizer_profile, &clock, test_scenario::ctx(scenario));
+
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(user_subscription);
+        test_scenario::return_shared(organizer_profile);
         test_scenario::return_shared(clock);
     };
     
@@ -295,7 +329,7 @@ fun test_get_convener_rating_history() {
 // ========== Error Case Tests ==========
 
 #[test]
-#[expected_failure(abort_code = eia::rating_reputation::EEventNotCompleted)]
+#[expected_failure(abort_code = ariya::rating_reputation::EEventNotCompleted)]
 fun test_submit_rating_event_not_completed() {
     let mut scenario = test_scenario::begin(ORGANIZER);
     
@@ -335,7 +369,7 @@ fun test_submit_rating_event_not_completed() {
 }
 
 #[test]
-#[expected_failure(abort_code = eia::rating_reputation::ENotEligibleToRate)]
+#[expected_failure(abort_code = ariya::rating_reputation::ENotEligibleToRate)]
 fun test_submit_rating_invalid_event_rating_too_low() {
     let mut scenario = test_scenario::begin(ORGANIZER);
     
@@ -377,7 +411,7 @@ fun test_submit_rating_invalid_event_rating_too_low() {
 }
 
 #[test]
-#[expected_failure(abort_code = eia::rating_reputation::ENotEligibleToRate)]
+#[expected_failure(abort_code = ariya::rating_reputation::ENotEligibleToRate)]
 fun test_submit_rating_invalid_event_rating_too_high() {
     let mut scenario = test_scenario::begin(ORGANIZER);
     
@@ -419,7 +453,7 @@ fun test_submit_rating_invalid_event_rating_too_high() {
 }
 
 #[test]
-#[expected_failure(abort_code = eia::rating_reputation::ENotEligibleToRate)]
+#[expected_failure(abort_code = ariya::rating_reputation::ENotEligibleToRate)]
 fun test_submit_rating_invalid_convener_rating_too_low() {
     let mut scenario = test_scenario::begin(ORGANIZER);
     
@@ -461,7 +495,7 @@ fun test_submit_rating_invalid_convener_rating_too_low() {
 }
 
 #[test]
-#[expected_failure(abort_code = eia::rating_reputation::ENotEligibleToRate)]
+#[expected_failure(abort_code = ariya::rating_reputation::ENotEligibleToRate)]
 fun test_submit_rating_invalid_convener_rating_too_high() {
     let mut scenario = test_scenario::begin(ORGANIZER);
     

@@ -1,11 +1,11 @@
-module eia::community_access;
+module ariya::community_access;
 
 use std::string::String;
 use sui::table::{Self, Table};
 use sui::event;
 use sui::clock::{Self, Clock};
-use eia::event_management::{Self, Event};
-use eia::nft_minting::{Self, NFTRegistry};
+use ariya::event_management::{Self, Event};
+use ariya::nft_minting::{Self, NFTRegistry};
 
 // Error codes
 const ENotOrganizer: u64 = 1;

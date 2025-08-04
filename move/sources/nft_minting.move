@@ -1,11 +1,11 @@
-module eia::nft_minting;
+module ariya::nft_minting;
 
 use std::string::{Self, String};
 use sui::event;
 use sui::table::{Self, Table};
 use sui::display;
 use sui::package;
-use eia::attendance_verification::{Self, MintPoACapability, MintCompletionCapability};
+use ariya::attendance_verification::{Self, MintPoACapability, MintCompletionCapability};
 
 // Error codes
 const EInvalidCapability: u64 = 1;
@@ -111,7 +111,7 @@ fun init(otw: NFT_MINTING, ctx: &mut TxContext) {
     display::add(&mut poa_display, string::utf8(b"name"), string::utf8(b"Proof of Attendance - {event_name}"));
     display::add(&mut poa_display, string::utf8(b"description"), string::utf8(b"{metadata.description}"));
     display::add(&mut poa_display, string::utf8(b"image_url"), string::utf8(b"{metadata.image_url}"));
-    display::add(&mut poa_display, string::utf8(b"project_url"), string::utf8(b"https://eia-frontend.vercel.app"));
+    display::add(&mut poa_display, string::utf8(b"project_url"), string::utf8(b"https://ariya-develop.web.app"));
     display::update_version(&mut poa_display);
 
     // Set up display for NFTOfCompletion
@@ -119,7 +119,7 @@ fun init(otw: NFT_MINTING, ctx: &mut TxContext) {
     display::add(&mut completion_display, string::utf8(b"name"), string::utf8(b"Certificate of Completion - {event_name}"));
     display::add(&mut completion_display, string::utf8(b"description"), string::utf8(b"{metadata.description}"));
     display::add(&mut completion_display, string::utf8(b"image_url"), string::utf8(b"{metadata.image_url}"));
-    display::add(&mut completion_display, string::utf8(b"project_url"), string::utf8(b"https://eia-frontend.vercel.app"));
+    display::add(&mut completion_display, string::utf8(b"project_url"), string::utf8(b"https://ariya-develop.web.app"));
     display::update_version(&mut completion_display);
 
     transfer::public_transfer(poa_display, tx_context::sender(ctx));

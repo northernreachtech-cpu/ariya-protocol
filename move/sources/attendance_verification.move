@@ -1,11 +1,11 @@
-module eia::attendance_verification;
+module ariya::attendance_verification;
 
 use std::string::{Self, String};
 use sui::clock::{Self, Clock};
 use sui::table::{Self, Table};
 use sui::event;
-use eia::event_management::{Self, Event};
-use eia::identity_access::{Self, RegistrationRegistry};
+use ariya::event_management::{Self, Event};
+use ariya::identity_access::{Self, RegistrationRegistry};
 
 // Error codes
 const EEventNotActive: u64 = 1;

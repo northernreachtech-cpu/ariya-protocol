@@ -1,10 +1,10 @@
 #[test_only]
-module eia::event_management_tests;
+module ariya::event_management_tests;
 
 use std::string;
 use sui::test_scenario::{Self, Scenario};
 use sui::clock::{Self, Clock};
-use eia::event_management::{
+use ariya::event_management::{
     Self, 
     Event, 
     EventRegistry, 
@@ -84,6 +84,7 @@ fun create_test_event(
             current_time + start_offset,
             current_time + start_offset + (4 * HOUR_IN_MS),
             capacity,
+            0,
             10, // min_attendees
             8000, // min_completion_rate (80%)
             400, // min_avg_rating (4.0)
@@ -166,6 +167,7 @@ fun test_create_event() {
             clock::timestamp_ms(&clock) + DAY_IN_MS,
             clock::timestamp_ms(&clock) + DAY_IN_MS + (8 * HOUR_IN_MS),
             500,
+            0,
             50,
             7500, // 75% completion rate
             450, // 4.5 rating
@@ -437,6 +439,7 @@ fun test_create_event_not_organizer() {
             clock::timestamp_ms(&clock) + DAY_IN_MS,
             clock::timestamp_ms(&clock) + DAY_IN_MS + HOUR_IN_MS,
             100,
+            0,
             10,
             8000,
             400,
@@ -476,6 +479,7 @@ fun test_create_event_zero_capacity() {
             clock::timestamp_ms(&clock) + DAY_IN_MS,
             clock::timestamp_ms(&clock) + DAY_IN_MS + HOUR_IN_MS,
             0, // Zero capacity
+            0,
             10,
             8000,
             400,
@@ -516,6 +520,7 @@ fun test_create_event_past_start_time() {
             500000, // Past timestamp
             2000000,
             100,
+            0,
             10,
             8000,
             400,
@@ -557,6 +562,7 @@ fun test_create_event_end_before_start() {
             start_time,
             start_time - HOUR_IN_MS, // End before start
             100,
+            0,
             10,
             8000,
             400,
@@ -1010,6 +1016,7 @@ fun test_sponsor_conditions() {
             clock::timestamp_ms(&clock) + DAY_IN_MS,
             clock::timestamp_ms(&clock) + DAY_IN_MS + (6 * HOUR_IN_MS),
             1000,
+            0,
             500,  // min 500 attendees
             9000, // min 90% completion rate
             480,  // min 4.8 rating
@@ -1137,6 +1144,7 @@ fun test_minimum_valid_event_duration() {
             start_time,
             start_time + 1, // Just 1ms duration
             10,
+            0,
             1,
             5000,
             300,

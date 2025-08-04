@@ -1,5 +1,5 @@
 #[test_only]
-module eia::airdrop_distribution_tests;
+module ariya::airdrop_distribution_tests;
 
 use std::string;
 use sui::coin;
@@ -7,12 +7,14 @@ use sui::sui::SUI;
 use sui::test_scenario::{Self, next_tx, ctx, Scenario};
 use sui::clock::{Self, Clock};
 
-use eia::airdrop_distribution::{Self, AirdropRegistry};
-use eia::event_management::{Self, Event, EventRegistry, OrganizerProfile};
-use eia::attendance_verification::{Self, AttendanceRegistry};
-use eia::nft_minting::{Self, NFTRegistry};
-use eia::rating_reputation::{Self, RatingRegistry};
-use eia::identity_access::{Self, RegistrationRegistry};
+use ariya::airdrop_distribution::{Self, AirdropRegistry};
+use ariya::event_management::{Self, Event, EventRegistry, OrganizerProfile};
+use ariya::attendance_verification::{Self, AttendanceRegistry};
+use ariya::nft_minting::{Self, NFTRegistry};
+use ariya::rating_reputation::{Self, RatingRegistry};
+use ariya::identity_access::{Self, RegistrationRegistry};
+use ariya::subscription::{Self, UserSubscription};
+use ariya::subscription::SubscriptionRegistry;
 
 // ========== Test Constants ==========
 
@@ -44,6 +46,12 @@ fun setup_test_environment(scenario: &mut Scenario) {
         rating_reputation::init_for_testing(ctx(scenario));
         identity_access::init_for_testing(ctx(scenario));
         airdrop_distribution::init_for_testing(ctx(scenario));
+        subscription::init_for_testing(ctx(scenario));
+
+        // Create free subscriptions for all test users
+        create_test_free_subscription(scenario, USER1);
+        create_test_free_subscription(scenario, USER2);
+        create_test_free_subscription(scenario, USER3);
     };
 }
 
@@ -65,6 +73,24 @@ fun create_test_organizer_profile(scenario: &mut Scenario, organizer: address) {
     };
 }
 
+fun create_test_free_subscription(scenario: &mut Scenario, user: address) {
+    next_tx(scenario, user);
+    {
+        let clock = test_scenario::take_shared<Clock>(scenario);
+        let mut registry = test_scenario::take_shared<SubscriptionRegistry>(scenario);
+        
+        subscription::create_free_subscription(
+            user,
+            &clock,
+            &mut registry,
+            ctx(scenario)
+        );
+        
+        test_scenario::return_shared(clock);
+        test_scenario::return_shared(registry);
+    };
+}
+
 fun create_and_activate_test_event(scenario: &mut Scenario, organizer: address, duration: u64, capacity: u64): ID {
     next_tx(scenario, organizer);
     let event_id = {
@@ -79,6 +105,7 @@ fun create_and_activate_test_event(scenario: &mut Scenario, organizer: address, 
             clock::timestamp_ms(&clock) + HOUR_IN_MS,
             clock::timestamp_ms(&clock) + HOUR_IN_MS + duration,
             capacity,
+            0,
             10, // min_attendees
             8000, // min_completion_rate (80%)
             400, // min_avg_rating (4.0/5.0)
@@ -117,17 +144,23 @@ fun register_user_for_event(scenario: &mut Scenario, user: address, event_id: ID
     {
         let mut event = test_scenario::take_shared_by_id<Event>(scenario, event_id);
         let mut registry = test_scenario::take_shared<RegistrationRegistry>(scenario);
+        let user_subscription = test_scenario::take_shared<UserSubscription>(scenario);
+        let organizer_profile = test_scenario::take_shared<OrganizerProfile>(scenario);
         let clock = test_scenario::take_shared<Clock>(scenario);
         
-        identity_access::register_for_event(
+        identity_access::register_for_free_event(
             &mut event,
             &mut registry,
+            &user_subscription,
+            &organizer_profile,
             &clock,
             ctx(scenario)
         );
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(user_subscription);
+        test_scenario::return_shared(organizer_profile);
         test_scenario::return_shared(clock);
     };
 }
@@ -139,13 +172,17 @@ fun simulate_user_checkin(scenario: &mut Scenario, user: address, event_id: ID) 
     {
         let mut event = test_scenario::take_shared_by_id<Event>(scenario, event_id);
         let mut registry = test_scenario::take_shared<RegistrationRegistry>(scenario);
+        let user_subscription = test_scenario::take_shared<UserSubscription>(scenario);
+        let organizer_profile = test_scenario::take_shared<OrganizerProfile>(scenario);
         let clock = test_scenario::take_shared<Clock>(scenario);
         
         // Check if already registered to avoid EAlreadyRegistered error
         if (!identity_access::is_registered(user, event_id, &registry)) {
-            identity_access::register_for_event(
+            identity_access::register_for_free_event(
                 &mut event,
                 &mut registry,
+                &user_subscription,
+                &organizer_profile,
                 &clock,
                 ctx(scenario)
             );
@@ -153,6 +190,8 @@ fun simulate_user_checkin(scenario: &mut Scenario, user: address, event_id: ID) 
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(user_subscription);
+        test_scenario::return_shared(organizer_profile);
         test_scenario::return_shared(clock);
     };
     
@@ -485,7 +524,7 @@ fun test_user_claims_history() {
 // ========== Error Condition Tests ==========
 
 #[test]
-#[expected_failure(abort_code = eia::airdrop_distribution::ENotOrganizer)]
+#[expected_failure(abort_code = ariya::airdrop_distribution::ENotOrganizer)]
 fun test_create_airdrop_not_organizer() {
     let mut scenario = test_scenario::begin(ORGANIZER);
     
@@ -530,7 +569,7 @@ fun test_create_airdrop_not_organizer() {
 }
 
 #[test]
-#[expected_failure(abort_code = eia::airdrop_distribution::EInsufficientFunds)]
+#[expected_failure(abort_code = ariya::airdrop_distribution::EInsufficientFunds)]
 fun test_create_airdrop_zero_amount() {
     let mut scenario = test_scenario::begin(ORGANIZER);
     
@@ -575,7 +614,7 @@ fun test_create_airdrop_zero_amount() {
 }
 
 #[test]
-#[expected_failure(abort_code = eia::airdrop_distribution::EAirdropNotFound)]
+#[expected_failure(abort_code = ariya::airdrop_distribution::EAirdropNotFound)]
 fun test_get_nonexistent_airdrop() {
     let mut scenario = test_scenario::begin(ORGANIZER);
     
@@ -596,7 +635,7 @@ fun test_get_nonexistent_airdrop() {
 }
 
 #[test]
-#[expected_failure(abort_code = eia::airdrop_distribution::ENotEligible)]
+#[expected_failure(abort_code = ariya::airdrop_distribution::ENotEligible)]
 fun test_claim_airdrop_not_eligible() {
     let mut scenario = test_scenario::begin(ORGANIZER);
     
@@ -720,7 +759,7 @@ fun test_batch_distribute_empty_recipients() {
 }
 
 #[test]
-#[expected_failure(abort_code = eia::airdrop_distribution::ENotOrganizer)]
+#[expected_failure(abort_code = ariya::airdrop_distribution::ENotOrganizer)]
 fun test_batch_distribute_not_organizer() {
     let mut scenario = test_scenario::begin(ORGANIZER);
     
@@ -871,7 +910,7 @@ fun test_multiple_airdrops_same_event() {
 // ========== Edge Case Tests ==========
 
 #[test]
-#[expected_failure(abort_code = eia::event_management::EInvalidCapacity)]
+#[expected_failure(abort_code = ariya::event_management::EInvalidCapacity)]
 fun test_airdrop_with_zero_capacity_event() {
     let mut scenario = test_scenario::begin(ORGANIZER);
     
@@ -893,6 +932,7 @@ fun test_airdrop_with_zero_capacity_event() {
             clock::timestamp_ms(&clock) + HOUR_IN_MS,
             clock::timestamp_ms(&clock) + HOUR_IN_MS + HOUR_IN_MS,
             0, // Zero capacity - should fail here
+            0,
             10, // min_attendees
             8000, // min_completion_rate
             400, // min_avg_rating
@@ -1222,7 +1262,7 @@ fun test_complete_airdrop_documentation_example() {
 // ========== Withdraw Tests ==========
 
 #[test]
-#[expected_failure(abort_code = eia::airdrop_distribution::EAirdropNotActive)]
+#[expected_failure(abort_code = ariya::airdrop_distribution::EAirdropNotActive)]
 fun test_withdraw_unclaimed_before_expiry() {
     let mut scenario = test_scenario::begin(ORGANIZER);
     

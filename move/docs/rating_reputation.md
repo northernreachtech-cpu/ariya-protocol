@@ -1,15 +1,15 @@
-# EIA Rating & Reputation Contract Documentation
+# Ariya Rating & Reputation Contract Documentation
 
 ## Overview
 
-The EIA Rating & Reputation contract manages post-event feedback and builds reputation systems within the Ephemeral Identity & Attendance (EIA) Protocol. This contract enables attendees to rate events and organizers after completing attendance, while maintaining comprehensive reputation tracking for event organizers across all their events.
+The ariya Rating & Reputation contract manages post-event feedback and builds reputation systems within the Ephemeral Identity & Attendance (ariya) Protocol. This contract enables attendees to rate events and organizers after completing attendance, while maintaining comprehensive reputation tracking for event organizers across all their events.
 
 ## Module Information
 
-- **Module**: `eia::rating_reputation`
+- **Module**: `ariya::rating_reputation`
 - **Network**: Sui Blockchain
 - **Language**: Move
-- **Dependencies**: `eia::attendance_verification`, `eia::event_management`
+- **Dependencies**: `ariya::attendance_verification`, `ariya::event_management`
 
 ## Core Data Structures
 
@@ -859,4 +859,4 @@ async function displayOrganizerReputation(organizerWallet: string) {
 4. **No Rating Deletion**: Ratings are permanent once submitted
 5. **Reputation Calculation**: Organizer reputation averages across all rated events
 
-This contract provides a comprehensive rating and reputation system that builds trust in the EIA Protocol ecosystem while ensuring only genuine participants can provide feedback.
+This contract provides a comprehensive rating and reputation system that builds trust in the ariya Protocol ecosystem while ensuring only genuine participants can provide feedback.
