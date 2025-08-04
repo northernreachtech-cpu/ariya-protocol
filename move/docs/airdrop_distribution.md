@@ -1,15 +1,15 @@
-# EIA Airdrop Distribution Contract Documentation
+# Ariya Airdrop Distribution Contract Documentation
 
 ## Overview
 
-The EIA Airdrop Distribution contract enables event organizers to create and manage automated token distributions for event participants within the Ephemeral Identity & Attendance (EIA) Protocol. This contract supports multiple distribution strategies, customizable eligibility criteria, and automated claiming mechanisms based on verified event participation.
+The ariya Airdrop Distribution contract enables event organizers to create and manage automated token distributions for event participants within the Ephemeral Identity & Attendance (ariya) Protocol. This contract supports multiple distribution strategies, customizable eligibility criteria, and automated claiming mechanisms based on verified event participation.
 
 ## Module Information
 
-- **Module**: `eia::airdrop_distribution`
+- **Module**: `ariya::airdrop_distribution`
 - **Network**: Sui Blockchain
 - **Language**: Move
-- **Dependencies**: `eia::event_management`, `eia::nft_minting`, `eia::attendance_verification`, `eia::rating_reputation`
+- **Dependencies**: `ariya::event_management`, `ariya::nft_minting`, `ariya::attendance_verification`, `ariya::rating_reputation`
 
 ## Core Data Structures
 
@@ -1203,4 +1203,4 @@ class AutomatedAirdropManager {
 4. **External APIs**: Integration with social media and other platforms
 5. **Cross-Chain**: Multi-chain airdrop coordination
 
-This contract provides a comprehensive, flexible foundation for automated reward distribution within the EIA Protocol, enabling organizers to incentivize participation while ensuring only genuine event participants receive rewards through transparent, verifiable mechanisms.
+This contract provides a comprehensive, flexible foundation for automated reward distribution within the ariya Protocol, enabling organizers to incentivize participation while ensuring only genuine event participants receive rewards through transparent, verifiable mechanisms.

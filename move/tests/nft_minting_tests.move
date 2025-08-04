@@ -1,10 +1,10 @@
 #[test_only]
-module eia::nft_minting_tests;
+module ariya::nft_minting_tests;
 
 use std::string;
 use sui::test_scenario::{Self, Scenario};
 use sui::clock::{Self, Clock};
-use eia::nft_minting::{
+use ariya::nft_minting::{
     Self, 
     NFTRegistry,
     ProofOfAttendance,
@@ -13,21 +13,22 @@ use eia::nft_minting::{
     EInvalidCapability,
     EAlreadyMinted,
 };
-use eia::event_management::{
+use ariya::event_management::{
     Self, 
     Event, 
     EventRegistry, 
     OrganizerProfile,
 };
-use eia::identity_access::{
+use ariya::identity_access::{
     Self,
     RegistrationRegistry,
 };
-use eia::attendance_verification::{
+use ariya::attendance_verification::{
     Self,
     MintPoACapability,
     MintCompletionCapability,
 };
+use ariya::subscription::{Self, UserSubscription, SubscriptionRegistry};
 
 // Test addresses
 const ORGANIZER: address = @0xA1;
@@ -49,6 +50,8 @@ fun setup_test_environment(scenario: &mut Scenario) {
         event_management::init_for_testing(test_scenario::ctx(scenario));
         identity_access::init_for_testing(test_scenario::ctx(scenario));
         attendance_verification::init_for_testing(test_scenario::ctx(scenario));
+        subscription::init_for_testing(test_scenario::ctx(scenario));
+
         
         // Create and share clock
         let mut clock = clock::create_for_testing(test_scenario::ctx(scenario));
@@ -61,7 +64,36 @@ fun setup_test_environment(scenario: &mut Scenario) {
     {
         nft_minting::init_for_testing(test_scenario::ctx(scenario));
     };
+
+    test_scenario::next_tx(scenario, ORGANIZER);
+    {
+        // Create subscriptions 
+        create_test_free_subscription(scenario, ORGANIZER);
+        create_test_free_subscription(scenario, USER1);
+        create_test_free_subscription(scenario, USER2);
+        create_test_free_subscription(scenario,  USER3);
+        create_test_free_subscription(scenario, VERIFIER);
+    };
 }
+
+fun create_test_free_subscription(scenario: &mut Scenario, user: address) {
+    test_scenario::next_tx(scenario, user);
+    {
+        let clock = test_scenario::take_shared<Clock>(scenario);
+        let mut registry = test_scenario::take_shared<SubscriptionRegistry>(scenario);
+        
+        subscription::create_free_subscription(
+            user,
+            &clock,
+            &mut registry,
+            test_scenario::ctx(scenario)
+        );
+        
+        test_scenario::return_shared(clock);
+        test_scenario::return_shared(registry);
+    };
+}
+
 
 #[test_only]
 fun create_test_organizer_profile(scenario: &mut Scenario, user: address): ID {
@@ -106,6 +138,7 @@ fun create_and_activate_test_event(
             current_time + start_offset,
             current_time + start_offset + (4 * HOUR_IN_MS),
             capacity,
+            0,
             10, // min_attendees
             8000, // min_completion_rate (80%)
             400, // min_avg_rating (4.0)
@@ -146,12 +179,16 @@ fun register_user_for_event(scenario: &mut Scenario, user: address, event_id: ID
     {
         let mut event = test_scenario::take_shared_by_id<Event>(scenario, event_id);
         let mut registry = test_scenario::take_shared<RegistrationRegistry>(scenario);
+        let user_subscription = test_scenario::take_shared<UserSubscription>(scenario);
+        let organizer_profile = test_scenario::take_shared<OrganizerProfile>(scenario);
         let clock = test_scenario::take_shared<Clock>(scenario);
-        
-        identity_access::register_for_event(&mut event, &mut registry, &clock, test_scenario::ctx(scenario));
-        
+
+        identity_access::register_for_free_event(&mut event, &mut registry, &user_subscription, &organizer_profile, &clock, test_scenario::ctx(scenario));
+
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(user_subscription);
+        test_scenario::return_shared(organizer_profile);
         test_scenario::return_shared(clock);
     };
 }
@@ -876,7 +913,7 @@ fun test_empty_string_metadata() {
 
 // ========== Documentation Tests ==========
 
-/// Test that demonstrates the complete NFT minting workflow for the EIA Protocol
+/// Test that demonstrates the complete NFT minting workflow for the ariya Protocol
 #[test]
 fun test_complete_nft_workflow_documentation() {
     let mut scenario = test_scenario::begin(ORGANIZER);
@@ -893,8 +930,8 @@ fun test_complete_nft_workflow_documentation() {
         
         nft_minting::set_event_metadata(
             event_id,
-            string::utf8(b"EIA Protocol Demo"),
-            string::utf8(b"https://walrus.example/eia-demo.png"),
+            string::utf8(b"ariya Protocol Demo"),
+            string::utf8(b"https://walrus.example/ariya-demo.png"),
             string::utf8(b"Decentralized Venue"),
             ORGANIZER,
             &mut registry,
@@ -1495,8 +1532,8 @@ fun test_complete_protocol_integration() {
         
         nft_minting::set_event_metadata(
             event_id,
-            string::utf8(b"EIA Protocol Integration Test"),
-            string::utf8(b"https://walrus.example/eia-integration.png"),
+            string::utf8(b"ariya Protocol Integration Test"),
+            string::utf8(b"https://walrus.example/ariya-integration.png"),
             string::utf8(b"Decentralized Conference Center"),
             ORGANIZER,
             &mut registry,

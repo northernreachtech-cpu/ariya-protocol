@@ -148,6 +148,7 @@ const OrganizerDashboard = () => {
   const communityRegistryId = useNetworkVariable("communityRegistryId");
   const airdropRegistryId = useNetworkVariable("airdropRegistryId");
   const ratingRegistryId = useNetworkVariable("ratingRegistryId");
+  const profileRegistryId = useNetworkVariable("profileRegistryId");
 
   const [loading, setLoading] = useState(true);
   const [activatingEvent, setActivatingEvent] = useState<string | null>(null);
@@ -830,6 +831,26 @@ const OrganizerDashboard = () => {
   useEffect(() => {
     loadOrganizerData();
   }, [currentAccount, sdk, navigate]);
+
+  // Check if user has general profile before allowing access
+  useEffect(() => {
+    const checkGeneralProfile = async () => {
+      if (!currentAccount) return;
+
+      const hasGeneralProfile = await sdk.eventManagement.hasProfile(
+        currentAccount.address,
+        profileRegistryId
+      );
+
+      if (!hasGeneralProfile) {
+        // Redirect to home or show profile creation modal
+        navigate("/");
+        return;
+      }
+    };
+
+    checkGeneralProfile();
+  }, [currentAccount, sdk, navigate, profileRegistryId]);
 
   if (loading) {
     return (

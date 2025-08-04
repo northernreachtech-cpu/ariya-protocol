@@ -1,4 +1,4 @@
-module eia::event_management;
+module ariya::event_management;
 
 use std::string::String;
 use sui::clock::{Self, Clock};
@@ -11,6 +11,7 @@ const EEventNotActive: u64 = 2;
 const EEventAlreadyCompleted: u64 = 3;
 const EInvalidCapacity: u64 = 4;
 const EInvalidTimestamp: u64 = 5;
+const ENotAuthorized: u64 = 6; 
 
 // Event states
 const STATE_CREATED: u8 = 0;
@@ -33,6 +34,7 @@ public struct Event has key, store {
     created_at: u64,
     sponsor_conditions: SponsorConditions,
     metadata_uri: String, // Walrus storage reference
+    fee_amount: u64,
 }
 
 // Sponsor performance conditions
@@ -49,6 +51,25 @@ public struct CustomBenchmark has store, drop, copy {
     comparison_type: u8, // 0: >=, 1: <=, 2: ==
 }
 
+// User profile for all platform users
+public struct Profile has key, store {
+    id: UID,
+    address: address,
+    name: String,
+    bio: String,
+    photo_url: String,
+    telegram_username: String,
+    x_username: String,
+    created_at: u64,
+}
+
+// Profile capability - proves ownership of profile
+public struct ProfileCap has key, store {
+    id: UID,
+    profile_id: ID,
+    owner: address,
+}
+
 // Organizer profile for reputation tracking
 public struct OrganizerProfile has key, store {
     id: UID,
@@ -60,6 +81,12 @@ public struct OrganizerProfile has key, store {
     total_attendees_served: u64,
     avg_rating: u64, // Rating * 100
     created_at: u64,
+}
+
+// Profile registry to check if user has profile
+public struct ProfileRegistry has key {
+    id: UID,
+    profiles: Table<address, ID>, // address -> profile_id
 }
 
 // Event registry for discovery
@@ -111,6 +138,72 @@ fun init(ctx: &mut TxContext) {
         events_by_organizer: table::new(ctx),
     };
     transfer::share_object(registry);
+
+    let profile_registry = ProfileRegistry {
+        id: object::new(ctx),
+        profiles: table::new(ctx),
+    };
+    transfer::share_object(profile_registry);
+}
+
+// Create user profile
+public fun create_profile(
+    name: String,
+    bio: String,
+    photo_url: String,
+    telegram_username: String,
+    x_username: String,
+    clock: &Clock,
+    profile_registry: &mut ProfileRegistry,
+    ctx: &mut TxContext
+): ProfileCap {
+    let sender = tx_context::sender(ctx);
+    assert!(!table::contains(&profile_registry.profiles, sender), 0); // Profile already exists
+    
+    let profile = Profile {
+        id: object::new(ctx),
+        address: sender,
+        name,
+        bio,
+        photo_url,
+        telegram_username,
+        x_username,
+        created_at: clock::timestamp_ms(clock),
+    };
+    
+    let profile_id = object::id(&profile);
+    table::add(&mut profile_registry.profiles, sender, profile_id);
+    
+    transfer::share_object(profile);
+    
+    // Return capability to the profile owner
+    ProfileCap {
+        id: object::new(ctx),
+        profile_id,
+        owner: sender,
+    }
+}
+
+// Update user profile (requires ProfileCap)
+public fun update_profile(
+    profile: &mut Profile,
+    profile_cap: &ProfileCap,
+    name: String,
+    bio: String,
+    photo_url: String,
+    telegram_username: String,
+    x_username: String,
+    ctx: &mut TxContext
+) {
+    let sender = tx_context::sender(ctx);
+    assert!(profile_cap.owner == sender, ENotAuthorized);
+    assert!(profile_cap.profile_id == object::id(profile), ENotAuthorized);
+    
+    profile.name = name;
+    profile.bio = bio;
+    profile.photo_url = photo_url;
+    profile.telegram_username = telegram_username;
+    profile.x_username = x_username;
 }
 
 // Create organizer profile
@@ -149,6 +242,7 @@ public fun create_event(
     start_time: u64,
     end_time: u64,
     capacity: u64,
+    fee_amount: u64,
     min_attendees: u64,
     min_completion_rate: u64,
     min_avg_rating: u64,
@@ -185,6 +279,7 @@ public fun create_event(
         created_at: clock::timestamp_ms(clock),
         sponsor_conditions,
         metadata_uri,
+        fee_amount,
     };
 
     let event_id = object::id(&event);
@@ -220,6 +315,74 @@ public fun create_event(
     transfer::share_object(event);
     event_id
 }
+
+// Edit event details (only organizer, only before completion)
+public fun edit_event(
+    event: &mut Event,
+    name: String,
+    description: String,
+    location: String,
+    start_time: u64,
+    end_time: u64,
+    capacity: u64,
+    fee_amount: u64,
+    metadata_uri: String,
+    clock: &Clock,
+    registry: &mut EventRegistry,
+    ctx: &mut TxContext
+) {
+    assert!(event.organizer == tx_context::sender(ctx), ENotOrganizer);
+    assert!(event.state != STATE_COMPLETED && event.state != STATE_SETTLED, EEventAlreadyCompleted);
+    assert!(capacity > 0, EInvalidCapacity);
+    assert!(start_time > clock::timestamp_ms(clock), EInvalidTimestamp);
+    assert!(end_time > start_time, EInvalidTimestamp);
+    
+    event.name = name;
+    event.description = description;
+    event.location = location;
+    event.start_time = start_time;
+    event.end_time = end_time;
+    event.capacity = capacity;
+    event.fee_amount = fee_amount;
+    event.metadata_uri = metadata_uri;
+    
+    // Update registry
+    let event_info = table::borrow_mut(&mut registry.events, object::id(event));
+    event_info.name = name;
+    event_info.start_time = start_time;
+}
+
+// Delete event (only organizer, only if not active and no attendees)
+public fun delete_event(
+    event: Event,
+    registry: &mut EventRegistry,
+    ctx: &mut TxContext
+) {
+    assert!(event.organizer == tx_context::sender(ctx), ENotOrganizer);
+    assert!(event.state == STATE_CREATED, EEventNotActive); // Only delete if not activated
+    assert!(event.current_attendees == 0, EInvalidCapacity); // No attendees
+    
+    let event_id = object::id(&event);
+    
+    // Remove from registry
+    table::remove(&mut registry.events, event_id);
+    
+    // Remove from organizer events list
+    let organizer_events = table::borrow_mut(&mut registry.events_by_organizer, event.organizer);
+    let (found, index) = vector::index_of(organizer_events, &event_id);
+    if (found) {
+        vector::remove(organizer_events, index);
+    };
+    
+    // Delete the event object
+    let Event { 
+        id, name: _, description: _, location: _, start_time: _, end_time: _, 
+        capacity: _, current_attendees: _, organizer: _, state: _, created_at: _, 
+        sponsor_conditions: _, fee_amount: _, metadata_uri: _ 
+    } = event;
+    object::delete(id);
+}
+
 
 // Add custom benchmark to sponsor conditions
 public fun add_custom_benchmark(
@@ -355,6 +518,19 @@ public fun get_event_capacity(event: &Event): u64 {
     event.capacity
 }
 
+public fun get_event_fee_amount(event: &Event): u64 {
+    event.fee_amount
+}
+
+public fun is_event_free(event: &Event): bool {
+    event.fee_amount == 0
+}
+
+public fun get_event_location(event: &Event): String {
+    event.location
+}
+
+
 public fun get_current_attendees(event: &Event): u64 {
     event.current_attendees
 }
@@ -407,6 +583,18 @@ public fun get_organizer_stats(profile: &OrganizerProfile): (u64, u64, u64, u64)
     )
 }
 
+public fun get_organizer_profile(profile: &OrganizerProfile): (address, String, String, u64, u64, u64, u64) {
+    (
+        profile.address,
+        profile.name,
+        profile.bio,
+        profile.total_events,
+        profile.successful_events,
+        profile.total_attendees_served,
+        profile.avg_rating
+    )
+}
+ 
 public fun get_event_metadata_uri(event: &Event): String {
     event.metadata_uri
 }
@@ -448,6 +636,57 @@ public fun get_benchmark_target_value(benchmark: &CustomBenchmark): u64 {
 
 public fun get_benchmark_comparison_type(benchmark: &CustomBenchmark): u8 {
     benchmark.comparison_type
+}
+
+// Check if user has profile
+public fun has_profile(profile_registry: &ProfileRegistry, user: address): bool {
+    table::contains(&profile_registry.profiles, user)
+}
+
+// Get profile ID for user
+public fun get_user_profile_id(profile_registry: &ProfileRegistry, user: address): ID {
+    *table::borrow(&profile_registry.profiles, user)
+}
+
+// Profile getters
+public fun get_profile_details(profile: &Profile): (address, String, String, String, String, String, u64) {
+    (
+        profile.address,
+        profile.name,
+        profile.bio,
+        profile.photo_url,
+        profile.telegram_username,
+        profile.x_username,
+        profile.created_at
+    )
+}
+
+public fun get_profile_name(profile: &Profile): String {
+    profile.name
+}
+
+public fun get_profile_bio(profile: &Profile): String {
+    profile.bio
+}
+
+public fun get_profile_photo_url(profile: &Profile): String {
+    profile.photo_url
+}
+
+public fun get_profile_telegram(profile: &Profile): String {
+    profile.telegram_username
+}
+
+public fun get_profile_x_username(profile: &Profile): String {
+    profile.x_username
+}
+
+public fun transfer_profile_cap(profile_cap: ProfileCap, new_owner: address) {
+    transfer::public_transfer(profile_cap, new_owner);
+}
+
+public fun get_profile_cap_details(profile_cap: &ProfileCap): (ID, address) {
+    (profile_cap.profile_id, profile_cap.owner)
 }
 
 #[test_only]

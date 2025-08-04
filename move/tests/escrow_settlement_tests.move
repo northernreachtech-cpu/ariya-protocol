@@ -1,12 +1,12 @@
 #[test_only]
-module eia::escrow_settlement_tests;
+module ariya::escrow_settlement_tests;
 
 use std::string;
 use sui::test_scenario::{Self, Scenario};
 use sui::clock::{Self, Clock};
 use sui::coin::mint_for_testing;
 use sui::sui::SUI;
-use eia::escrow_settlement::{
+use ariya::escrow_settlement::{
     Self, 
     EscrowRegistry,
     // Error codes
@@ -17,20 +17,20 @@ use eia::escrow_settlement::{
     EEscrowNotFound,
     ERefundPeriodNotExpired,
 };
-use eia::event_management::{
+use ariya::event_management::{
     Self, 
     Event, 
     EventRegistry, 
     OrganizerProfile,
 };
-use eia::identity_access::{
+use ariya::identity_access::{
     Self,
 };
-use eia::attendance_verification::{
+use ariya::attendance_verification::{
     Self,
     AttendanceRegistry,
 };
-use eia::rating_reputation::{
+use ariya::rating_reputation::{
     Self,
     RatingRegistry,
 };
@@ -115,6 +115,7 @@ fun create_and_activate_test_event(
             current_time + start_offset,
             current_time + start_offset + (4 * HOUR_IN_MS),
             capacity,
+            0,
             min_attendees,
             min_completion_rate,
             min_avg_rating,

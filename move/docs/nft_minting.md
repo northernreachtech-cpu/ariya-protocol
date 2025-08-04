@@ -1,15 +1,15 @@
-# EIA NFT Minting Contract Documentation
+# Ariya NFT Minting Contract Documentation
 
 ## Overview
 
-The EIA NFT Minting contract automatically generates verifiable NFTs based on event attendance within the Ephemeral Identity & Attendance (EIA) Protocol. This contract issues two types of NFTs: Proof-of-Attendance (PoA) NFTs for check-ins and Completion NFTs for full event participation, providing immutable proof of event engagement.
+The ariya NFT Minting contract automatically generates verifiable NFTs based on event attendance within the Ephemeral Identity & Attendance (ariya) Protocol. This contract issues two types of NFTs: Proof-of-Attendance (PoA) NFTs for check-ins and Completion NFTs for full event participation, providing immutable proof of event engagement.
 
 ## Module Information
 
-- **Module**: `eia::nft_minting`
+- **Module**: `ariya::nft_minting`
 - **Network**: Sui Blockchain
 - **Language**: Move
-- **Dependencies**: `eia::attendance_verification`
+- **Dependencies**: `ariya::attendance_verification`
 
 ## Core Data Structures
 
@@ -338,13 +338,13 @@ The contract automatically configures NFT display properties for marketplaces an
 - **Name**: "Proof of Attendance - {event_name}"
 - **Description**: Dynamic from metadata
 - **Image**: Event-specific artwork
-- **Project URL**: EIA Protocol frontend
+- **Project URL**: ariya Protocol frontend
 
 ### Completion NFT Display
 - **Name**: "Certificate of Completion - {event_name}"
 - **Description**: Dynamic from metadata
 - **Image**: Event-specific artwork
-- **Project URL**: EIA Protocol frontend
+- **Project URL**: ariya Protocol frontend
 
 ## Frontend Integration Examples
 

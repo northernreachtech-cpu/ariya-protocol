@@ -1,4 +1,9 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useNavigate,
+} from "react-router-dom";
 import { SuiClientProvider, WalletProvider } from "@mysten/dapp-kit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { networkConfig } from "./config/sui";
@@ -20,6 +25,11 @@ import AdminWorkshopResponses from "./pages/AdminWorkshopResponses";
 import Community from "./pages/Community";
 import Communities from "./pages/Communities";
 import DocFlow from "./pages/DocFlow";
+import UserDashboard from "./pages/UserDashboard";
+import ProfileCreationModal from "./components/ProfileCreationModal";
+import ProfileCheckOverlay from "./components/ProfileCheckOverlay";
+import { useWalletProfileCheck } from "./hooks/useWalletProfileCheck";
+import { useState, useEffect } from "react";
 
 import "@mysten/dapp-kit/dist/index.css";
 import "./styles/theme.css";
@@ -29,9 +39,27 @@ const queryClient = new QueryClient();
 // Main App Component with scroll-to-top
 function AppContent() {
   useScrollToTop();
+  const navigate = useNavigate();
+  const { profileStatus, isChecking } = useWalletProfileCheck();
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isOrganizerModal, setIsOrganizerModal] = useState(false);
+
+  // Show profile modal if user needs a general profile
+  useEffect(() => {
+    if (!profileStatus.isLoading && profileStatus.needsGeneralProfile) {
+      setShowProfileModal(true);
+      setIsOrganizerModal(profileStatus.hasOrganizerProfile);
+    }
+  }, [profileStatus]);
+
+  const handleProfileSuccess = () => {
+    // Navigate to user dashboard after profile creation (no page reload)
+    navigate("/dashboard");
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground px-4 py-2 sm:px-6 sm:py-4 lg:px-8 lg:py-6 font-open-sans">
+      <ProfileCheckOverlay isVisible={isChecking} />
       <Navbar />
       <Routes>
         <Route path="/" element={<LandingPage />} />
@@ -44,6 +72,7 @@ function AppContent() {
           path="/profile/organizer/create"
           element={<CreateOrganizerProfile />}
         />
+        <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/dashboard/organizer" element={<OrganizerDashboard />} />
         <Route path="/dashboard/sponsor" element={<SponsorDashboard />} />
         <Route path="/community/:communityId" element={<Community />} />
@@ -55,6 +84,13 @@ function AppContent() {
         />
         <Route path="/docflow" element={<DocFlow />} />
       </Routes>
+
+      <ProfileCreationModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        onSuccess={handleProfileSuccess}
+        isOrganizer={isOrganizerModal}
+      />
     </div>
   );
 }

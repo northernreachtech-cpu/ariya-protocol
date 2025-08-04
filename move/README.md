@@ -1,8 +1,8 @@
-# EIA Protocol - Frontend Integration Guide
+# Ariya Protocol - Frontend Integration Guide
 
 ## Getting Started with Move Module Integration
 
-This guide helps frontend developers understand which Move modules to integrate first and in what order to build a functional EIA Protocol application.
+This guide helps frontend developers understand which Move modules to integrate first and in what order to build a functional ariya Protocol application.
 
 ## Integration Priority Order
 

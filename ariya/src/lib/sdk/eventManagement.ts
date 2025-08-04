@@ -348,11 +348,11 @@ export class EventManagementSDK {
                 // Get the full event object
                 const eventResponse = await suiClient.getObject({
                   id: eventData.event_id,
-        options: {
-          showContent: true,
-          showType: true,
-        },
-      });
+                  options: {
+                    showContent: true,
+                    showType: true,
+                  },
+                });
 
                 if (eventResponse.data?.content?.dataType === "moveObject") {
                   const fields = eventResponse.data.content.fields as any;
@@ -544,6 +544,137 @@ export class EventManagementSDK {
     } catch (error) {
       console.error("Error checking organizer profile:", error);
       return false;
+    }
+  }
+
+  /**
+   * Check if a user has a regular profile
+   */
+  async hasProfile(
+    address: string,
+    profileRegistryId: string
+  ): Promise<boolean> {
+    console.log("🔍 Checking if user has profile...");
+    console.log("👤 Address:", address);
+    console.log("🏛️ Profile registry ID:", profileRegistryId);
+
+    try {
+      // Query the ProfileRegistry to check if the user has a profile
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${this.packageId}::event_management::has_profile`,
+        arguments: [tx.object(profileRegistryId), tx.pure.address(address)],
+      });
+
+      console.log("📦 Created transaction for has_profile check");
+      console.log(
+        "🎯 Target:",
+        `${this.packageId}::event_management::has_profile`
+      );
+
+      const result = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: address,
+      });
+
+      console.log("📋 has_profile result:", result);
+
+      if (result && result.results && result.results.length > 0) {
+        const returnVals = result.results[0].returnValues;
+        console.log("🔄 Return values:", returnVals);
+
+        if (Array.isArray(returnVals) && returnVals.length > 0) {
+          // The function returns a boolean, so we check if it's true
+          const returnVal = returnVals[0];
+          console.log("📊 Return value:", returnVal);
+
+          if (Array.isArray(returnVal)) {
+            const hasProfile = (returnVal[0] as unknown as number) === 1;
+            console.log("✅ hasProfile (array):", hasProfile);
+            return hasProfile;
+          } else {
+            const hasProfile = returnVal === "true";
+            console.log("✅ hasProfile (string):", hasProfile);
+            return hasProfile;
+          }
+        }
+      }
+
+      console.log("❌ No return values found, returning false");
+      return false;
+    } catch (error) {
+      console.error("❌ Error checking user profile:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Creates a new regular user profile
+   */
+  createProfile(
+    name: string,
+    bio: string,
+    photoUrl: string,
+    telegramUsername: string,
+    xUsername: string,
+    profileRegistryId: string,
+    recipient: string
+  ): Transaction {
+    const tx = new Transaction();
+
+    const [profileCap] = tx.moveCall({
+      target: `${this.packageId}::event_management::create_profile`,
+      arguments: [
+        tx.pure.string(name),
+        tx.pure.string(bio),
+        tx.pure.string(photoUrl),
+        tx.pure.string(telegramUsername),
+        tx.pure.string(xUsername),
+        tx.object(CLOCK_ID),
+        tx.object(profileRegistryId),
+      ],
+    });
+
+    // Transfer the ProfileCap to the user
+    tx.transferObjects([profileCap], tx.pure.address(recipient));
+    tx.setGasBudget(10000000);
+    return tx;
+  }
+
+  /**
+   * Get user profile by ID
+   */
+  async getUserProfile(profileId: string): Promise<any> {
+    try {
+      const response = await suiClient.getObject({
+        id: profileId,
+        options: {
+          showContent: true,
+          showType: true,
+        },
+      });
+
+      if (
+        !response.data?.content ||
+        response.data.content.dataType !== "moveObject"
+      ) {
+        return null;
+      }
+
+      const fields = response.data.content.fields as any;
+      return {
+        id: fields.id.id,
+        address: fields.address,
+        name: fields.name,
+        bio: fields.bio,
+        photo_url: fields.photo_url,
+        telegram_username: fields.telegram_username,
+        x_username: fields.x_username,
+        created_at: parseInt(fields.created_at),
+      };
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      return null;
     }
   }
 

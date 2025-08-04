@@ -1,15 +1,15 @@
-# EIA Escrow Settlement Contract Documentation
+# Ariya Escrow Settlement Contract Documentation
 
 ## Overview
 
-The EIA Escrow Settlement contract manages sponsor funds and automates settlement based on event performance metrics within the Ephemeral Identity & Attendance (EIA) Protocol. This contract enables sponsors to deposit funds with predefined conditions, automatically releasing funds to organizers when benchmarks are met or refunding sponsors when conditions fail.
+The ariya Escrow Settlement contract manages sponsor funds and automates settlement based on event performance metrics within the Ephemeral Identity & Attendance (ariya) Protocol. This contract enables sponsors to deposit funds with predefined conditions, automatically releasing funds to organizers when benchmarks are met or refunding sponsors when conditions fail.
 
 ## Module Information
 
-- **Module**: `eia::escrow_settlement`
+- **Module**: `ariya::escrow_settlement`
 - **Network**: Sui Blockchain
 - **Language**: Move
-- **Dependencies**: `eia::event_management`, `eia::attendance_verification`, `eia::rating_reputation`
+- **Dependencies**: `ariya::event_management`, `ariya::attendance_verification`, `ariya::rating_reputation`
 
 ## Core Data Structures
 
@@ -1288,4 +1288,4 @@ function EscrowAnalyticsDashboard() {
 4. **Cross-Chain**: Bridge support for multi-chain sponsorships
 5. **AI Analytics**: Machine learning for performance prediction
 
-This contract provides a comprehensive, secure foundation for automated sponsorship management within the EIA Protocol, enabling trustless performance-based funding while protecting both sponsors and organizers through transparent, verifiable settlement mechanisms.
+This contract provides a comprehensive, secure foundation for automated sponsorship management within the ariya Protocol, enabling trustless performance-based funding while protecting both sponsors and organizers through transparent, verifiable settlement mechanisms.

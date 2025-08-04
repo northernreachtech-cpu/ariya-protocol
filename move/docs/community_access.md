@@ -1,15 +1,15 @@
-# EIA Community Access Contract Documentation
+# Ariya Community Access Contract Documentation
 
 ## Overview
 
-The EIA Community Access contract enables event organizers to create token-gated communities based on event participation within the Ephemeral Identity & Attendance (EIA) Protocol. This contract manages community membership through NFT ownership verification, provides access control mechanisms, and facilitates ongoing engagement between event participants through exclusive community features.
+The ariya Community Access contract enables event organizers to create token-gated communities based on event participation within the Ephemeral Identity & Attendance (ariya) Protocol. This contract manages community membership through NFT ownership verification, provides access control mechanisms, and facilitates ongoing engagement between event participants through exclusive community features.
 
 ## Module Information
 
-- **Module**: `eia::community_access`
+- **Module**: `ariya::community_access`
 - **Network**: Sui Blockchain
 - **Language**: Move
-- **Dependencies**: `eia::event_management`, `eia::nft_minting`
+- **Dependencies**: `ariya::event_management`, `ariya::nft_minting`
 
 ## Core Data Structures
 
@@ -616,4 +616,4 @@ const result = await client.devInspectTransactionBlock({
 4. **Content Management**: Decentralized content creation and curation
 5. **Marketplace Integration**: Community-exclusive marketplace access
 
-This contract provides a comprehensive foundation for building token-gated communities within the EIA Protocol, enabling lasting engagement between event participants while ensuring only genuine attendees gain access through verifiable NFT ownership and transparent eligibility criteria.
+This contract provides a comprehensive foundation for building token-gated communities within the ariya Protocol, enabling lasting engagement between event participants while ensuring only genuine attendees gain access through verifiable NFT ownership and transparent eligibility criteria.

@@ -1,4 +1,4 @@
-module eia::airdrop_distribution;
+module ariya::airdrop_distribution;
 
 use std::string::String;
 use sui::coin::{Self, Coin};
@@ -7,10 +7,10 @@ use sui::balance::{Self, Balance};
 use sui::table::{Self, Table};
 use sui::event;
 use sui::clock::{Self, Clock};
-use eia::event_management::{Self, Event};
-use eia::nft_minting::{Self, NFTRegistry};
-use eia::attendance_verification::{Self, AttendanceRegistry};
-use eia::rating_reputation::{Self, RatingRegistry};
+use ariya::event_management::{Self, Event};
+use ariya::nft_minting::{Self, NFTRegistry};
+use ariya::attendance_verification::{Self, AttendanceRegistry};
+use ariya::rating_reputation::{Self, RatingRegistry};
 
 // Error codes
 const ENotOrganizer: u64 = 1;

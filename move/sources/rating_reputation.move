@@ -1,11 +1,11 @@
-module eia::rating_reputation;
+module ariya::rating_reputation;
 
 use std::string::String;
 use sui::table::{Self, Table};
 use sui::event;
 use sui::clock::{Self, Clock};
-use eia::attendance_verification::{Self, AttendanceRegistry};
-use eia::event_management::{Self, Event, OrganizerProfile};
+use ariya::attendance_verification::{Self, AttendanceRegistry};
+use ariya::event_management::{Self, Event, OrganizerProfile};
 
 // Error codes
 const ENotEligibleToRate: u64 = 1;
