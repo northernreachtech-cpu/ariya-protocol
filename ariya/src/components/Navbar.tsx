@@ -66,6 +66,11 @@ const Navbar = () => {
       label: "Dashboard",
       items: [
         {
+          name: "User Dashboard",
+          href: "/dashboard",
+          icon: <Users size={16} />,
+        },
+        {
           name: "Organizer Dashboard",
           href: "/dashboard/organizer",
           icon: <Users size={16} />,
@@ -106,7 +111,7 @@ const Navbar = () => {
         { name: "Organizers", href: "/organizers", icon: <Users size={16} /> },
         {
           name: "Create Profile",
-          href: "/profile/organizer/create",
+          href: "/create-organizer-profile",
           icon: <Settings size={16} />,
         },
       ],
@@ -117,7 +122,7 @@ const Navbar = () => {
     return location.pathname === href;
   };
 
-  const isActiveDropdown = (items: any[]) => {
+  const isActiveDropdown = (items: Array<{ href: string }>) => {
     return items.some((item) => isActiveLink(item.href));
   };
 

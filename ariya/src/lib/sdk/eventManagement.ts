@@ -192,7 +192,17 @@ export class EventManagementSDK {
   /**
    * Extract event ID from transaction result
    */
-  extractEventIdFromResult(result: any): string | null {
+  extractEventIdFromResult(result: {
+    events?: Array<{
+      type?: string;
+      parsedJson?: { event_id?: string };
+    }>;
+    objectChanges?: Array<{
+      type: string;
+      objectType?: string;
+      objectId: string;
+    }>;
+  }): string | null {
     try {
       // Look for EventCreated event in the transaction result
       if (result.events) {
@@ -242,7 +252,30 @@ export class EventManagementSDK {
         return null;
       }
 
-      const fields = response.data.content.fields as any;
+      const fields = response.data.content.fields as {
+        id: { id: string };
+        name: string;
+        description: string;
+        location: string;
+        start_time: string;
+        end_time: string;
+        capacity: string;
+        current_attendees: string;
+        organizer: string;
+        state: string;
+        created_at: string;
+        sponsor_conditions: {
+          min_attendees: number;
+          min_completion_rate: number;
+          min_avg_rating: number;
+          custom_benchmarks: Array<{
+            description: string;
+            target_value: number;
+            current_value: number;
+          }>;
+        };
+        metadata_uri: string;
+      };
       return {
         id: fields.id.id,
         name: fields.name,
@@ -286,7 +319,17 @@ export class EventManagementSDK {
         return null;
       }
 
-      const fields = response.data.content.fields as any;
+      const fields = response.data.content.fields as {
+        id: { id: string };
+        address: string;
+        name: string;
+        bio: string;
+        total_events: string;
+        successful_events: string;
+        total_attendees_served: string;
+        avg_rating: string;
+        created_at: string;
+      };
       return {
         id: fields.id.id,
         address: fields.address,
@@ -309,7 +352,7 @@ export class EventManagementSDK {
    */
   async getEventsByOrganizer(
     organizerAddress: string,
-    _eventRegistryId: string
+    _eventRegistryId: string // eslint-disable-line @typescript-eslint/no-unused-vars
   ): Promise<EventInfo[]> {
     try {
       // Since events are shared objects, we need to query them differently
@@ -355,7 +398,12 @@ export class EventManagementSDK {
                 });
 
                 if (eventResponse.data?.content?.dataType === "moveObject") {
-                  const fields = eventResponse.data.content.fields as any;
+                  const fields = eventResponse.data.content.fields as {
+                    name: string;
+                    organizer: string;
+                    start_time: string;
+                    state: string;
+                  };
                   eventInfos.push({
                     id: eventData.event_id,
                     name: fields.name,
@@ -420,7 +468,12 @@ export class EventManagementSDK {
                 });
 
                 if (eventResponse.data?.content?.dataType === "moveObject") {
-                  const fields = eventResponse.data.content.fields as any;
+                  const fields = eventResponse.data.content.fields as {
+                    name: string;
+                    organizer: string;
+                    start_time: string;
+                    state: string;
+                  };
                   eventInfos.push({
                     id: eventData.event_id,
                     name: fields.name,
@@ -482,7 +535,17 @@ export class EventManagementSDK {
               });
 
               if (profileResponse.data?.content?.dataType === "moveObject") {
-                const fields = profileResponse.data.content.fields as any;
+                const fields = profileResponse.data.content.fields as {
+                  id: { id: string };
+                  address: string;
+                  name: string;
+                  bio: string;
+                  total_events: string;
+                  successful_events: string;
+                  total_attendees_served: string;
+                  avg_rating: string;
+                  created_at: string;
+                };
                 organizers.push({
                   id: fields.id.id,
                   address: fields.address,
@@ -572,39 +635,70 @@ export class EventManagementSDK {
         `${this.packageId}::event_management::has_profile`
       );
 
-      const result = await suiClient.devInspectTransactionBlock({
+      const response = await suiClient.devInspectTransactionBlock({
         transactionBlock: tx,
         sender: address,
       });
 
-      console.log("📋 has_profile result:", result);
+      console.log("📋 has_profile result:", response);
 
-      if (result && result.results && result.results.length > 0) {
-        const returnVals = result.results[0].returnValues;
-        console.log("🔄 Return values:", returnVals);
-
-        if (Array.isArray(returnVals) && returnVals.length > 0) {
-          // The function returns a boolean, so we check if it's true
-          const returnVal = returnVals[0];
-          console.log("📊 Return value:", returnVal);
-
-          if (Array.isArray(returnVal)) {
-            const hasProfile = (returnVal[0] as unknown as number) === 1;
-            console.log("✅ hasProfile (array):", hasProfile);
-            return hasProfile;
-          } else {
-            const hasProfile = returnVal === "true";
-            console.log("✅ hasProfile (string):", hasProfile);
-            return hasProfile;
-          }
-        }
-      }
-
-      console.log("❌ No return values found, returning false");
-      return false;
+      return response.results?.[0]?.returnValues?.[0]?.[0]?.[0] === 1;
     } catch (error) {
       console.error("❌ Error checking user profile:", error);
       return false;
+    }
+  }
+
+  /**
+   * Get user profile ID from registry
+   */
+  async getUserProfileId(
+    address: string,
+    profileRegistryId: string
+  ): Promise<string | null> {
+    try {
+      console.log("🔍 Getting user profile ID for address:", address);
+      console.log("🏛️ Profile registry ID:", profileRegistryId);
+
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${this.packageId}::event_management::get_user_profile_id`,
+        arguments: [tx.object(profileRegistryId), tx.pure.address(address)],
+      });
+
+      const response = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: address,
+      });
+
+      console.log("📋 get_user_profile_id response:", response);
+
+      const returnValue = response.results?.[0]?.returnValues?.[0];
+      console.log("📦 Return value:", returnValue);
+
+      if (returnValue && Array.isArray(returnValue) && returnValue.length > 0) {
+        // The return value should be a byte array representing the ID
+        // We need to convert it to a proper Sui object ID format
+        const idBytes = returnValue[0];
+        if (typeof idBytes === 'string') {
+          console.log("✅ Found profile ID:", idBytes);
+          return idBytes;
+        } else if (Array.isArray(idBytes)) {
+          // If it's a byte array, we need to convert it to a hex string
+          console.log("🔄 Converting byte array to hex string");
+          const hexString = '0x' + Array.from(idBytes as number[])
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+          console.log("✅ Converted profile ID:", hexString);
+          return hexString;
+        }
+      }
+
+      console.log("❌ No valid profile ID found");
+      return null;
+    } catch (error) {
+      console.error("❌ Error getting user profile ID:", error);
+      return null;
     }
   }
 
@@ -644,7 +738,16 @@ export class EventManagementSDK {
   /**
    * Get user profile by ID
    */
-  async getUserProfile(profileId: string): Promise<any> {
+  async getUserProfile(profileId: string): Promise<{
+    id: string;
+    address: string;
+    name: string;
+    bio: string;
+    photo_url: string;
+    telegram_username: string;
+    x_username: string;
+    created_at: number;
+  } | null> {
     try {
       const response = await suiClient.getObject({
         id: profileId,
@@ -661,7 +764,17 @@ export class EventManagementSDK {
         return null;
       }
 
-      const fields = response.data.content.fields as any;
+      const fields = response.data.content.fields as {
+        id: { id: string };
+        address: string;
+        name: string;
+        bio: string;
+        photo_url: string;
+        telegram_username: string;
+        x_username: string;
+        created_at: string;
+      };
+      
       return {
         id: fields.id.id,
         address: fields.address,
@@ -679,11 +792,68 @@ export class EventManagementSDK {
   }
 
   /**
+   * Get user profile by address (helper function)
+   */
+  async getUserProfileByAddress(
+    address: string,
+    profileRegistryId: string
+  ): Promise<{
+    id: string;
+    address: string;
+    name: string;
+    bio: string;
+    photo_url: string;
+    telegram_username: string;
+    x_username: string;
+    created_at: number;
+  } | null> {
+    try {
+      console.log("🔍 Getting user profile by address:", address);
+      console.log("🏛️ Profile registry ID:", profileRegistryId);
+
+      // First check if user has a profile
+      const hasProfile = await this.hasProfile(address, profileRegistryId);
+      console.log("✅ Has profile:", hasProfile);
+      
+      if (!hasProfile) {
+        console.log("❌ User does not have a profile");
+        return null;
+      }
+
+      // Get the profile ID
+      const profileId = await this.getUserProfileId(address, profileRegistryId);
+      console.log("📋 Profile ID:", profileId);
+      
+      if (!profileId) {
+        console.log("❌ Could not get profile ID");
+        return null;
+      }
+
+      // Validate profile ID format
+      if (typeof profileId !== 'string' || !profileId.startsWith('0x')) {
+        console.error("❌ Invalid profile ID format:", profileId);
+        return null;
+      }
+
+      console.log("🔍 Fetching profile details for ID:", profileId);
+
+      // Get the profile details
+      const profile = await this.getUserProfile(profileId);
+      console.log("📋 Profile details:", profile);
+      
+      return profile;
+    } catch (error) {
+      console.error("❌ Error fetching user profile by address:", error);
+      return null;
+    }
+  }
+
+  /**
    * Get real-time attendee count for an event
    */
   async getEventAttendeeCount(
     eventId: string,
-    _registrationRegistryId: string
+    _registrationRegistryId: string // eslint-disable-line @typescript-eslint/no-unused-vars
   ): Promise<number> {
     try {
       // Query registration events for this specific event

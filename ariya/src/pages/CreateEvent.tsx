@@ -72,7 +72,9 @@ const CreateEvent = () => {
         // Get profile ID from OrganizerCap
         const obj = objects[0];
         if (obj.data?.content?.dataType === "moveObject") {
-          const fields = obj.data.content.fields as any;
+          const fields = obj.data.content.fields as {
+            profile_id: string;
+          };
           setProfileId(fields.profile_id);
         }
       } catch (error) {
@@ -190,7 +192,8 @@ const CreateEvent = () => {
 
             // Extract event ID from the result
             const eventId =
-              sdk.eventManagement.extractEventIdFromResult(result);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              sdk.eventManagement.extractEventIdFromResult(result as any);
             if (eventId) {
               console.log("Event ID:", eventId);
               // You can now use this event ID to fetch event details or navigate to event page

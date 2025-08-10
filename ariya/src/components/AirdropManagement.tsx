@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Gift,
   Users,
   Clock,
-  DollarSign,
   CheckCircle,
   XCircle,
   AlertCircle,
@@ -32,7 +31,6 @@ interface AirdropManagementProps {
 }
 
 const AirdropManagement = ({
-  eventId,
   airdrops,
   userAddress,
   isOrganizer = false,
@@ -41,10 +39,12 @@ const AirdropManagement = ({
   onViewDetails,
   loading = false,
 }: AirdropManagementProps) => {
-  const [claimStatuses, setClaimStatuses] = useState<
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [claimStatuses, _setClaimStatuses] = useState<
     Record<string, ClaimStatus>
   >({});
-  const [eligibilityStatuses, setEligibilityStatuses] = useState<
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [eligibilityStatuses, _setEligibilityStatuses] = useState<
     Record<string, boolean>
   >({});
 
@@ -439,11 +439,8 @@ const AirdropManagement = ({
                   {isOrganizer && (
                     <div className="flex items-center justify-between pt-4 border-t border-border">
                       <div className="text-sm text-foreground-secondary">
-                        Created{" "}
-                        {formatDate(
-                          airdrop.expiresAt -
-                            airdrop.validityDays * 24 * 60 * 60 * 1000
-                        )}
+                        Expires{" "}
+                        {formatDate(airdrop.expiresAt)}
                       </div>
 
                       <div className="flex gap-2">

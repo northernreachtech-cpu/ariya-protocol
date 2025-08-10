@@ -1,4 +1,4 @@
-import { Gift, Users, Clock, CheckCircle } from "lucide-react";
+import { Gift, CheckCircle } from "lucide-react";
 import Button from "./Button";
 import Card from "./Card";
 
@@ -9,7 +9,6 @@ interface AirdropDisplayProps {
 }
 
 const AirdropDisplay = ({
-  eventId,
   userAddress,
   onClaim,
 }: AirdropDisplayProps) => {

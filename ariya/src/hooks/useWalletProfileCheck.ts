@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useCurrentAccount } from "@mysten/dapp-kit";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAriyaSDK } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
 
@@ -13,6 +14,8 @@ interface ProfileStatus {
 
 export const useWalletProfileCheck = () => {
   const currentAccount = useCurrentAccount();
+  const navigate = useNavigate();
+  const location = useLocation();
   const sdk = useAriyaSDK();
   const profileRegistryId = useNetworkVariable("profileRegistryId");
 
@@ -66,6 +69,19 @@ export const useWalletProfileCheck = () => {
         needsGeneralProfile,
         needsOrganizerProfile,
       });
+
+             // Auto-redirect users with general profiles to dashboard (except if already on dashboard or creating profile)
+       if (hasGeneralProfile && !needsGeneralProfile) {
+         const currentPath = location.pathname;
+         const isOnDashboard = currentPath.startsWith('/dashboard');
+         const isCreatingProfile = currentPath.includes('/profile/');
+         const isOnLanding = currentPath === '/';
+         
+         if (!isOnDashboard && !isCreatingProfile && isOnLanding) {
+           console.log("🔄 User has general profile, redirecting to dashboard...");
+           navigate("/dashboard");
+         }
+       }
     } catch (error) {
       console.error("❌ Error checking profiles:", error);
       setProfileStatus((prev) => ({ ...prev, isLoading: false }));

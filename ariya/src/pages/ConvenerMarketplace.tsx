@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Star, Users, Calendar, Loader2 } from "lucide-react";
+import { Search, Star, Users, Calendar } from "lucide-react";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import OrganizerCardSkeleton from "../components/OrganizerCardSkeleton";

@@ -16,7 +16,6 @@ interface ErrorModalProps {
 const ErrorModal = ({
   isOpen,
   onClose,
-  title = "Something went wrong",
   message,
   error,
   onRetry,

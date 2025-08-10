@@ -69,7 +69,7 @@ function AppContent() {
         <Route path="/event/:id" element={<EventDetails />} />
         <Route path="/organizers" element={<ConvenerMarketplace />} />
         <Route
-          path="/profile/organizer/create"
+          path="/create-organizer-profile"
           element={<CreateOrganizerProfile />}
         />
         <Route path="/dashboard" element={<UserDashboard />} />

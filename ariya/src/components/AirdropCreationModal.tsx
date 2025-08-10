@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Gift, Users, Clock, Star, CheckCircle } from "lucide-react";
+import { X, Gift, Users, Clock, CheckCircle } from "lucide-react";
 import Button from "./Button";
 import {
   AIRDROP_DISTRIBUTION_TYPES,
@@ -116,7 +116,7 @@ const AirdropCreationModal = ({
 
   const updateEligibility = (
     field: keyof AirdropEligibilityCriteria,
-    value: any
+    value: unknown
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -256,7 +256,8 @@ const AirdropCreationModal = ({
                           onChange={(e) =>
                             setFormData((prev) => ({
                               ...prev,
-                              distributionType: parseInt(e.target.value),
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              distributionType: parseInt(e.target.value) as any,
                             }))
                           }
                           className="mt-1"

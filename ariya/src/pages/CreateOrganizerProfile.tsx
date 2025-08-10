@@ -18,7 +18,7 @@ const CreateOrganizerProfile = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [_hasProfile, setHasProfile] = useState<boolean | null>(null);
+  // const [_hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(true);
 
   const navigate = useNavigate();
@@ -30,7 +30,6 @@ const CreateOrganizerProfile = () => {
   useEffect(() => {
     const checkProfile = async () => {
       if (!currentAccount) {
-        setHasProfile(null);
         setIsChecking(false);
         return;
       }
@@ -40,7 +39,6 @@ const CreateOrganizerProfile = () => {
         const exists = await sdk.eventManagement.hasOrganizerProfile(
           currentAccount.address
         );
-        setHasProfile(exists);
         if (exists) {
           // If they have a profile, redirect to dashboard
           navigate("/dashboard/organizer");

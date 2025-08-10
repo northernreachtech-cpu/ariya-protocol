@@ -44,11 +44,20 @@ const UserDashboard = () => {
       // Load user profile
       if (profileRegistryId) {
         try {
-          const profile = await sdk.eventManagement.getUserProfile(
+          const profile = await sdk.eventManagement.getUserProfileByAddress(
             currentAccount.address,
             profileRegistryId
           );
-          setUserProfile(profile);
+          if (profile) {
+            setUserProfile({
+              id: profile.id,
+              name: profile.name,
+              bio: profile.bio,
+              photoUrl: profile.photo_url,
+              telegramUsername: profile.telegram_username,
+              xUsername: profile.x_username,
+            });
+          }
         } catch (error) {
           console.error("Error loading user profile:", error);
         }
@@ -110,7 +119,7 @@ const UserDashboard = () => {
                     )}
                   </div>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" disabled>
                   <Edit className="mr-2 h-4 w-4" />
                   Edit Profile
                 </Button>
@@ -132,7 +141,7 @@ const UserDashboard = () => {
               You're an organizer! Your events and management tools will appear
               here.
             </p>
-            <Button onClick={() => navigate("/organizer-dashboard")}>
+            <Button onClick={() => navigate("/dashboard/organizer")}>
               <Plus className="mr-2 h-4 w-4" />
               Go to Organizer Dashboard
             </Button>

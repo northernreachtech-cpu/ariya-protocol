@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Calendar,
   Users,
@@ -27,7 +27,7 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import StatCard from "../components/StatCard";
 import AirdropCreationModal from "../components/AirdropCreationModal";
-import AirdropManagement from "../components/AirdropManagement";
+// import AirdropManagement from "../components/AirdropManagement";
 import ErrorModal from "../components/ErrorModal";
 
 import RatingStars from "../components/RatingStars";
@@ -36,8 +36,8 @@ import useScrollToTop from "../hooks/useScrollToTop";
 import { suiClient } from "../config/sui";
 import {
   type AirdropConfig,
-  type AirdropDetails,
-  type ClaimStatus,
+  // type AirdropDetails,
+  // type ClaimStatus,
 } from "../lib/sdk";
 
 interface Event {
@@ -51,6 +51,8 @@ interface Event {
   rating: number;
   revenue: number;
   state: number; // Add state for activation logic
+  metadata_uri?: string;
+  location?: string;
 }
 
 // Simple SuccessModal component
@@ -147,7 +149,7 @@ const OrganizerDashboard = () => {
   const nftRegistryId = useNetworkVariable("nftRegistryId");
   const communityRegistryId = useNetworkVariable("communityRegistryId");
   const airdropRegistryId = useNetworkVariable("airdropRegistryId");
-  const ratingRegistryId = useNetworkVariable("ratingRegistryId");
+  // const ratingRegistryId = useNetworkVariable("ratingRegistryId");
   const profileRegistryId = useNetworkVariable("profileRegistryId");
 
   const [loading, setLoading] = useState(true);
@@ -167,19 +169,23 @@ const OrganizerDashboard = () => {
   >(null);
   const [completingEvent, setCompletingEvent] = useState<string | null>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
-  const [eventToComplete, setEventToComplete] = useState<any>(null);
+  const [eventToComplete, setEventToComplete] = useState<Event | null>(null);
   const [organizerProfileId, setOrganizerProfileId] = useState<string | null>(
     null
   );
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareEventLink, setShareEventLink] = useState("");
   const [showCommunityModal, setShowCommunityModal] = useState(false);
-  const [communityEvent, setCommunityEvent] = useState<any>(null);
+  const [communityEvent, setCommunityEvent] = useState<Event | null>(null);
   const [creatingCommunity, setCreatingCommunity] = useState(false);
   const [communityName, setCommunityName] = useState("");
   const [communityDescription, setCommunityDescription] = useState("");
   const [eventCommunities, setEventCommunities] = useState<{
-    [eventId: string]: any;
+    [eventId: string]: {
+      id: string;
+      name: string;
+      description: string;
+    } | null;
   }>({});
   const [checkingCommunities, setCheckingCommunities] = useState<{
     [eventId: string]: boolean;
@@ -189,8 +195,9 @@ const OrganizerDashboard = () => {
   }>({});
   const [showAirdropModal, setShowAirdropModal] = useState(false);
   const [selectedEventForAirdrop, setSelectedEventForAirdrop] =
-    useState<any>(null);
+    useState<Event | null>(null);
   const [creatingAirdrop, setCreatingAirdrop] = useState(false);
+  const [isOrganizer, setIsOrganizer] = useState(false);
 
   // Airdrop validation state
   const [eventEligibleRecipients, setEventEligibleRecipients] = useState<{
@@ -240,10 +247,10 @@ const OrganizerDashboard = () => {
         if (obj.data?.content?.dataType === "moveObject") {
           const fields = obj.data.content.fields;
           // Extract profileId as a string
-          const profileId =
-            typeof (fields as any)["profile_id"] === "string"
-              ? (fields as any)["profile_id"]
-              : undefined;
+          const fieldsTyped = fields as { profile_id?: string };
+          const profileId = typeof fieldsTyped.profile_id === "string"
+            ? fieldsTyped.profile_id
+            : undefined;
           if (profileId) {
             setOrganizerProfileId(profileId);
             break;
@@ -265,7 +272,7 @@ const OrganizerDashboard = () => {
 
       // Reload events to reflect the state change
       await loadOrganizerData();
-    } catch (error) {
+    } catch {
       alert("Failed to activate event. Please try again.");
     } finally {
       setActivatingEvent(null);
@@ -282,19 +289,20 @@ const OrganizerDashboard = () => {
     setShowCheckOutScanner(true);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleQRScan = async (qrData: any) => {
     try {
       let userAddress = "";
 
       // Check if this is the new QR format with pass_id
-      if (qrData.pass_id && qrData.pass_hash === null) {
+      if (qrData.pass_id && qrData.pass_hash === null && qrData.user_address) {
         userAddress = qrData.user_address;
 
         // Use the new check-in method that generates pass hash from pass_id
         const tx = sdk.attendanceVerification.checkInAttendeeWithPassId(
           selectedEventId!,
           qrData.user_address,
-          qrData.pass_id,
+          parseInt(qrData.pass_id),
           attendanceRegistryId,
           registrationRegistryId
         );
@@ -309,8 +317,10 @@ const OrganizerDashboard = () => {
       } else {
         // Fallback to old method for backward compatibility
         // Validate QR code
+        
         const validation = await sdk.attendanceVerification.validateQRCode(
-          qrData,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          qrData as any,
           selectedEventId!
         );
 
@@ -327,7 +337,8 @@ const OrganizerDashboard = () => {
           validation.attendeeAddress!,
           attendanceRegistryId,
           registrationRegistryId,
-          qrData
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          qrData as any
         );
 
         await signAndExecute({
@@ -366,7 +377,7 @@ const OrganizerDashboard = () => {
               content.dataType === "moveObject" &&
               "fields" in content
             ) {
-              const fields = (content as any).fields;
+              const fields = (content as { fields: { event_id?: string } }).fields;
               console.log("Capability object:", fields);
               if (fields && fields.event_id === selectedEventId) {
                 console.log(
@@ -384,12 +395,15 @@ const OrganizerDashboard = () => {
 
       // Reload events to update attendee count
       await loadOrganizerData();
-    } catch (error) {
+    } catch {
       alert("Failed to check in attendee. Please try again.");
     }
   };
 
-  const handleCheckOutQRScan = async (qrData: any) => {
+  const handleCheckOutQRScan = async (qrData: {
+    user_address: string;
+    event_id: string;
+  }) => {
     try {
       // Expect qrData.user_address and qrData.event_id
       if (!qrData.user_address || !qrData.event_id) {
@@ -408,12 +422,12 @@ const OrganizerDashboard = () => {
       );
       setShowSuccessModal(true);
       await loadOrganizerData();
-    } catch (error) {
+    } catch {
       alert("Failed to check out attendee. Please try again.");
     }
   };
 
-  const handleSetEventMetadata = async (event: any) => {
+  const handleSetEventMetadata = async (event: Event) => {
     if (!nftRegistryId || !currentAccount) return;
     setSettingMetadataEvent(event.id);
     try {
@@ -432,15 +446,16 @@ const OrganizerDashboard = () => {
       await signAndExecute({ transaction: tx });
       setSuccessMessage("Event metadata set successfully for NFT minting!");
       setShowSuccessModal(true);
-    } catch (e: any) {
-      setSuccessMessage(e.message || "Failed to set event metadata.");
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      setSuccessMessage(error.message || "Failed to set event metadata.");
       setShowSuccessModal(true);
     } finally {
       setSettingMetadataEvent(null);
     }
   };
 
-  const handleCompleteEvent = (event: any) => {
+  const handleCompleteEvent = (event: Event) => {
     // Log all relevant IDs and event object for confirmation
     console.log("Selected event for completion:", {
       eventId: event.id,
@@ -471,9 +486,10 @@ const OrganizerDashboard = () => {
       setShowSuccessModal(true);
       setShowCompleteModal(false);
       await loadOrganizerData();
-    } catch (e: any) {
+    } catch (e: unknown) {
       // Enhanced error handling for Move abort codes
-      let message = e.message || "Failed to complete event.";
+      const error = e as { message?: string };
+      let message = error.message || "Failed to complete event.";
       if (
         message.includes("MoveAbort") &&
         message.includes('function_name: Some("complete_event")')
@@ -496,7 +512,7 @@ const OrganizerDashboard = () => {
     }
   };
 
-  const checkEventCommunity = async (eventId: string) => {
+  const checkEventCommunity = useCallback(async (eventId: string) => {
     if (!communityRegistryId) return;
 
     setCheckingCommunities((prev) => ({ ...prev, [eventId]: true }));
@@ -515,9 +531,9 @@ const OrganizerDashboard = () => {
     } finally {
       setCheckingCommunities((prev) => ({ ...prev, [eventId]: false }));
     }
-  };
+  }, [communityRegistryId, sdk]);
 
-  const checkNFTMintingStatus = async (eventId: string) => {
+  const checkNFTMintingStatus = useCallback(async (eventId: string) => {
     if (!nftRegistryId) return;
 
     try {
@@ -535,13 +551,13 @@ const OrganizerDashboard = () => {
       });
 
       setEventsWithNFTEnabled((prev) => ({ ...prev, [eventId]: true }));
-    } catch (e) {
+    } catch {
       // If this call fails, NFT minting is not enabled
       setEventsWithNFTEnabled((prev) => ({ ...prev, [eventId]: false }));
     }
-  };
+  }, [nftRegistryId, sdk, currentAccount]);
 
-  const handleCreateCommunity = async (event: any) => {
+  const handleCreateCommunity = async (event: Event) => {
     // Check if community already exists
     await checkEventCommunity(event.id);
 
@@ -604,8 +620,9 @@ const OrganizerDashboard = () => {
       if (communityEvent) {
         await checkEventCommunity(communityEvent.id);
       }
-    } catch (e: any) {
-      let message = e.message || "Failed to create community.";
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      let message = error.message || "Failed to create community.";
 
       // Handle specific Move abort codes
       if (message.includes("MoveAbort") && message.includes("7")) {
@@ -626,7 +643,7 @@ const OrganizerDashboard = () => {
     }
   };
 
-  const handleCreateAirdrop = async (event: any) => {
+  const handleCreateAirdrop = async (event: Event) => {
     // Check eligible recipients first
     await checkEligibleRecipients(event.id);
 
@@ -724,7 +741,7 @@ const OrganizerDashboard = () => {
 
       // Find a coin with sufficient balance
       const coinWithBalance = coinsResponse.data?.find(
-        (coin: any) => parseInt(coin.balance) >= amountInMist
+        (coin: { balance: string }) => parseInt(coin.balance) >= amountInMist
       );
 
       if (!coinWithBalance) {
@@ -749,10 +766,11 @@ const OrganizerDashboard = () => {
 
       // Refresh organizer data to show new airdrop
       await loadOrganizerData();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { message?: string };
       console.error("Failed to create airdrop:", error);
-      setErrorMessage(error.message || "Failed to create airdrop");
-      setErrorDetails(error);
+      setErrorMessage(err.message || "Failed to create airdrop");
+      setErrorDetails(error as Error);
       setErrorRetryAction(() => () => handleAirdropSubmit(config, amount));
       setShowErrorModal(true);
     } finally {
@@ -760,7 +778,7 @@ const OrganizerDashboard = () => {
     }
   };
 
-  const loadOrganizerData = async () => {
+  const loadOrganizerData = useCallback(async () => {
     if (!currentAccount) return;
 
     try {
@@ -821,35 +839,40 @@ const OrganizerDashboard = () => {
       for (const event of transformedEvents) {
         await checkNFTMintingStatus(event.id);
       }
-    } catch (error) {
+    } catch {
       // Only keep error log if needed for debugging
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentAccount, sdk, navigate, eventRegistryId, communityRegistryId, checkEventCommunity, checkNFTMintingStatus]);
 
   useEffect(() => {
     loadOrganizerData();
-  }, [currentAccount, sdk, navigate]);
+  }, [currentAccount, sdk, navigate, loadOrganizerData]);
 
-  // Check if user has general profile before allowing access
+  // Check if user has general profile and organizer status
   useEffect(() => {
-    const checkGeneralProfile = async () => {
+    const checkProfiles = async () => {
       if (!currentAccount) return;
 
-      const hasGeneralProfile = await sdk.eventManagement.hasProfile(
-        currentAccount.address,
-        profileRegistryId
-      );
+      const [hasGeneralProfile, hasOrganizerProfile] = await Promise.all([
+        sdk.eventManagement.hasProfile(
+          currentAccount.address,
+          profileRegistryId
+        ),
+        sdk.eventManagement.hasOrganizerProfile(currentAccount.address),
+      ]);
 
       if (!hasGeneralProfile) {
         // Redirect to home or show profile creation modal
         navigate("/");
         return;
       }
+
+      setIsOrganizer(hasOrganizerProfile);
     };
 
-    checkGeneralProfile();
+    checkProfiles();
   }, [currentAccount, sdk, navigate, profileRegistryId]);
 
   if (loading) {
@@ -936,7 +959,7 @@ const OrganizerDashboard = () => {
     }
   };
 
-  const getAirdropButtonStatus = (event: any) => {
+  const getAirdropButtonStatus = (event: Event) => {
     const recipients = eventEligibleRecipients[event.id];
     const isValidating = validatingAirdrop[event.id];
 
@@ -989,79 +1012,126 @@ const OrganizerDashboard = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div>
             <h1 className="text-3xl sm:text-4xl font-livvic font-bold bg-gradient-to-r from-primary to-secondary text-transparent bg-clip-text mb-2">
-              Organizer Dashboard
+              {isOrganizer ? "Organizer Dashboard" : "User Dashboard"}
             </h1>
             <p className="text-foreground-secondary text-sm sm:text-base">
-              Manage your events and track performance
+              {isOrganizer 
+                ? "Manage your events and track performance"
+                : "Ready to become an event organizer?"
+              }
             </p>
           </div>
 
-          <Button
-            onClick={() => navigate("/event/create")}
-            className="w-full sm:w-auto py-3 sm:py-2"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Create Event
-          </Button>
+          {isOrganizer ? (
+            <Button
+              onClick={() => navigate("/event/create")}
+              className="w-full sm:w-auto py-3 sm:py-2"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create Event
+            </Button>
+          ) : (
+            <Button
+              onClick={() => navigate("/profile/organizer/create")}
+              className="w-full sm:w-auto py-3 sm:py-2"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Become Organizer
+            </Button>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <StatCard
-            title="Total Events"
-            value={totalEvents}
-            icon={Calendar}
-            color="primary"
-            trend={{ value: 12, isPositive: true }}
-            description="Events created"
-          />
-          <StatCard
-            title="Total Attendees"
-            value={totalAttendees}
-            icon={Users}
-            color="secondary"
-            trend={{ value: 8, isPositive: true }}
-            description="Across all events"
-          />
-          <StatCard
-            title="Total Revenue"
-            value={`$${totalRevenue.toLocaleString()}`}
-            icon={DollarSign}
-            color="accent"
-            trend={{ value: 15, isPositive: true }}
-            description="Total earnings"
-          />
-          <StatCard
-            title="Average Rating"
-            value={avgRating ? avgRating.toFixed(1) : "0.0"}
-            icon={Star}
-            color="success"
-            description="Event feedback"
-          />
-        </div>
+        {isOrganizer ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <StatCard
+              title="Total Events"
+              value={totalEvents}
+              icon={Calendar}
+              color="primary"
+              trend={{ value: 12, isPositive: true }}
+              description="Events created"
+            />
+            <StatCard
+              title="Total Attendees"
+              value={totalAttendees}
+              icon={Users}
+              color="secondary"
+              trend={{ value: 8, isPositive: true }}
+              description="Across all events"
+            />
+            <StatCard
+              title="Total Revenue"
+              value={`$${totalRevenue.toLocaleString()}`}
+              icon={DollarSign}
+              color="accent"
+              trend={{ value: 15, isPositive: true }}
+              description="Total earnings"
+            />
+            <StatCard
+              title="Average Rating"
+              value={avgRating ? avgRating.toFixed(1) : "0.0"}
+              icon={Star}
+              color="success"
+              description="Event feedback"
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <StatCard
+              title="Events Attended"
+              value="0"
+              icon={Calendar}
+              color="primary"
+              description="Your event history"
+            />
+            <StatCard
+              title="Communities"
+              value="0"
+              icon={Users}
+              color="secondary"
+              description="Joined communities"
+            />
+            <StatCard
+              title="Profile Status"
+              value="Active"
+              icon={CheckCircle}
+              color="success"
+              description="General user"
+            />
+            <StatCard
+              title="Next Step"
+              value="Organizer"
+              icon={Plus}
+              color="accent"
+              description="Become an organizer"
+            />
+          </div>
+        )}
 
         <div className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
             <h2 className="text-xl sm:text-2xl font-bold text-foreground">
-              Your Events
+              {isOrganizer ? "Your Events" : "Get Started"}
             </h2>
           </div>
-          {events.length === 0 ? (
-            <div className="text-center py-12 sm:py-16">
-              <div className="mb-6">
-                <Calendar className="h-16 w-16 mx-auto text-foreground-muted" />
+          {isOrganizer ? (
+            events.length === 0 ? (
+              <div className="text-center py-12 sm:py-16">
+                <div className="mb-6">
+                  <Calendar className="h-16 w-16 mx-auto text-foreground-muted" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
+                  No events yet
+                </h3>
+                <p className="text-foreground-muted mb-6 max-w-md mx-auto">
+                  Create your first event to get started as an organizer.
+                </p>
+                <Button onClick={() => navigate("/event/create")}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Event
+                </Button>
               </div>
-              <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
-                No events yet
-              </h3>
-              <p className="text-foreground-muted mb-6 max-w-md mx-auto">
-                Create your first event to get started as an organizer.
-              </p>
-              <Button onClick={() => navigate("/event/create")}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Event
-              </Button>
-            </div>
-          ) : (
+            ) : (
             <>
               <div className="grid gap-4 sm:gap-6">
                 {loading
@@ -1407,6 +1477,23 @@ const OrganizerDashboard = () => {
                 </div>
               )}
             </>
+          )
+          ) : (
+            <div className="text-center py-12 sm:py-16">
+              <div className="mb-6">
+                <Users className="h-16 w-16 mx-auto text-foreground-muted" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
+                Ready to become an organizer?
+              </h3>
+              <p className="text-foreground-muted mb-6 max-w-md mx-auto">
+                Create an organizer profile to start hosting events and building communities.
+              </p>
+              <Button onClick={() => navigate("/profile/organizer/create")}>
+                <Plus className="mr-2 h-4 w-4" />
+                Become Organizer
+              </Button>
+            </div>
           )}
         </div>
 

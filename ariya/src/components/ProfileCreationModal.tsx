@@ -39,7 +39,7 @@ const ProfileCreationModal = ({
   const [error, setError] = useState<string>("");
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>("");
 
-  const handleProfilePictureUpload = (blobId: string, imageUrl: string) => {
+  const handleProfilePictureUpload = (_blobId: string, imageUrl: string) => {
     setUploadedImageUrl(imageUrl);
     setFormData((prev) => ({ ...prev, photoUrl: imageUrl }));
   };
