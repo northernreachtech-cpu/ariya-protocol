@@ -29,12 +29,37 @@ export class IdentityAccessSDK {
   async registerForEventAndGenerateQR(
     eventId: string,
     registrationRegistryId: string,
+    organizerSubscriptionId: string,
+    organizerProfileId: string,
+    treasuryId: string,
     userAddress: string,
-    signAndExecute: (params: { transaction: Transaction }) => Promise<any>
-  ): Promise<{ qrData: any; passHash: Uint8Array } | null> {
+    signAndExecute: (params: { transaction: Transaction }) => Promise<unknown>,
+    eventFeeAmount?: number,
+    paymentCoinId?: string
+  ): Promise<{ qrData: unknown; passHash: Uint8Array } | null> {
     try {
-      // 1. Register for the event
-      const registerTx = this.registerForEvent(eventId, registrationRegistryId);
+      // 1. Register for the event (free or paid)
+      let registerTx: Transaction;
+      
+      if (eventFeeAmount && eventFeeAmount > 0 && paymentCoinId) {
+        // Paid event
+        registerTx = this.registerForEvent(
+          eventId,
+          registrationRegistryId,
+          organizerSubscriptionId,
+          organizerProfileId,
+          treasuryId,
+          paymentCoinId
+        );
+      } else {
+        // Free event
+        registerTx = this.registerForFreeEvent(
+          eventId,
+          registrationRegistryId,
+          organizerSubscriptionId,
+          organizerProfileId
+        );
+      }
 
       // 2. Execute the registration transaction
       await signAndExecute({ transaction: registerTx });
@@ -51,7 +76,7 @@ export class IdentityAccessSDK {
           MoveFunction: {
             package: this.packageId,
             module: "identity_access",
-            function: "register_for_event",
+            function: eventFeeAmount && eventFeeAmount > 0 ? "register_for_event" : "register_for_free_event",
           },
         },
         options: {
@@ -108,7 +133,7 @@ export class IdentityAccessSDK {
       };
 
       return { qrData, passHash };
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -143,11 +168,15 @@ export class IdentityAccessSDK {
   }
 
   /**
-   * Create the registration transaction
+   * Create the registration transaction for paid events
    */
   registerForEvent(
     eventId: string,
-    registrationRegistryId: string
+    registrationRegistryId: string,
+    organizerSubscriptionId: string,
+    organizerProfileId: string,
+    treasuryId: string,
+    paymentCoinId: string
   ): Transaction {
     const tx = new Transaction();
     tx.moveCall({
@@ -155,6 +184,33 @@ export class IdentityAccessSDK {
       arguments: [
         tx.object(eventId), // event: &mut Event
         tx.object(registrationRegistryId), // registry: &mut RegistrationRegistry
+        tx.object(organizerSubscriptionId), // organizer_subscription: &UserSubscription
+        tx.object(organizerProfileId), // organizer_profile: &OrganizerProfile
+        tx.object(treasuryId), // treasury: &mut PlatformTreasury
+        tx.object(paymentCoinId), // payment: Coin<SUI>
+        tx.object(CLOCK_ID), // clock: &Clock
+      ],
+    });
+    return tx;
+  }
+
+  /**
+   * Create the registration transaction for free events
+   */
+  registerForFreeEvent(
+    eventId: string,
+    registrationRegistryId: string,
+    organizerSubscriptionId: string,
+    organizerProfileId: string
+  ): Transaction {
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${this.packageId}::identity_access::register_for_free_event`,
+      arguments: [
+        tx.object(eventId), // event: &mut Event
+        tx.object(registrationRegistryId), // registry: &mut RegistrationRegistry
+        tx.object(organizerSubscriptionId), // organizer_subscription: &UserSubscription
+        tx.object(organizerProfileId), // organizer_profile: &OrganizerProfile
         tx.object(CLOCK_ID), // clock: &Clock
       ],
     });
@@ -187,6 +243,7 @@ export class IdentityAccessSDK {
   async getRegistrationStatus(
     eventId: string,
     userAddress: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _registrationRegistryId: string
   ): Promise<Registration | null> {
     try {
@@ -247,75 +304,70 @@ export class IdentityAccessSDK {
       }
 
       return null;
-    } catch (error) {
+    } catch {
       return null;
     }
   }
 
   /**
-   * Check if user is the event organizer
+   * Check if user is registered for an event
+   */
+  async isRegistered(
+    eventId: string,
+    userAddress: string,
+    _registrationRegistryId: string
+  ): Promise<boolean> {
+    try {
+      const registration = await this.getRegistrationStatus(
+        eventId,
+        userAddress,
+        _registrationRegistryId
+      );
+      return registration !== null;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if user is the organizer of an event
    */
   async isEventOrganizer(
     eventId: string,
     userAddress: string
   ): Promise<boolean> {
     try {
-      // Get the event object to check organizer
-      const eventResponse = await suiClient.getObject({
+      // Query the event to get organizer address
+      const { data: objects } = await suiClient.getObject({
         id: eventId,
-        options: {
-          showContent: true,
-          showType: true,
-        },
+        options: { showContent: true },
       });
 
-      if (
-        !eventResponse.data?.content ||
-        eventResponse.data.content.dataType !== "moveObject"
-      ) {
-        return false;
+      if (objects?.content?.dataType === "moveObject") {
+        const fields = objects.content.fields as { organizer: string };
+        return fields.organizer === userAddress;
       }
 
-      const fields = eventResponse.data.content.fields as any;
-      const organizer = fields.organizer;
-
-      return organizer === userAddress;
-    } catch (error) {
+      return false;
+    } catch {
       return false;
     }
   }
 
   /**
-   * Generate QR code data for event registration
+   * Generate QR code data for registration
    */
   generateQRCodeData(
     eventId: string,
     userAddress: string,
     registration: Registration
   ): string {
-    // Convert pass_hash to base64 for QR storage
-    let passHashBase64: string;
-    if (typeof registration.pass_hash === "string") {
-      // If it's already a hex string, convert to Uint8Array first
-      const hex = registration.pass_hash;
-      const bytes = new Uint8Array(hex.length / 2);
-      for (let i = 0; i < hex.length; i += 2) {
-        bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
-      }
-      passHashBase64 = btoa(String.fromCharCode(...bytes));
-    } else {
-      // If it's already Uint8Array
-      passHashBase64 = btoa(
-        String.fromCharCode(...(registration.pass_hash as Uint8Array))
-      );
-    }
-
+    // Generate a compact QR code string
     const qrData = {
       event_id: eventId,
       user_address: userAddress,
-      pass_hash: passHashBase64, // Base64 encoded Uint8Array
+      pass_hash: registration.pass_hash,
       registered_at: registration.registered_at,
-      timestamp: Date.now(),
     };
 
     return JSON.stringify(qrData);
@@ -324,22 +376,10 @@ export class IdentityAccessSDK {
   /**
    * Parse QR code data
    */
-  parseQRCodeData(qrData: string): any {
+  parseQRCodeData(qrData: string): unknown {
     try {
-      const parsed = JSON.parse(qrData);
-
-      // Convert base64 pass_hash back to Uint8Array
-      if (parsed.pass_hash) {
-        const passHashBytes = atob(parsed.pass_hash);
-        const passHashArray = new Uint8Array(passHashBytes.length);
-        for (let i = 0; i < passHashBytes.length; i++) {
-          passHashArray[i] = passHashBytes.charCodeAt(i);
-        }
-        parsed.pass_hash = passHashArray;
-      }
-
-      return parsed;
-    } catch (error) {
+      return JSON.parse(qrData);
+    } catch {
       return null;
     }
   }

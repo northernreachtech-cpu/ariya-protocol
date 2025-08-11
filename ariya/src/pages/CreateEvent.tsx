@@ -40,6 +40,10 @@ const CreateEvent = () => {
     date: "",
     time: "",
     maxAttendees: "",
+    feeAmount: "", // Add fee amount field
+    minAttendees: "", // Add sponsor conditions
+    minCompletionRate: "",
+    minAvgRating: "",
     bannerImage: null as File | null,
     imageUrl: "", // Added for IPFS URL
     previewUrl: "", // Add this for local preview
@@ -175,12 +179,13 @@ const CreateEvent = () => {
         startTime,
         endTime,
         parseInt(formData.maxAttendees) || 100,
-        0, // minAttendees
-        0, // minCompletionRate
-        0, // minAvgRating
-        formData.imageUrl || "", // Use uploaded image URL
-        eventRegistryId, // Use actual registry ID from configuration
-        profileId // actual profile ID from OrganizerCap
+        Math.floor(parseFloat(formData.feeAmount || "0") * 1000000000), // Convert SUI to MIST units
+        parseInt(formData.minAttendees) || 0, // minAttendees
+        parseInt(formData.minCompletionRate) || 0, // minCompletionRate
+        parseInt(formData.minAvgRating) || 0, // minAvgRating
+        formData.imageUrl || "", // metadataUri
+        eventRegistryId, // eventRegistryId
+        profileId // organizerProfile
       );
 
       // Execute transaction
@@ -380,6 +385,7 @@ const CreateEvent = () => {
                     type="date"
                     value={formData.date}
                     onChange={(e) => handleInputChange("date", e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
                     className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground"
                   />
                 </div>
@@ -409,6 +415,74 @@ const CreateEvent = () => {
                   className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground placeholder-foreground-muted"
                   placeholder="No limit"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-foreground">
+                  Fee Amount (SUI) (Optional)
+                </label>
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  value={formData.feeAmount}
+                  onChange={(e) =>
+                    handleInputChange("feeAmount", e.target.value)
+                  }
+                  className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground placeholder-foreground-muted"
+                  placeholder="0.0"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-foreground">
+                    Min Attendees (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.minAttendees}
+                    onChange={(e) =>
+                      handleInputChange("minAttendees", e.target.value)
+                    }
+                    className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground placeholder-foreground-muted"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-foreground">
+                    Min Completion Rate % (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.minCompletionRate}
+                    onChange={(e) =>
+                      handleInputChange("minCompletionRate", e.target.value)
+                    }
+                    className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground placeholder-foreground-muted"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-foreground">
+                    Min Avg Rating (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={formData.minAvgRating}
+                    onChange={(e) =>
+                      handleInputChange("minAvgRating", e.target.value)
+                    }
+                    className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground placeholder-foreground-muted"
+                    placeholder="0.0"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -538,6 +612,42 @@ const CreateEvent = () => {
                   <p className="text-sm sm:text-base text-foreground">
                     {formData.maxAttendees || "Unlimited"}
                   </p>
+                </div>
+
+                <div className="border border-border rounded-lg p-3 sm:p-4 bg-card">
+                  <h4 className="font-semibold text-primary text-sm sm:text-base">
+                    Fee Amount
+                  </h4>
+                  <p className="text-sm sm:text-base text-foreground">
+                    {formData.feeAmount ? `${formData.feeAmount} SUI` : "Free"}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                  <div className="border border-border rounded-lg p-3 sm:p-4 bg-card">
+                    <h4 className="font-semibold text-primary text-sm sm:text-base">
+                      Min Attendees
+                    </h4>
+                    <p className="text-sm sm:text-base text-foreground">
+                      {formData.minAttendees || "No minimum"}
+                    </p>
+                  </div>
+                  <div className="border border-border rounded-lg p-3 sm:p-4 bg-card">
+                    <h4 className="font-semibold text-primary text-sm sm:text-base">
+                      Min Completion Rate
+                    </h4>
+                    <p className="text-sm sm:text-base text-foreground">
+                      {formData.minCompletionRate ? `${formData.minCompletionRate}%` : "No minimum"}
+                    </p>
+                  </div>
+                  <div className="border border-border rounded-lg p-3 sm:p-4 bg-card">
+                    <h4 className="font-semibold text-primary text-sm sm:text-base">
+                      Min Avg Rating
+                    </h4>
+                    <p className="text-sm sm:text-base text-foreground">
+                      {formData.minAvgRating ? `${formData.minAvgRating}/5` : "No minimum"}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

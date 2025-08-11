@@ -20,6 +20,7 @@ export interface Event {
   created_at: number;
   sponsor_conditions: SponsorConditions;
   metadata_uri: string;
+  fee_amount: number;
 }
 
 export interface OrganizerProfile {
@@ -117,12 +118,13 @@ export class EventManagementSDK {
     startTime: number,
     endTime: number,
     capacity: number,
+    feeAmount: number,
     minAttendees: number,
     minCompletionRate: number,
     minAvgRating: number,
     metadataUri: string,
     eventRegistryId: string,
-    profileId: string
+    organizerProfile: string
   ): Transaction {
     const tx = new Transaction();
 
@@ -135,13 +137,14 @@ export class EventManagementSDK {
         tx.pure.u64(startTime),
         tx.pure.u64(endTime),
         tx.pure.u64(capacity),
+        tx.pure.u64(feeAmount),
         tx.pure.u64(minAttendees),
         tx.pure.u64(minCompletionRate),
         tx.pure.u64(minAvgRating),
         tx.pure.string(metadataUri),
         tx.object(CLOCK_ID),
         tx.object(eventRegistryId),
-        tx.object(profileId),
+        tx.object(organizerProfile),
       ],
     });
 
@@ -233,6 +236,39 @@ export class EventManagementSDK {
   }
 
   /**
+   * Get event fee amount using Move function
+   */
+  async getEventFeeAmount(eventId: string): Promise<number> {
+    try {
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${this.packageId}::event_management::get_event_fee_amount`,
+        arguments: [tx.object(eventId)],
+      });
+
+      const result = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: "0x0", // Use dummy sender for inspection
+      });
+
+      if (result && result.results && result.results.length > 0) {
+        const returnVals = result.results[0].returnValues;
+        if (Array.isArray(returnVals) && returnVals.length > 0) {
+          const feeAmount = Array.isArray(returnVals[0]) 
+            ? returnVals[0][0] 
+            : returnVals[0];
+          return typeof feeAmount === 'string' ? parseInt(feeAmount) : (feeAmount as unknown as number) || 0;
+        }
+      }
+      return 0;
+    } catch (error) {
+      console.error("Error fetching event fee amount:", error);
+      console.error("Error details:", error);
+      return 0;
+    }
+  }
+
+  /**
    * Get event details by ID
    */
   async getEvent(eventId: string): Promise<Event | null> {
@@ -275,6 +311,7 @@ export class EventManagementSDK {
           }>;
         };
         metadata_uri: string;
+        fee_amount: string;
       };
       return {
         id: fields.id.id,
@@ -290,6 +327,7 @@ export class EventManagementSDK {
         created_at: parseInt(fields.created_at),
         sponsor_conditions: fields.sponsor_conditions,
         metadata_uri: fields.metadata_uri,
+        fee_amount: parseInt(fields.fee_amount),
       };
     } catch (error) {
       console.error("Error fetching event:", error);
@@ -924,5 +962,23 @@ export class EventManagementSDK {
       console.error("Error getting event with attendee count:", error);
       return null;
     }
+  }
+
+  /**
+   * Delete an event (only organizer, only if not active and no attendees)
+   */
+  deleteEvent(
+    eventId: string,
+    eventRegistryId: string
+  ): Transaction {
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${this.packageId}::event_management::delete_event`,
+      arguments: [
+        tx.object(eventId), // event: Event
+        tx.object(eventRegistryId), // registry: &mut EventRegistry
+      ],
+    });
+    return tx;
   }
 }

@@ -4,6 +4,7 @@ import { IdentityAccessSDK } from "./identityAccess";
 import { AttendanceVerificationSDK } from "./attendanceVerification";
 import { CommunityAccessSDK } from "./communityAccess";
 import { AirdropDistributionSDK } from "./airdropDistribution";
+import { SubscriptionSDK } from "./subscription";
 import { useNetworkVariable } from "../../config/sui";
 
 // Main SDK class that combines all modules
@@ -13,6 +14,7 @@ export class AriyaSDK {
   public attendanceVerification: AttendanceVerificationSDK;
   public communityAccess: CommunityAccessSDK;
   public airdropDistribution: AirdropDistributionSDK;
+  public subscription: SubscriptionSDK;
 
   constructor(packageId: string) {
     this.eventManagement = new EventManagementSDK(packageId);
@@ -20,6 +22,7 @@ export class AriyaSDK {
     this.attendanceVerification = new AttendanceVerificationSDK(packageId);
     this.communityAccess = new CommunityAccessSDK(packageId);
     this.airdropDistribution = new AirdropDistributionSDK(packageId);
+    this.subscription = new SubscriptionSDK(packageId);
   }
 }
 
@@ -68,6 +71,9 @@ export {
 
 // Add export for EscrowSettlementSDK (to be implemented)
 export { EscrowSettlementSDK } from "./escrowSettlement";
+
+// Add export for SubscriptionSDK
+export { SubscriptionSDK, SUBSCRIPTION_TYPES, type UserSubscription } from "./subscription";
 
 // Re-export ERROR_CODES with explicit naming to avoid conflicts
 export { ERROR_CODES as EVENT_MANAGEMENT_ERROR_CODES } from "./eventManagement";

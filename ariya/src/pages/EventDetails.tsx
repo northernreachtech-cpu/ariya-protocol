@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
   Calendar,
@@ -11,12 +11,15 @@ import {
   Star,
   MessageCircle,
   RefreshCw,
+  DollarSign,
+  CheckCircle,
 } from "lucide-react";
 import {
   useCurrentAccount,
   useSignAndExecuteTransaction,
 } from "@mysten/dapp-kit";
 import { useAriyaSDK } from "../lib/sdk";
+import type { Event as EventData } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
 import Card from "../components/Card";
 import Button from "../components/Button";
@@ -116,24 +119,8 @@ const EventDetailsSkeleton = () => (
   </div>
 );
 
-interface EventData {
-  id: string;
-  name: string;
-  description: string;
-  location: string;
-  start_time: number;
-  end_time: number;
-  capacity: number;
-  current_attendees: number;
-  organizer: string;
-  state: number;
-  created_at: number;
-  sponsor_conditions: any;
-  metadata_uri: string;
-}
-
 // Attendance status text helper (copied from MyEvents)
-const getAttendanceStatusText = (state: any) => {
+const getAttendanceStatusText = (state: unknown) => {
   const stateValue = Array.isArray(state) ? state[0] : state;
   switch (stateValue) {
     case 0:
@@ -158,6 +145,9 @@ const EventDetails = () => {
   const attendanceRegistryId = useNetworkVariable("attendanceRegistryId");
   const nftRegistryId = useNetworkVariable("nftRegistryId");
   const communityRegistryId = useNetworkVariable("communityRegistryId");
+  const profileRegistryId = useNetworkVariable("profileRegistryId");
+  const platformTreasuryId = useNetworkVariable("platformTreasuryId");
+  const subscriptionRegistryId = useNetworkVariable("subscriptionRegistryId");
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
 
   // Attendance state from navigation (if available)
@@ -176,8 +166,11 @@ const EventDetails = () => {
   const [attendanceState, setAttendanceState] = useState(
     navAttendanceState ?? null
   );
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_hasRecord, setHasRecord] = useState(navHasRecord ?? null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_checkInTime, setCheckInTime] = useState(navCheckInTime ?? null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_checkOutTime, setCheckOutTime] = useState(navCheckOutTime ?? null);
   const [hasMintedNFT, setHasMintedNFT] = useState(false); // Placeholder, should check actual mint status
   const [minting, setMinting] = useState(false);
@@ -188,7 +181,7 @@ const EventDetails = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareEventLink, setShareEventLink] = useState("");
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [organizerProfile, setOrganizerProfile] = useState<any>(null);
+  const [organizerProfile, setOrganizerProfile] = useState<unknown>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [showSponsorModal, setShowSponsorModal] = useState(false);
@@ -223,6 +216,7 @@ const EventDetails = () => {
           : `0x${addr.toLowerCase()}`;
       };
       const profile = allProfiles.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (p: any) => normalize(p.address) === normalize(organizerAddress)
       );
       if (profile) {
@@ -230,32 +224,16 @@ const EventDetails = () => {
       } else {
         setProfileError("Organizer profile not found.");
       }
-    } catch (e) {
+    } catch {
       setProfileError("Failed to load organizer profile.");
     } finally {
       setProfileLoading(false);
     }
   };
 
-  const refreshEventData = async () => {
-    console.log("🔄 Force refreshing event data...");
-    if (currentAccount && event) {
-      // Reset states
-      setHasPoACapability(false);
-      setIsCommunityMember(false);
-      setCommunityId(null);
 
-      // Re-check PoA capability
-      await checkPoACapability();
 
-      // Re-check community membership
-      setTimeout(() => {
-        checkCommunityMembership();
-      }, 1000);
-    }
-  };
-
-  const checkCommunityMembership = async () => {
+  const checkCommunityMembership = useCallback(async () => {
     if (!currentAccount || !event || !communityRegistryId || !nftRegistryId) {
       console.log("❌ Missing required data for community membership check");
       return;
@@ -303,9 +281,9 @@ const EventDetails = () => {
       setIsCommunityMember(false);
       setCommunityId(null);
     }
-  };
+  }, [currentAccount, event, communityRegistryId, nftRegistryId, sdk]);
 
-  const checkPoACapability = async () => {
+  const checkPoACapability = useCallback(async () => {
     console.log("🚀 checkPoACapability function called!");
 
     if (!currentAccount || !event) {
@@ -341,6 +319,7 @@ const EventDetails = () => {
           content.dataType === "moveObject" &&
           "fields" in content
         ) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const fields = (content as any).fields;
           console.log("Object fields:", fields);
           console.log("Looking for event_id:", event.id);
@@ -370,7 +349,25 @@ const EventDetails = () => {
       console.error("Error checking PoA capability:", error);
       setHasPoACapability(false);
     }
-  };
+  }, [currentAccount, event, sdk]);
+
+  const refreshEventData = useCallback(async () => {
+    console.log("🔄 Force refreshing event data...");
+    if (currentAccount && event) {
+      // Reset states
+      setHasPoACapability(false);
+      setIsCommunityMember(false);
+      setCommunityId(null);
+
+      // Re-check PoA capability
+      await checkPoACapability();
+
+      // Re-check community membership
+      setTimeout(() => {
+        checkCommunityMembership();
+      }, 1000);
+    }
+  }, [currentAccount, event, checkPoACapability, checkCommunityMembership]);
 
   const handleMintPoA = async () => {
     if (!currentAccount || !nftRegistryId || !event) return;
@@ -388,6 +385,7 @@ const EventDetails = () => {
       });
       // Refresh capability status to hide the mint button
       await checkPoACapability();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setMintResult({
         success: false,
@@ -498,6 +496,7 @@ const EventDetails = () => {
       setTimeout(() => {
         navigate(`/community/${communityId}`);
       }, 1500);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       let message = e.message || "Failed to join community.";
 
@@ -551,7 +550,18 @@ const EventDetails = () => {
       try {
         setLoading(true);
         const eventData = await sdk.eventManagement.getEvent(id);
+        console.log("🔍 Event data fetched:", eventData);
+        console.log("🔍 Fee amount from event data:", eventData?.fee_amount);
+        console.log("🔍 Fee amount type:", typeof eventData?.fee_amount);
+        
+        // For now, use the fee amount from the event object
+        // The Move function call is having issues, so we'll debug this separately
+        if (eventData) {
+          console.log("🔍 Using fee amount from event object:", eventData.fee_amount);
         setEvent(eventData);
+        } else {
+          setEvent(eventData);
+        }
 
         // Check if user is registered and if user is organizer
         if (currentAccount && eventData) {
@@ -629,7 +639,7 @@ const EventDetails = () => {
                 );
               }
             }
-          } catch (e) {
+          } catch {
             setAttendanceState(0);
             setHasRecord(false);
             setCheckInTime(0);
@@ -721,7 +731,7 @@ const EventDetails = () => {
 
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
-  }, [currentAccount, event]);
+  }, [currentAccount, event, refreshEventData]);
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -776,12 +786,65 @@ const EventDetails = () => {
     try {
       setRegistering(true);
 
-      // Use the new registerForEventAndGenerateQR function
+      // Fetch organizer subscription and profile data
+      let organizerSubscriptionId: string | null = null;
+      let organizerProfileId: string | null = null;
+
+      try {
+        // Get organizer subscription ID
+        organizerSubscriptionId = await sdk.subscription.getUserSubscriptionId(
+          subscriptionRegistryId,
+          event.organizer
+        );
+
+        // Get organizer profile ID
+        organizerProfileId = await sdk.eventManagement.getUserProfileId(
+          event.organizer,
+          profileRegistryId
+        );
+      } catch (error) {
+        console.error("Error fetching organizer data:", error);
+        // If we can't fetch organizer data, we'll use fallback values
+        organizerSubscriptionId = null;
+        organizerProfileId = null;
+      }
+
+      // Use actual event fee amount from the event data
+      const eventFeeAmount = event.fee_amount || 0;
+      let paymentCoinId: string | undefined;
+
+      if (eventFeeAmount > 0) {
+        // For paid events, get user's SUI coins
+        const { data: coins } = await suiClient.getCoins({
+          owner: currentAccount.address,
+          coinType: "0x2::sui::SUI",
+        });
+
+        // Find a coin with sufficient balance (convert fee to MIST)
+        const feeInMist = Math.floor(eventFeeAmount * 1000000000);
+        const coinWithBalance = coins.find(
+          (coin: { balance: string }) => parseInt(coin.balance) >= feeInMist
+        );
+
+        if (!coinWithBalance) {
+          alert("Insufficient SUI balance for event registration");
+          return;
+        }
+
+        paymentCoinId = coinWithBalance.coinObjectId;
+      }
+
+      // Use the new contract-compliant registration function
       const result = await sdk.identityAccess.registerForEventAndGenerateQR(
         event.id,
         registrationRegistryId,
+        organizerSubscriptionId || "0x0", // Use fallback if not found
+        organizerProfileId || "0x0", // Use fallback if not found
+        platformTreasuryId,
         currentAccount.address,
-        signAndExecute
+        signAndExecute,
+        eventFeeAmount,
+        paymentCoinId
       );
 
       if (result) {
@@ -797,19 +860,24 @@ const EventDetails = () => {
         console.error("Failed to register for event");
         alert("Registration failed. Please try again.");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error in registration flow:", error);
 
       // Show user-friendly error message
       let errorMessage = "Registration failed";
-      if (error.message?.includes("MoveAbort")) {
-        if (error.message.includes(", 1)")) {
+      const errorObj = error as { message?: string };
+      if (errorObj.message?.includes("MoveAbort")) {
+        if (errorObj.message.includes(", 1)")) {
           errorMessage =
             "Event is not active for registration or you're already registered";
-        } else if (error.message.includes(", 2)")) {
+        } else if (errorObj.message.includes(", 2)")) {
           errorMessage = "Event capacity is full";
-        } else if (error.message.includes(", 3)")) {
+        } else if (errorObj.message.includes(", 3)")) {
           errorMessage = "Event not found";
+        } else if (errorObj.message.includes(", 4)")) {
+          errorMessage = "Insufficient payment for event registration";
+        } else if (errorObj.message.includes(", 5)")) {
+          errorMessage = "Organizer subscription limit exceeded";
         }
       }
       alert(errorMessage);
@@ -877,7 +945,9 @@ const EventDetails = () => {
           (val === true || val === 1)
         );
       }
-    } catch (e) {}
+    } catch {
+      return false;
+    }
     return false;
   };
 
@@ -907,6 +977,7 @@ const EventDetails = () => {
         message: "Completion NFT minted successfully!",
       });
       setHasMintedNFT(true);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       // Show a friendlier error for EInvalidCapability
       if (e.message && e.message.includes("EInvalidCapability")) {
@@ -1019,6 +1090,32 @@ const EventDetails = () => {
                 <span>
                   {event.current_attendees}/{event.capacity} attendees
                 </span>
+              </div>
+              <div className="flex items-center">
+                {(() => {
+                  console.log("🔍 Displaying fee amount:", event.fee_amount);
+                  console.log("🔍 Fee amount > 0:", event.fee_amount > 0);
+                  console.log("🔍 Fee amount truthy:", !!event.fee_amount);
+                  console.log("🔍 Fee amount type:", typeof event.fee_amount);
+                  
+                  // Handle different cases: undefined, null, 0, or positive number
+                  const feeAmount = event.fee_amount || 0;
+                  const isPaidEvent = feeAmount > 0;
+                  
+                  return isPaidEvent ? (
+                    <>
+                      <DollarSign className="mr-2 h-5 w-5" />
+                      <span className="text-amber-500 font-semibold">
+                        ${(feeAmount / 1000000000).toFixed(3)} SUI
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-2 h-5 w-5" />
+                      <span className="text-green-500 font-semibold">Free Event</span>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -1392,34 +1489,41 @@ const EventDetails = () => {
                 <>
                   <div className="flex flex-col items-center mb-2">
                     <div className="w-16 h-16 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white font-bold text-2xl mb-2">
-                      {organizerProfile.name?.charAt(0).toUpperCase() || "?"}
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {(organizerProfile as any).name?.charAt(0).toUpperCase() || "?"}
                     </div>
                     <div className="text-xl font-semibold text-primary mb-1">
-                      {organizerProfile.name || "Unnamed Organizer"}
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {(organizerProfile as any).name || "Unnamed Organizer"}
                     </div>
                     <div className="text-xs text-foreground-secondary break-all mb-2">
-                      {organizerProfile.address}
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {(organizerProfile as any).address}
                     </div>
                   </div>
                   <div className="mb-2 text-foreground-secondary text-sm whitespace-pre-line">
-                    {organizerProfile.bio}
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {(organizerProfile as any).bio}
                   </div>
                   <div className="flex flex-wrap gap-3 justify-center text-xs text-foreground-secondary mb-2">
                     <div>
                       <span className="font-bold text-primary">
-                        {organizerProfile.total_events}
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {(organizerProfile as any).total_events}
                       </span>{" "}
                       events
                     </div>
                     <div>
                       <span className="font-bold text-primary">
-                        {organizerProfile.successful_events}
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {(organizerProfile as any).successful_events}
                       </span>{" "}
                       successful
                     </div>
                     <div>
                       <span className="font-bold text-primary">
-                        {organizerProfile.total_attendees_served}
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {(organizerProfile as any).total_attendees_served}
                       </span>{" "}
                       attendees
                     </div>
@@ -1427,12 +1531,14 @@ const EventDetails = () => {
                   <div className="flex items-center justify-center gap-1 mb-2">
                     <Star className="h-4 w-4 text-yellow-400" />
                     <span className="text-foreground-secondary font-semibold">
-                      {(organizerProfile.avg_rating / 100).toFixed(1)} / 5.0
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {((organizerProfile as any).avg_rating / 100).toFixed(1)} / 5.0
                     </span>
                   </div>
                   <div className="text-xs text-foreground-muted text-center mb-2">
                     Profile created:{" "}
-                    {new Date(organizerProfile.created_at).toLocaleDateString()}
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {new Date((organizerProfile as any).created_at).toLocaleDateString()}
                   </div>
                 </>
               ) : null}
@@ -1504,6 +1610,7 @@ const EventDetails = () => {
                         coinType: "0x2::sui::SUI",
                       });
                       const coin = coins.find(
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (c: any) => Number(c.balance) >= sponsorAmount * 1e9
                       );
                       if (!coin)
@@ -1523,6 +1630,7 @@ const EventDetails = () => {
                         "Sponsorship successful! Your funds are now escrowed."
                       );
                       setTimeout(() => setShowSponsorModal(false), 1500);
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     } catch (e: any) {
                       setSponsorError(e.message || "Failed to sponsor event");
                     } finally {

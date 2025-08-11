@@ -14,6 +14,7 @@ import {
   MessageCircle,
   CheckCircle,
   Gift,
+  Trash2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -210,6 +211,11 @@ const OrganizerDashboard = () => {
   const [validatingAirdrop, setValidatingAirdrop] = useState<{
     [eventId: string]: boolean;
   }>({});
+
+  // Delete event state
+  const [deletingEvent, setDeletingEvent] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
 
   // Error modal state
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -467,6 +473,26 @@ const OrganizerDashboard = () => {
     setShowCompleteModal(true);
   };
 
+  const handleDeleteEvent = (event: Event) => {
+    // Check if event can be deleted
+    if (event.state !== 0) {
+      setErrorMessage("Only events in 'Created' state can be deleted.");
+      setErrorDetails(new Error("Event is already active or completed"));
+      setShowErrorModal(true);
+      return;
+    }
+
+    if (event.checkedIn > 0) {
+      setErrorMessage("Cannot delete events that have attendees registered.");
+      setErrorDetails(new Error("Event has attendees"));
+      setShowErrorModal(true);
+      return;
+    }
+
+    setEventToDelete(event);
+    setShowDeleteModal(true);
+  };
+
   const confirmCompleteEvent = async () => {
     if (!eventToComplete || !organizerProfileId) return;
     setCompletingEvent(eventToComplete.id);
@@ -509,6 +535,49 @@ const OrganizerDashboard = () => {
       setShowSuccessModal(true);
     } finally {
       setCompletingEvent(null);
+    }
+  };
+
+  const confirmDeleteEvent = async () => {
+    if (!eventToDelete) return;
+    setDeletingEvent(eventToDelete.id);
+    try {
+      const tx = sdk.eventManagement.deleteEvent(
+        eventToDelete.id,
+        eventRegistryId
+      );
+      console.log("Deleting event:", {
+        eventId: eventToDelete.id,
+        eventRegistryId,
+      });
+      await signAndExecute({ transaction: tx });
+      setSuccessMessage("Event deleted successfully!");
+      setShowSuccessModal(true);
+      setShowDeleteModal(false);
+      await loadOrganizerData();
+    } catch (e: unknown) {
+      // Enhanced error handling for Move abort codes
+      const error = e as { message?: string };
+      let message = error.message || "Failed to delete event.";
+      if (
+        message.includes("MoveAbort") &&
+        message.includes('function_name: Some("delete_event")')
+      ) {
+        if (message.includes(", 1)")) {
+          message = "You are not the organizer of this event.";
+        } else if (message.includes(", 2)")) {
+          message = "Event is not in 'Created' state. Only events that haven't been activated can be deleted.";
+        } else if (message.includes(", 4)")) {
+          message = "Event has attendees registered and cannot be deleted.";
+        } else {
+          message = "Event deletion failed due to a contract error.";
+        }
+      }
+      setErrorMessage(message);
+      setErrorDetails(error as Error);
+      setShowErrorModal(true);
+    } finally {
+      setDeletingEvent(null);
     }
   };
 
@@ -1445,6 +1514,17 @@ const OrganizerDashboard = () => {
                               <Eye className="mr-1 h-3 w-3" />
                               View
                             </Button>
+                            {event.state === 0 && event.checkedIn === 0 && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 min-w-[100px] text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                                onClick={() => handleDeleteEvent(event)}
+                              >
+                                <Trash2 className="mr-1 h-3 w-3" />
+                                Delete
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </Card>
@@ -1567,6 +1647,39 @@ const OrganizerDashboard = () => {
                 <Button
                   variant="outline"
                   onClick={() => setShowCompleteModal(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Event Confirmation Modal */}
+        {showDeleteModal && eventToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+            <div className="bg-card border border-border rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
+              <h3 className="text-xl font-semibold mb-4 text-red-600">
+                Delete Event
+              </h3>
+              <p className="text-foreground mb-6">
+                Are you sure you want to delete{" "}
+                <span className="font-bold">{eventToDelete.title}</span>? This action cannot be undone and will permanently remove the event.
+              </p>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  onClick={confirmDeleteEvent}
+                  disabled={deletingEvent === eventToDelete.id}
+                  className="flex-1 bg-red-600 hover:bg-red-700"
+                >
+                  {deletingEvent === eventToDelete.id
+                    ? "Deleting..."
+                    : "Yes, Delete"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteModal(false)}
                   className="flex-1"
                 >
                   Cancel
