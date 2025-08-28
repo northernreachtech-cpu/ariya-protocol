@@ -1092,30 +1092,19 @@ const EventDetails = () => {
                 </span>
               </div>
               <div className="flex items-center">
-                {(() => {
-                  console.log("🔍 Displaying fee amount:", event.fee_amount);
-                  console.log("🔍 Fee amount > 0:", event.fee_amount > 0);
-                  console.log("🔍 Fee amount truthy:", !!event.fee_amount);
-                  console.log("🔍 Fee amount type:", typeof event.fee_amount);
-                  
-                  // Handle different cases: undefined, null, 0, or positive number
-                  const feeAmount = event.fee_amount || 0;
-                  const isPaidEvent = feeAmount > 0;
-                  
-                  return isPaidEvent ? (
-                    <>
-                      <DollarSign className="mr-2 h-5 w-5" />
-                      <span className="text-amber-500 font-semibold">
-                        ${(feeAmount / 1000000000).toFixed(3)} SUI
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="mr-2 h-5 w-5" />
-                      <span className="text-green-500 font-semibold">Free Event</span>
-                    </>
-                  );
-                })()}
+                {event.fee_amount > 0 ? (
+                  <>
+                    <DollarSign className="mr-2 h-5 w-5" />
+                    <span className="text-amber-500 font-semibold">
+                      ${(event.fee_amount / 1000000000).toFixed(3)} SUI
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="mr-2 h-5 w-5" />
+                    <span className="text-green-500 font-semibold">Free Event</span>
+                  </>
+                )}
               </div>
             </div>
           </div>

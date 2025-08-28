@@ -419,7 +419,7 @@ const CreateEvent = () => {
 
               <div>
                 <label className="block text-sm font-medium mb-2 text-foreground">
-                  Fee Amount (SUI) (Optional)
+                  Fee Amount (Sui) (Optional)
                 </label>
                 <input
                   type="number"
@@ -619,7 +619,7 @@ const CreateEvent = () => {
                     Fee Amount
                   </h4>
                   <p className="text-sm sm:text-base text-foreground">
-                    {formData.feeAmount ? `${formData.feeAmount} SUI` : "Free"}
+                    {formData.feeAmount ? `${formData.feeAmount} Sui` : "Free"}
                   </p>
                 </div>
 

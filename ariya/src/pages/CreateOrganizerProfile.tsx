@@ -231,7 +231,7 @@ const CreateOrganizerProfile = () => {
           </h1>
           <p className="text-foreground-secondary">
             Set up your organizer profile to start creating and managing events
-            on the EIA Protocol
+            on the Ariya Protocol
           </p>
         </div>
 
@@ -324,7 +324,7 @@ const CreateOrganizerProfile = () => {
               <p className="text-blue-600 dark:text-blue-400 text-sm">
                 <strong>Note:</strong> Creating an organizer profile requires a
                 blockchain transaction. This will establish your identity on the
-                EIA Protocol and allow you to create events.
+                Ariya Protocol and allow you to create events.
               </p>
             </div>
           </form>

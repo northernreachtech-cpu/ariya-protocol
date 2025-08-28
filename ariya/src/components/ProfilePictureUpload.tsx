@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import Button from "./Button";
-import { uploadToWalrus } from "../utils/walrus";
+import { uploadImageWithFallback } from "../utils/cloudStorage";
+import { useZkLogin } from "../contexts/ZkLoginContext";
 
 interface ProfilePictureUploadProps {
   onUploadComplete: (blobId: string, imageUrl: string) => void;
@@ -13,6 +14,16 @@ const ProfilePictureUpload = ({
   currentImageUrl,
 }: ProfilePictureUploadProps) => {
   const currentAccount = useCurrentAccount();
+  
+  // Safely access zkLogin context
+  let zkAddress: string | null = null;
+  try {
+    const { zkAddress: zkAddr } = useZkLogin();
+    zkAddress = zkAddr;
+  } catch (error) {
+    // ZkLoginProvider not available, continue without zkLogin
+  }
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
@@ -22,12 +33,15 @@ const ProfilePictureUpload = ({
   const [success, setSuccess] = useState<string | null>(null);
 
   const handleWalrusUpload = async (file: File): Promise<string> => {
-    if (!currentAccount) {
-      throw new Error("No wallet connected");
+    const activeAddress = currentAccount?.address || zkAddress;
+    
+    if (!activeAddress) {
+      throw new Error("No wallet or zkLogin connected");
     }
 
-    const { blobId } = await uploadToWalrus(file, currentAccount.address);
-    return blobId;
+    const result = await uploadImageWithFallback(file, activeAddress);
+    console.log(`✅ Image uploaded via ${result.provider}:`, result.imageUrl);
+    return result.imageUrl;
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {

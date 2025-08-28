@@ -73,7 +73,14 @@ export {
 export { EscrowSettlementSDK } from "./escrowSettlement";
 
 // Add export for SubscriptionSDK
-export { SubscriptionSDK, SUBSCRIPTION_TYPES, type UserSubscription } from "./subscription";
+export { 
+  SubscriptionSDK, 
+  SUBSCRIPTION_TYPES, 
+  type UserSubscription,
+  type SubscriptionConfig,
+  type SubscriptionRegistry,
+  type SubscriptionPricing
+} from "./subscription";
 
 // Re-export ERROR_CODES with explicit naming to avoid conflicts
 export { ERROR_CODES as EVENT_MANAGEMENT_ERROR_CODES } from "./eventManagement";

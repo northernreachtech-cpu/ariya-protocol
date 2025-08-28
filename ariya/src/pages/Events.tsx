@@ -8,6 +8,8 @@ import {
   Star,
   RefreshCw,
   ArrowRight,
+  DollarSign,
+  CheckCircle,
 } from "lucide-react";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useNavigate } from "react-router-dom";
@@ -16,6 +18,7 @@ import Button from "../components/Button";
 import EventCardSkeleton from "../components/EventCardSkeleton";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { useAriyaSDK } from "../lib/sdk";
+import { getWalrusImageUrl } from "../utils/walrus";
 
 interface Event {
   id: string;
@@ -32,7 +35,39 @@ interface Event {
   price: string;
   organizer: string;
   state: number;
+  fee_amount: number;
+  start_time: number;
+  end_time: number;
 }
+
+// Helper function to fetch metadata from Walrus
+const fetchEventMetadata = async (metadataUri: string) => {
+  try {
+    if (!metadataUri || metadataUri === "") {
+      return null;
+    }
+    
+    // If it's already a full URL, use it directly
+    if (metadataUri.startsWith('http')) {
+      const response = await fetch(metadataUri);
+      if (response.ok) {
+        return await response.json();
+      }
+    }
+    
+    // If it's a blob ID, construct the Walrus URL
+    const walrusUrl = getWalrusImageUrl(metadataUri);
+    const response = await fetch(walrusUrl);
+    if (response.ok) {
+      return await response.json();
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Error fetching event metadata:", error);
+    return null;
+  }
+};
 
 const Events = () => {
   useScrollToTop();
@@ -68,36 +103,59 @@ const Events = () => {
     try {
       setLoading(true);
       setRefreshing(forceRefresh);
+      
+      // Get all events from blockchain
       const allEvents = await sdk.eventManagement.getActiveEvents();
       const allProfiles = await sdk.eventManagement.getAllOrganizers();
 
-      // Transform blockchain events to match UI interface
-      const transformedEvents: Event[] = allEvents.map((event: any) => {
-        const eventDate = new Date(event.start_time * 1000);
-        const organizerProfile = allProfiles.find(
-          (profile: any) => profile.organizer === event.organizer
-        );
+      // Transform blockchain events to match UI interface with real data
+      const transformedEvents: Event[] = await Promise.all(
+        allEvents.map(async (event: any) => {
+          const eventDate = new Date(event.start_time * 1000);
+          const organizerProfile = allProfiles.find(
+            (profile: any) => profile.organizer === event.organizer
+          );
 
-        return {
-          id: event.id,
-          title: event.name,
-          description: organizerProfile?.bio || "Join this exciting event!",
-          location: organizerProfile?.address || "Location TBD",
-          date: eventDate.toISOString().split("T")[0],
-          time: eventDate.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          attendees: 0, // Will be fetched separately if needed
-          maxAttendees: 100, // Default capacity
-          rating: 0, // Will be fetched separately if needed
-          image: "/api/placeholder/400/250",
-          category: "technology", // Default category
-          price: "Free", // Default price
-          organizer: event.organizer,
-          state: event.state,
-        };
-      });
+          // Fetch metadata from Walrus if available
+          let metadata = null;
+          let imageUrl = "";
+          if (event.metadata_uri) {
+            metadata = await fetchEventMetadata(event.metadata_uri);
+            if (metadata?.image) {
+              imageUrl = metadata.image;
+            }
+          }
+
+          // Determine price display
+          const feeAmount = event.fee_amount || 0;
+          const price = feeAmount > 0 
+                            ? `$${(feeAmount / 1000000000).toFixed(3)} Sui`
+            : "Free";
+
+          return {
+            id: event.id,
+            title: event.name,
+            description: event.description || "Join this exciting event!",
+            location: event.location || "Location TBD",
+            date: eventDate.toISOString().split("T")[0],
+            time: eventDate.toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            attendees: event.current_attendees || 0,
+            maxAttendees: event.capacity || 100,
+            rating: organizerProfile?.avg_rating ? organizerProfile.avg_rating / 100 : 0,
+            image: imageUrl || "/api/placeholder/400/250",
+            category: metadata?.category || "technology",
+            price,
+            organizer: event.organizer,
+            state: event.state,
+            fee_amount: feeAmount,
+            start_time: event.start_time,
+            end_time: event.end_time,
+          };
+        })
+      );
 
       setEvents(transformedEvents);
       setFilteredEvents(transformedEvents);
@@ -302,10 +360,35 @@ const Events = () => {
                     <Card className="h-full" hover={true}>
                       {/* Event Image */}
                       <div className="relative h-48 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-t-lg overflow-hidden mb-4">
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-secondary/10 group-hover:from-primary/20 group-hover:to-secondary/20 transition-all duration-300" />
+                        {event.image && event.image !== "/api/placeholder/400/250" ? (
+                          <img 
+                            src={event.image} 
+                            alt={event.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <div className={`absolute inset-0 bg-gradient-to-br from-primary/10 to-secondary/10 group-hover:from-primary/20 group-hover:to-secondary/20 transition-all duration-300 ${event.image && event.image !== "/api/placeholder/400/250" ? 'hidden' : ''}`}>
+                          <div className="flex items-center justify-center h-full">
+                            <Calendar className="h-16 w-16 text-white/60" />
+                          </div>
+                        </div>
                         <div className="absolute top-4 right-4">
-                          <span className="px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-sm font-medium text-foreground">
-                            {event.price}
+                          <span className="px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-sm font-medium text-foreground flex items-center gap-1">
+                            {event.fee_amount > 0 ? (
+                              <>
+                                <DollarSign className="h-3 w-3" />
+                                ${(event.fee_amount / 1000000000).toFixed(3)}
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-3 w-3" />
+                                Free
+                              </>
+                            )}
                           </span>
                         </div>
                       </div>
@@ -325,7 +408,7 @@ const Events = () => {
                         <div className="space-y-3 mb-6">
                           <div className="flex items-center text-sm text-foreground-secondary">
                             <MapPin className="h-4 w-4 mr-2" />
-                            {event.location}
+                            <span className="truncate">{event.location}</span>
                           </div>
                           <div className="flex items-center text-sm text-foreground-secondary">
                             <Calendar className="h-4 w-4 mr-2" />
@@ -335,9 +418,24 @@ const Events = () => {
                             <Users className="h-4 w-4 mr-2" />
                             {event.attendees}/{event.maxAttendees} attendees
                           </div>
+                          {event.rating > 0 && (
+                            <div className="flex items-center text-sm text-foreground-secondary">
+                              <Star className="h-4 w-4 mr-2 text-yellow-500" />
+                              {event.rating.toFixed(1)}/5.0 rating
+                            </div>
+                          )}
                           <div className="flex items-center text-sm text-foreground-secondary">
-                            <Star className="h-4 w-4 mr-2 text-yellow-500" />
-                            {event.rating} rating
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              event.state === 0 ? 'bg-yellow-500/20 text-yellow-400' :
+                              event.state === 1 ? 'bg-green-500/20 text-green-400' :
+                              event.state === 2 ? 'bg-blue-500/20 text-blue-400' :
+                              'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {event.state === 0 ? 'Created' :
+                               event.state === 1 ? 'Active' :
+                               event.state === 2 ? 'Completed' :
+                               'Settled'}
+                            </span>
                           </div>
                         </div>
 

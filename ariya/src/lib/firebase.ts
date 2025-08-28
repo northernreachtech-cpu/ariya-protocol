@@ -1,6 +1,7 @@
 import firebase from "firebase/compat/app";
 import "firebase/compat/firestore";
 import "firebase/compat/storage";
+import "firebase/compat/auth";
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -31,6 +32,7 @@ if (missingVars.length > 0) {
 const app = firebase.initializeApp(firebaseConfig);
 const db = app.firestore();
 const storage = app.storage();
+const auth = app.auth();
 
 // Types
 export interface ForumPost {
@@ -380,3 +382,6 @@ export class CommunityMembersService {
     }
   }
 }
+
+// Export Firebase auth
+export { auth };

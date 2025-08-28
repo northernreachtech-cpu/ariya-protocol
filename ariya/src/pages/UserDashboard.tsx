@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, User, Edit, Calendar, Plus } from "lucide-react";
+import { Loader2, User, Edit, Calendar, Plus, Crown } from "lucide-react";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useAriyaSDK } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
+import type { UserSubscription } from "../lib/sdk";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import ProfilePicture from "../components/ProfilePicture";
@@ -24,10 +25,12 @@ const UserDashboard = () => {
   const currentAccount = useCurrentAccount();
   const sdk = useAriyaSDK();
   const profileRegistryId = useNetworkVariable("profileRegistryId");
+  const subscriptionRegistryId = useNetworkVariable("subscriptionRegistryId");
 
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
 
   const loadUserData = async () => {
     if (!currentAccount) return;
@@ -60,6 +63,22 @@ const UserDashboard = () => {
           }
         } catch (error) {
           console.error("Error loading user profile:", error);
+        }
+      }
+
+      // Load subscription data
+      if (subscriptionRegistryId) {
+        try {
+          const subscriptionId = await sdk.subscription.getUserSubscriptionId(
+            subscriptionRegistryId,
+            currentAccount.address
+          );
+          if (subscriptionId) {
+            const subscriptionData = await sdk.subscription.getUserSubscription(subscriptionId);
+            setSubscription(subscriptionData);
+          }
+        } catch (error) {
+          console.error("Error loading subscription:", error);
         }
       }
     } catch (error) {
@@ -127,6 +146,30 @@ const UserDashboard = () => {
             </div>
           </div>
         </Card>
+
+        {/* Subscription Status */}
+        {subscription && (
+          <Card className="mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <Crown className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    {sdk.subscription.getSubscriptionTypeName(subscription.subscription_type)} Plan
+                  </h3>
+                  <p className="text-sm text-foreground-secondary">
+                    {subscription.is_active ? 'Active' : 'Inactive'} • Since {new Date(subscription.start_date).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => navigate("/subscription")}>
+                Manage Subscription
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {/* Organizer Dashboard Content (if user is organizer) */}
         {isOrganizer ? (

@@ -4,10 +4,14 @@ import {
   Route,
   useNavigate,
 } from "react-router-dom";
-import { SuiClientProvider, WalletProvider } from "@mysten/dapp-kit";
+import { SuiClientProvider, WalletProvider, useSuiClientContext } from "@mysten/dapp-kit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { networkConfig } from "./config/sui";
+import { networkConfig, suiClient } from "./config/sui";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { ZkLoginProvider } from "./contexts/ZkLoginContext";
+import { registerEnokiWallets, isEnokiNetwork } from "@mysten/enoki";
+
+import { useEffect } from "react";
 
 import Navbar from "./components/Navbar";
 import LandingPage from "./pages/LandingPage";
@@ -26,21 +30,48 @@ import Community from "./pages/Community";
 import Communities from "./pages/Communities";
 import DocFlow from "./pages/DocFlow";
 import UserDashboard from "./pages/UserDashboard";
+import SubscriptionManagement from "./pages/SubscriptionManagement";
 import ProfileCreationModal from "./components/ProfileCreationModal";
 import ProfileCheckOverlay from "./components/ProfileCheckOverlay";
-import { useWalletProfileCheck } from "./hooks/useWalletProfileCheck";
-import { useState, useEffect } from "react";
+import { useUnifiedProfileCheck } from "./hooks/useUnifiedProfileCheck";
+import { useState } from "react";
 
 import "@mysten/dapp-kit/dist/index.css";
 import "./styles/theme.css";
 
 const queryClient = new QueryClient();
 
+// Enoki Wallet Registration Component
+function RegisterEnokiWallets() {
+  const { network } = useSuiClientContext();
+
+  useEffect(() => {
+    if (!isEnokiNetwork(network)) return;
+    console.log("Registering Enoki wallets", import.meta.env.VITE_FIREBASE_CLIENT_ID);
+
+    const { unregister } = registerEnokiWallets({
+      apiKey: import.meta.env.VITE_ENOKI_API_KEY,
+      providers: {
+        google: {
+          clientId: import.meta.env.VITE_FIREBASE_CLIENT_ID,
+          redirectUrl: window.location.origin,
+        },
+      },
+      network,
+      client: suiClient as any
+    });
+
+    return unregister;
+  }, [network]);
+
+  return null;
+}
+
 // Main App Component with scroll-to-top
 function AppContent() {
   useScrollToTop();
   const navigate = useNavigate();
-  const { profileStatus, isChecking } = useWalletProfileCheck();
+  const { profileStatus, isChecking } = useUnifiedProfileCheck();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isOrganizerModal, setIsOrganizerModal] = useState(false);
 
@@ -75,6 +106,7 @@ function AppContent() {
         <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/dashboard/organizer" element={<OrganizerDashboard />} />
         <Route path="/dashboard/sponsor" element={<SponsorDashboard />} />
+        <Route path="/subscription" element={<SubscriptionManagement />} />
         <Route path="/community/:communityId" element={<Community />} />
         <Route path="/communities" element={<Communities />} />
         <Route path="/sui-workshop" element={<SUIWorkshop />} />
@@ -99,11 +131,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
+        <RegisterEnokiWallets />
         <WalletProvider autoConnect>
           <ThemeProvider>
-            <Router>
-              <AppContent />
-            </Router>
+            <ZkLoginProvider>
+              <Router>
+                <AppContent />
+              </Router>
+            </ZkLoginProvider>
           </ThemeProvider>
         </WalletProvider>
       </SuiClientProvider>

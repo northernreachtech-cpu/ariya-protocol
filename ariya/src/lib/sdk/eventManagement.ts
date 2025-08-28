@@ -230,7 +230,7 @@ export class EventManagementSDK {
 
       return null;
     } catch (error) {
-      console.error("Error extracting event ID:", error);
+      
       return null;
     }
   }
@@ -262,8 +262,6 @@ export class EventManagementSDK {
       }
       return 0;
     } catch (error) {
-      console.error("Error fetching event fee amount:", error);
-      console.error("Error details:", error);
       return 0;
     }
   }
@@ -330,7 +328,6 @@ export class EventManagementSDK {
         fee_amount: parseInt(fields.fee_amount),
       };
     } catch (error) {
-      console.error("Error fetching event:", error);
       return null;
     }
   }
@@ -380,7 +377,6 @@ export class EventManagementSDK {
         created_at: parseInt(fields.created_at),
       };
     } catch (error) {
-      console.error("Error fetching organizer profile:", error);
       return null;
     }
   }
@@ -458,7 +454,6 @@ export class EventManagementSDK {
 
       return eventInfos;
     } catch (error) {
-      console.error("Error fetching events by organizer:", error);
       return [];
     }
   }
@@ -528,7 +523,6 @@ export class EventManagementSDK {
 
       return eventInfos;
     } catch (error) {
-      console.error("Error fetching active events:", error);
       return [];
     }
   }
@@ -605,7 +599,6 @@ export class EventManagementSDK {
 
       return organizers;
     } catch (error) {
-      console.error("Error fetching organizers:", error);
       return [];
     }
   }
@@ -655,10 +648,6 @@ export class EventManagementSDK {
     address: string,
     profileRegistryId: string
   ): Promise<boolean> {
-    console.log("🔍 Checking if user has profile...");
-    console.log("👤 Address:", address);
-    console.log("🏛️ Profile registry ID:", profileRegistryId);
-
     try {
       // Query the ProfileRegistry to check if the user has a profile
       const tx = new Transaction();
@@ -667,22 +656,13 @@ export class EventManagementSDK {
         arguments: [tx.object(profileRegistryId), tx.pure.address(address)],
       });
 
-      console.log("📦 Created transaction for has_profile check");
-      console.log(
-        "🎯 Target:",
-        `${this.packageId}::event_management::has_profile`
-      );
-
       const response = await suiClient.devInspectTransactionBlock({
         transactionBlock: tx,
         sender: address,
       });
 
-      console.log("📋 has_profile result:", response);
-
       return response.results?.[0]?.returnValues?.[0]?.[0]?.[0] === 1;
     } catch (error) {
-      console.error("❌ Error checking user profile:", error);
       return false;
     }
   }
@@ -695,9 +675,6 @@ export class EventManagementSDK {
     profileRegistryId: string
   ): Promise<string | null> {
     try {
-      console.log("🔍 Getting user profile ID for address:", address);
-      console.log("🏛️ Profile registry ID:", profileRegistryId);
-
       const tx = new Transaction();
       tx.moveCall({
         target: `${this.packageId}::event_management::get_user_profile_id`,
@@ -709,33 +686,25 @@ export class EventManagementSDK {
         sender: address,
       });
 
-      console.log("📋 get_user_profile_id response:", response);
-
       const returnValue = response.results?.[0]?.returnValues?.[0];
-      console.log("📦 Return value:", returnValue);
 
       if (returnValue && Array.isArray(returnValue) && returnValue.length > 0) {
         // The return value should be a byte array representing the ID
         // We need to convert it to a proper Sui object ID format
         const idBytes = returnValue[0];
         if (typeof idBytes === 'string') {
-          console.log("✅ Found profile ID:", idBytes);
           return idBytes;
         } else if (Array.isArray(idBytes)) {
           // If it's a byte array, we need to convert it to a hex string
-          console.log("🔄 Converting byte array to hex string");
           const hexString = '0x' + Array.from(idBytes as number[])
             .map(b => b.toString(16).padStart(2, '0'))
             .join('');
-          console.log("✅ Converted profile ID:", hexString);
           return hexString;
         }
       }
 
-      console.log("❌ No valid profile ID found");
       return null;
     } catch (error) {
-      console.error("❌ Error getting user profile ID:", error);
       return null;
     }
   }
@@ -846,42 +815,30 @@ export class EventManagementSDK {
     created_at: number;
   } | null> {
     try {
-      console.log("🔍 Getting user profile by address:", address);
-      console.log("🏛️ Profile registry ID:", profileRegistryId);
-
       // First check if user has a profile
       const hasProfile = await this.hasProfile(address, profileRegistryId);
-      console.log("✅ Has profile:", hasProfile);
       
       if (!hasProfile) {
-        console.log("❌ User does not have a profile");
         return null;
       }
 
       // Get the profile ID
       const profileId = await this.getUserProfileId(address, profileRegistryId);
-      console.log("📋 Profile ID:", profileId);
       
       if (!profileId) {
-        console.log("❌ Could not get profile ID");
         return null;
       }
 
       // Validate profile ID format
       if (typeof profileId !== 'string' || !profileId.startsWith('0x')) {
-        console.error("❌ Invalid profile ID format:", profileId);
         return null;
       }
 
-      console.log("🔍 Fetching profile details for ID:", profileId);
-
       // Get the profile details
       const profile = await this.getUserProfile(profileId);
-      console.log("📋 Profile details:", profile);
       
       return profile;
     } catch (error) {
-      console.error("❌ Error fetching user profile by address:", error);
       return null;
     }
   }
@@ -933,7 +890,6 @@ export class EventManagementSDK {
 
       return attendeeCount;
     } catch (error) {
-      console.error("Error getting attendee count:", error);
       return 0;
     }
   }
@@ -959,7 +915,6 @@ export class EventManagementSDK {
         current_attendees: attendeeCount,
       };
     } catch (error) {
-      console.error("Error getting event with attendee count:", error);
       return null;
     }
   }

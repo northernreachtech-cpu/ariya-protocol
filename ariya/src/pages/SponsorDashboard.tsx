@@ -265,7 +265,7 @@ const SponsorDashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <StatCard
             title="Total Sponsored"
-            value={`${(totalSponsored / 1e9).toFixed(2)} SUI`}
+                            value={`${(totalSponsored / 1e9).toFixed(2)} Sui`}
             icon={DollarSign}
             color="primary"
             description="Total funds committed"
@@ -455,7 +455,7 @@ const SponsorDashboard = () => {
                           Sponsored Amount
                         </div>
                         <div className="text-lg font-livvic font-bold text-primary">
-                          {(event.escrow?.balance / 1e9).toFixed(2)} SUI
+                          {(event.escrow?.balance / 1e9).toFixed(2)} Sui
                         </div>
                       </div>
                     </div>

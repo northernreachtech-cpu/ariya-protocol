@@ -1,4 +1,5 @@
-import { getWalrusImageUrl, isWalrusUrl } from "../utils/walrus";
+import { SmartImage } from "./SmartImage";
+// Updated to use SmartImage with fallback support
 
 interface ProfilePictureProps {
   src?: string | null;
@@ -22,20 +23,7 @@ const ProfilePicture = ({
     xl: "w-24 h-24",
   };
 
-  const getImageUrl = (url: string) => {
-    // If it's already a Walrus URL, use it as is
-    if (isWalrusUrl(url)) {
-      return url;
-    }
 
-    // If it's a blob ID, convert to Walrus URL
-    if (url && !url.startsWith("http")) {
-      return getWalrusImageUrl(url);
-    }
-
-    // Otherwise, use the URL as provided
-    return url;
-  };
 
   if (!src) {
     return (
@@ -48,16 +36,10 @@ const ProfilePicture = ({
   }
 
   return (
-    <img
-      src={getImageUrl(src)}
+    <SmartImage
+      src={src}
       alt={alt}
       className={`${sizeClasses[size]} rounded-full object-cover border border-border ${className}`}
-      onError={(e) => {
-        // Fallback to placeholder on error
-        const target = e.target as HTMLImageElement;
-        target.style.display = "none";
-        target.nextElementSibling?.classList.remove("hidden");
-      }}
     />
   );
 };

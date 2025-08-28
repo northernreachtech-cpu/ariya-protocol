@@ -16,8 +16,16 @@ export const uploadToWalrus = async (
   userAddress: string,
   epochs: number = WALRUS_CONFIG.defaultEpochs
 ): Promise<{ blobId: string; imageUrl: string }> => {
+  console.log("📤 Starting Walrus upload:", {
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type,
+    epochs,
+    userAddress
+  });
+
   const response = await fetch(
-    `${WALRUS_CONFIG.publisherUrl}/v1/blobs?epochs=${epochs}&send_object_to=${userAddress}`,
+    `${WALRUS_CONFIG.publisherUrl}/v1/blobs?epochs=${epochs}`,
     {
       method: "PUT",
       body: file,
@@ -25,7 +33,14 @@ export const uploadToWalrus = async (
   );
 
   if (!response.ok) {
-    throw new Error("Failed to upload to Walrus");
+    const errorText = await response.text();
+    console.error("Walrus upload failed:", {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorText,
+      userAddress
+    });
+    throw new Error(`Walrus upload failed (${response.status}): ${errorText || response.statusText}`);
   }
 
   const result = await response.json();

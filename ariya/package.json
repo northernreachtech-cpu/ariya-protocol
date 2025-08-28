@@ -12,6 +12,7 @@
   "dependencies": {
     "@mysten/bcs": "^1.6.4",
     "@mysten/dapp-kit": "^0.16.15",
+    "@mysten/enoki": "^0.11.9",
     "@mysten/sui": "^1.36.0",
     "@noble/hashes": "^1.8.0",
     "@radix-ui/react-dialog": "^1.1.14",

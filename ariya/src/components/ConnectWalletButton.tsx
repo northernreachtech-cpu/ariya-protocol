@@ -7,6 +7,7 @@ import {
   ExternalLink,
   LogOut,
   X,
+  Shield,
 } from "lucide-react";
 import {
   useCurrentAccount,
@@ -16,6 +17,7 @@ import {
 } from "@mysten/dapp-kit";
 import Button from "./Button";
 import Card from "./Card";
+import { useZkLogin } from "../contexts/ZkLoginContext";
 
 const ConnectWalletButton = () => {
   const [showDropdown, setShowDropdown] = useState(false);
@@ -26,6 +28,16 @@ const ConnectWalletButton = () => {
   const { mutate: connect } = useConnectWallet();
   const { mutate: disconnect } = useDisconnectWallet();
   const wallets = useWallets();
+  
+  // zkLogin context
+  const { 
+    zkUser, 
+    zkAddress, 
+    isZkConnecting, 
+    zkLogin, 
+    zkLogout, 
+    isZkAuthenticated 
+  } = useZkLogin();
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -125,7 +137,12 @@ const ConnectWalletButton = () => {
     }
   };
 
-  if (!currentAccount) {
+  // Check if user is authenticated via any method
+  const isAuthenticated = currentAccount || isZkAuthenticated;
+  const displayAddress = currentAccount?.address || zkAddress;
+  currentAccount || zkUser;
+  
+  if (!isAuthenticated) {
     return (
       <div className="relative" ref={dropdownRef}>
         <Button
@@ -225,6 +242,41 @@ const ConnectWalletButton = () => {
                             </button>
                           );
                         })}
+                        
+                        {/* Divider */}
+                        <div className="my-3 border-t border-border" />
+                        
+                        {/* zkLogin Button */}
+                        <button
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            try {
+                              await zkLogin();
+                              setShowDropdown(false);
+                            } catch (error) {
+                              console.error("zkLogin failed:", error);
+                            }
+                          }}
+                          disabled={isZkConnecting}
+                          className={`w-full p-3 rounded-lg border transition-all duration-200 text-left flex items-center ${
+                            isZkConnecting
+                              ? "bg-card border-border text-foreground-muted cursor-not-allowed"
+                              : "bg-card hover:bg-card-secondary border-border hover:border-primary/30"
+                          }`}
+                        >
+                          <Shield className="h-5 w-5 mr-3 text-primary" />
+                          <div>
+                            <div className="font-medium text-foreground">
+                              zkLogin (Google)
+                            </div>
+                            <div className="text-sm text-foreground-muted">
+                              {isZkConnecting
+                                ? "Connecting..."
+                                : "Sign in with Google"}
+                            </div>
+                          </div>
+                        </button>
                       </div>
                     </Card>
                   </div>
@@ -282,6 +334,41 @@ const ConnectWalletButton = () => {
                         </button>
                       );
                     })}
+                    
+                    {/* Divider */}
+                    <div className="my-3 border-t border-border" />
+                    
+                    {/* zkLogin Button */}
+                    <button
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        try {
+                          await zkLogin();
+                          setShowDropdown(false);
+                        } catch (error) {
+                          console.error("zkLogin failed:", error);
+                        }
+                      }}
+                      disabled={isZkConnecting}
+                      className={`w-full p-3 rounded-lg border transition-all duration-200 text-left flex items-center ${
+                        isZkConnecting
+                          ? "bg-card border-border text-foreground-muted cursor-not-allowed"
+                          : "bg-card hover:bg-card-secondary border-border hover:border-primary/30"
+                      }`}
+                    >
+                      <Shield className="h-5 w-5 mr-3 text-primary" />
+                      <div>
+                        <div className="font-medium text-foreground">
+                          zkLogin (Google)
+                        </div>
+                        <div className="text-sm text-foreground-muted">
+                          {isZkConnecting
+                            ? "Connecting..."
+                            : "Sign in with Google"}
+                        </div>
+                      </div>
+                    </button>
                   </div>
                 </Card>
               </div>
@@ -300,8 +387,12 @@ const ConnectWalletButton = () => {
           showDropdown ? "ring-2 ring-primary/50 border-primary/50" : ""
         }`}
       >
-        <Wallet className="mr-2 h-4 w-4" />
-        {formatAddress(currentAccount.address)}
+        {currentAccount ? (
+          <Wallet className="mr-2 h-4 w-4" />
+        ) : (
+          <Shield className="mr-2 h-4 w-4" />
+        )}
+        {formatAddress(displayAddress || "")}
         <ChevronDown
           className={`ml-2 h-4 w-4 transition-transform duration-300 ${
             showDropdown ? "rotate-180" : ""
@@ -353,11 +444,16 @@ const ConnectWalletButton = () => {
                         }}
                       >
                         <div className="text-sm text-foreground-muted mb-1">
-                          Address
+                          {currentAccount ? "Wallet Address" : "zkLogin Address"}
                         </div>
                         <div className="font-mono text-foreground text-sm break-all">
-                          {currentAccount.address}
+                          {displayAddress}
                         </div>
+                        {zkUser && (
+                          <div className="text-xs text-foreground-muted mt-1">
+                            {zkUser.email}
+                          </div>
+                        )}
                       </div>
                       <div
                         className="flex gap-2"
@@ -370,7 +466,7 @@ const ConnectWalletButton = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            copyToClipboard(currentAccount.address);
+                            copyToClipboard(displayAddress || "");
                           }}
                           className="flex-1"
                         >
@@ -381,7 +477,7 @@ const ConnectWalletButton = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            openExplorer(currentAccount.address);
+                            openExplorer(displayAddress || "");
                           }}
                           className="flex-1"
                         >
@@ -391,9 +487,14 @@ const ConnectWalletButton = () => {
                       </div>
                       <Button
                         variant="outline"
-                        onClick={() => {
+                        onClick={async () => {
                           console.log("🎯 Mobile disconnect button clicked");
-                          handleDisconnect();
+                          if (currentAccount) {
+                            handleDisconnect();
+                          } else {
+                            await zkLogout();
+                          }
+                          setShowDropdown(false);
                         }}
                         className="w-full text-red-400 hover:text-red-300 hover:border-red-400/50"
                       >
@@ -426,17 +527,22 @@ const ConnectWalletButton = () => {
                   </div>
                   <div className="p-3 rounded-lg bg-card border border-border">
                     <div className="text-sm text-foreground-muted mb-1">
-                      Address
+                      {currentAccount ? "Wallet Address" : "zkLogin Address"}
                     </div>
                     <div className="font-mono text-foreground text-sm break-all">
-                      {currentAccount.address}
+                      {displayAddress}
                     </div>
+                    {zkUser && (
+                      <div className="text-xs text-foreground-muted mt-1">
+                        {zkUser.email}
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => copyToClipboard(currentAccount.address)}
+                      onClick={() => copyToClipboard(displayAddress || "")}
                       className="flex-1"
                     >
                       <Copy className="mr-2 h-4 w-4" />
@@ -445,7 +551,7 @@ const ConnectWalletButton = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => openExplorer(currentAccount.address)}
+                      onClick={() => openExplorer(displayAddress || "")}
                       className="flex-1"
                     >
                       <ExternalLink className="mr-2 h-4 w-4" />
@@ -454,8 +560,13 @@ const ConnectWalletButton = () => {
                   </div>
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      handleDisconnect();
+                    onClick={async () => {
+                      if (currentAccount) {
+                        handleDisconnect();
+                      } else {
+                        await zkLogout();
+                      }
+                      setShowDropdown(false);
                     }}
                     className="w-full text-red-400 hover:text-red-300 hover:border-red-400/50"
                   >

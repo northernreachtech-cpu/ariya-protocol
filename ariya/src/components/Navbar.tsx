@@ -8,6 +8,7 @@ import {
   Settings,
   FileText,
   Home,
+  Crown,
 } from "lucide-react";
 import ConnectWalletButton from "./ConnectWalletButton";
 import ThemeToggle from "./ThemeToggle";
@@ -79,6 +80,11 @@ const Navbar = () => {
           name: "Sponsor Dashboard",
           href: "/dashboard/sponsor",
           icon: <Users size={16} />,
+        },
+        {
+          name: "Subscription",
+          href: "/subscription",
+          icon: <Crown size={16} />,
         },
       ],
     },

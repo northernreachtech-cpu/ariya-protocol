@@ -14,13 +14,13 @@ const SUIWorkshop = () => {
     <div className="min-h-screen bg-background pt-24 pb-10">
       <div className="container mx-auto px-4 max-w-2xl">
         <h1 className="text-3xl sm:text-4xl font-livvic font-bold mb-6 text-center text-foreground">
-          SUI Workshop
+          Sui Workshop
           <span className="ml-2 px-2 py-0.5 text-xs rounded bg-gradient-to-r from-primary to-secondary text-white font-bold uppercase align-middle">
             Exclusive
           </span>
         </h1>
         <p className="text-foreground-secondary text-center mb-8 max-w-xl mx-auto">
-          Welcome to the SUI Workshop! Please register or leave feedback below.
+          Welcome to the Sui Workshop! Please register or leave feedback below.
           Only users with a connected wallet can participate.
         </p>
         {!account ? (
@@ -34,7 +34,7 @@ const SUIWorkshop = () => {
                 Registration
               </h2>
               <p className="text-foreground-muted mb-4">
-                Sign up for the SUI Workshop and get exclusive updates.
+                Sign up for the Sui Workshop and get exclusive updates.
               </p>
               <a
                 href={REGISTRATION_FORM_URL}
