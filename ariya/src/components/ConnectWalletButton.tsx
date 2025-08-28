@@ -22,7 +22,7 @@ import { useZkLogin } from "../contexts/ZkLoginContext";
 const ConnectWalletButton = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
+  // const [isConnecting, setIsConnecting] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const currentAccount = useCurrentAccount();
   // const { mutate: connect } = useConnectWallet(); // COMMENTED OUT: Regular wallet connections disabled
