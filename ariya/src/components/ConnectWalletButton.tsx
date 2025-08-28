@@ -11,9 +11,9 @@ import {
 } from "lucide-react";
 import {
   useCurrentAccount,
-  useConnectWallet,
+  // useConnectWallet, // COMMENTED OUT: Regular wallet connections disabled
   useDisconnectWallet,
-  useWallets,
+  // useWallets, // COMMENTED OUT: Regular wallet connections disabled
 } from "@mysten/dapp-kit";
 import Button from "./Button";
 import Card from "./Card";
@@ -25,9 +25,9 @@ const ConnectWalletButton = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const currentAccount = useCurrentAccount();
-  const { mutate: connect } = useConnectWallet();
+  // const { mutate: connect } = useConnectWallet(); // COMMENTED OUT: Regular wallet connections disabled
   const { mutate: disconnect } = useDisconnectWallet();
-  const wallets = useWallets();
+  // const wallets = useWallets(); // COMMENTED OUT: Regular wallet connections disabled
   
   // zkLogin context
   const { 
@@ -83,6 +83,8 @@ const ConnectWalletButton = () => {
     };
   }, [isMobile]);
 
+  // COMMENTED OUT: Regular wallet connection
+  /*
   const handleConnect = (walletName: string) => {
     console.log("🔗 Attempting to connect wallet:", walletName);
     setIsConnecting(true);
@@ -111,6 +113,7 @@ const ConnectWalletButton = () => {
       setIsConnecting(false);
     }
   };
+  */
 
   const handleDisconnect = () => {
     console.log("🔌 Disconnecting wallet...");
@@ -121,7 +124,8 @@ const ConnectWalletButton = () => {
     }, 300);
   };
 
-  // Get wallet info for display
+  // COMMENTED OUT: Regular wallet display info - not needed when only zkLogin is enabled
+  /*
   const getWalletDisplayInfo = (walletName: string) => {
     switch (walletName) {
       case "Sui Wallet":
@@ -136,6 +140,7 @@ const ConnectWalletButton = () => {
         return { icon: "💳", description: "Sui Wallet" };
     }
   };
+  */
 
   // Check if user is authenticated via any method
   const isAuthenticated = currentAccount || isZkAuthenticated;
@@ -154,8 +159,8 @@ const ConnectWalletButton = () => {
             showDropdown ? "ring-2 ring-primary/50 border-primary/50" : ""
           }`}
         >
-          <Wallet className="mr-2 h-4 w-4" />
-          Connect Wallet
+          <Shield className="mr-2 h-4 w-4" />
+          Connect with zkLogin
           <ChevronDown
             className={`ml-2 h-4 w-4 transition-transform duration-300 ${
               showDropdown ? "rotate-180" : ""
@@ -205,6 +210,7 @@ const ConnectWalletButton = () => {
                           e.stopPropagation();
                         }}
                       >
+                        {/* COMMENTED OUT: Regular wallet connections
                         {wallets.map((wallet) => {
                           const displayInfo = getWalletDisplayInfo(wallet.name);
                           return (
@@ -242,9 +248,11 @@ const ConnectWalletButton = () => {
                             </button>
                           );
                         })}
+                        */}
                         
-                        {/* Divider */}
+                        {/* COMMENTED OUT: Divider - no regular wallets to separate
                         <div className="my-3 border-t border-border" />
+                        */}
                         
                         {/* zkLogin Button */}
                         <button
@@ -291,7 +299,7 @@ const ConnectWalletButton = () => {
                 <Card className="min-w-80 p-6 shadow-2xl border border-border bg-background/90 backdrop-blur-xl">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold text-foreground">
-                      Connect Wallet
+                      Connect with zkLogin
                     </h3>
                     <button
                       onClick={() => setShowDropdown(false)}
@@ -301,6 +309,7 @@ const ConnectWalletButton = () => {
                     </button>
                   </div>
                   <div className="space-y-2">
+                    {/* COMMENTED OUT: Regular wallet connections
                     {wallets.map((wallet) => {
                       const displayInfo = getWalletDisplayInfo(wallet.name);
                       return (
@@ -334,9 +343,11 @@ const ConnectWalletButton = () => {
                         </button>
                       );
                     })}
+                    */}
                     
-                    {/* Divider */}
+                    {/* COMMENTED OUT: Divider - no regular wallets to separate
                     <div className="my-3 border-t border-border" />
+                    */}
                     
                     {/* zkLogin Button */}
                     <button

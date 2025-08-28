@@ -132,7 +132,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
         <RegisterEnokiWallets />
-        <WalletProvider autoConnect>
+        <WalletProvider autoConnect={false}>
           <ThemeProvider>
             <ZkLoginProvider>
               <Router>
