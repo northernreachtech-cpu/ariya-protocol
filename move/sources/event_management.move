@@ -1,6 +1,6 @@
 module ariya::event_management;
 
-use std::string::String;
+use std::string::{Self, String};
 use sui::clock::{Self, Clock};
 use sui::table::{Self, Table};
 use sui::event;
@@ -12,6 +12,11 @@ const EEventAlreadyCompleted: u64 = 3;
 const EInvalidCapacity: u64 = 4;
 const EInvalidTimestamp: u64 = 5;
 const ENotAuthorized: u64 = 6; 
+const EEventNotFound: u64 = 7;
+const EXUsernameTaken: u64 = 8;
+const ETelegramUsernameTaken: u64 = 9;
+const EXUsernameNotFound: u64 = 10;
+const ETelegramUsernameNotFound: u64 = 11;
 
 // Event states
 const STATE_CREATED: u8 = 0;
@@ -30,6 +35,10 @@ public struct Event has key, store {
     capacity: u64,
     current_attendees: u64,
     organizer: address,
+    sponsors: vector<String>,
+    assignee: String,
+    is_child: bool,
+    parent_id: ID,
     state: u8,
     created_at: u64,
     sponsor_conditions: SponsorConditions,
@@ -74,8 +83,6 @@ public struct ProfileCap has key, store {
 public struct OrganizerProfile has key, store {
     id: UID,
     address: address,
-    name: String,
-    bio: String,
     total_events: u64,
     successful_events: u64,
     total_attendees_served: u64,
@@ -87,6 +94,8 @@ public struct OrganizerProfile has key, store {
 public struct ProfileRegistry has key {
     id: UID,
     profiles: Table<address, ID>, // address -> profile_id
+    x_to_address: Table<String, address>, // x_username -> address
+    telegram_to_address: Table<String, address>, // telegram_username -> address
 }
 
 // Event registry for discovery
@@ -94,6 +103,8 @@ public struct EventRegistry has key {
     id: UID,
     events: Table<ID, EventInfo>,
     events_by_organizer: Table<address, vector<ID>>,
+    events_by_assignee: Table<String, vector<ID>>, // assignee -> event_ids
+    events_by_parent: Table<ID, vector<ID>>, // parent_id -> child_event_ids
 }
 
 public struct EventInfo has store, drop, copy {
@@ -136,12 +147,16 @@ fun init(ctx: &mut TxContext) {
         id: object::new(ctx),
         events: table::new(ctx),
         events_by_organizer: table::new(ctx),
+        events_by_assignee: table::new(ctx),
+        events_by_parent: table::new(ctx),
     };
     transfer::share_object(registry);
 
     let profile_registry = ProfileRegistry {
         id: object::new(ctx),
         profiles: table::new(ctx),
+        x_to_address: table::new(ctx),
+        telegram_to_address: table::new(ctx),
     };
     transfer::share_object(profile_registry);
 }
@@ -160,6 +175,16 @@ public fun create_profile(
     let sender = tx_context::sender(ctx);
     assert!(!table::contains(&profile_registry.profiles, sender), 0); // Profile already exists
     
+    // Check if x_username is already taken
+    if (!string::is_empty(&x_username)) {
+        assert!(!table::contains(&profile_registry.x_to_address, x_username), EXUsernameTaken); // X username already taken
+    };
+    
+    // Check if telegram_username is already taken
+    if (!string::is_empty(&telegram_username)) {
+        assert!(!table::contains(&profile_registry.telegram_to_address, telegram_username), ETelegramUsernameTaken); // Telegram username already taken
+    };
+    
     let profile = Profile {
         id: object::new(ctx),
         address: sender,
@@ -173,6 +198,15 @@ public fun create_profile(
     
     let profile_id = object::id(&profile);
     table::add(&mut profile_registry.profiles, sender, profile_id);
+    
+    // Add username mappings if they exist
+    if (!string::is_empty(&x_username)) {
+        table::add(&mut profile_registry.x_to_address, x_username, sender);
+    };
+    
+    if (!string::is_empty(&telegram_username)) {
+        table::add(&mut profile_registry.telegram_to_address, telegram_username, sender);
+    };
     
     transfer::share_object(profile);
     
@@ -208,16 +242,12 @@ public fun update_profile(
 
 // Create organizer profile
 public fun create_organizer_profile(
-    name: String,
-    bio: String,
     clock: &Clock,
     ctx: &mut TxContext
 ): OrganizerCap {
     let profile = OrganizerProfile {
         id: object::new(ctx),
         address: tx_context::sender(ctx),
-        name,
-        bio,
         total_events: 0,
         successful_events: 0,
         total_attendees_served: 0,
@@ -247,6 +277,10 @@ public fun create_event(
     min_completion_rate: u64,
     min_avg_rating: u64,
     metadata_uri: String,
+    sponsors: vector<String>,
+    assignee: String,
+    is_child: bool,
+    parent_id: ID,
     clock: &Clock,
     registry: &mut EventRegistry,
     profile: &mut OrganizerProfile,
@@ -265,7 +299,7 @@ public fun create_event(
         custom_benchmarks: vector::empty(),
     };
 
-    let event = Event {
+    let mut event = Event {
         id: object::new(ctx),
         name: name,
         description,
@@ -275,6 +309,10 @@ public fun create_event(
         capacity,
         current_attendees: 0,
         organizer: sender,
+        sponsors,
+        assignee,
+        is_child,
+        parent_id,
         state: STATE_CREATED,
         created_at: clock::timestamp_ms(clock),
         sponsor_conditions,
@@ -283,6 +321,10 @@ public fun create_event(
     };
 
     let event_id = object::id(&event);
+    if (!is_child) {
+        event.parent_id = event_id;
+    };
+
     let event_info = EventInfo {
         event_id,
         name: event.name,
@@ -299,6 +341,24 @@ public fun create_event(
     };
     let organizer_events = table::borrow_mut(&mut registry.events_by_organizer, sender);
     vector::push_back(organizer_events, event_id);
+
+    // Track assigned events (if assignee is different from organizer)
+    if (!string::is_empty(&assignee) && assignee != string::utf8(b"self")) {
+        if (!table::contains(&registry.events_by_assignee, assignee)) {
+            table::add(&mut registry.events_by_assignee, assignee, vector::empty());
+        };
+        let assignee_events = table::borrow_mut(&mut registry.events_by_assignee, assignee);
+        vector::push_back(assignee_events, event_id);
+    };
+    
+    // Track child events if this is a child event
+    if (is_child) {
+        if (!table::contains(&registry.events_by_parent, parent_id)) {
+            table::add(&mut registry.events_by_parent, parent_id, vector::empty());
+        };
+        let child_events = table::borrow_mut(&mut registry.events_by_parent, parent_id);
+        vector::push_back(child_events, event_id);
+    };
 
     // Update organizer profile
     profile.total_events = profile.total_events + 1;
@@ -374,10 +434,33 @@ public fun delete_event(
         vector::remove(organizer_events, index);
     };
     
+    // Remove from assignee events list if it exists
+    if (!string::is_empty(&event.assignee) && event.assignee != string::utf8(b"self")) {
+        if (table::contains(&registry.events_by_assignee, event.assignee)) {
+            let assignee_events = table::borrow_mut(&mut registry.events_by_assignee, event.assignee);
+            let (found, index) = vector::index_of(assignee_events, &event_id);
+            if (found) {
+                vector::remove(assignee_events, index);
+            };
+        };
+    };
+    
+    // Remove from child events list if this is a child event
+    if (event.is_child) {
+        if (table::contains(&registry.events_by_parent, event.parent_id)) {
+            let child_events = table::borrow_mut(&mut registry.events_by_parent, event.parent_id);
+            let (found, index) = vector::index_of(child_events, &event_id);
+            if (found) {
+                vector::remove(child_events, index);
+            };
+        };
+    };
+    
     // Delete the event object
     let Event { 
         id, name: _, description: _, location: _, start_time: _, end_time: _, 
-        capacity: _, current_attendees: _, organizer: _, state: _, created_at: _, 
+        capacity: _, current_attendees: _, organizer: _, sponsors: _, assignee: _, 
+        is_child: _, parent_id: _, state: _, created_at: _, 
         sponsor_conditions: _, fee_amount: _, metadata_uri: _ 
     } = event;
     object::delete(id);
@@ -442,6 +525,52 @@ public fun update_event_details(
     event.description = description;
     event.location = location;
     event.metadata_uri = metadata_uri;
+}
+
+// Update event sponsors
+public fun update_event_sponsors(
+    event: &mut Event,
+    sponsors: vector<String>,
+    ctx: &mut TxContext
+) {
+    assert!(event.organizer == tx_context::sender(ctx), ENotOrganizer);
+    event.sponsors = sponsors;
+}
+
+// Update event assignee
+public fun update_event_assignee(
+    event: &mut Event,
+    assignee: String,
+    registry: &mut EventRegistry,
+    ctx: &mut TxContext
+) {
+    assert!(event.organizer == tx_context::sender(ctx), ENotOrganizer);
+    
+    let event_id = object::id(event);
+    let old_assignee = event.assignee;
+    
+    // Remove from old assignee's list if it exists and is different from organizer
+    if (!string::is_empty(&old_assignee) && old_assignee != string::utf8(b"self")) {
+        if (table::contains(&registry.events_by_assignee, old_assignee)) {
+            let old_assignee_events = table::borrow_mut(&mut registry.events_by_assignee, old_assignee);
+            let (found, index) = vector::index_of(old_assignee_events, &event_id);
+            if (found) {
+                vector::remove(old_assignee_events, index);
+            };
+        };
+    };
+    
+    // Update the assignee
+    event.assignee = assignee;
+    
+    // Add to new assignee's list if it's different from organizer
+    if (!string::is_empty(&assignee) && assignee != string::utf8(b"self")) {
+        if (!table::contains(&registry.events_by_assignee, assignee)) {
+            table::add(&mut registry.events_by_assignee, assignee, vector::empty());
+        };
+        let new_assignee_events = table::borrow_mut(&mut registry.events_by_assignee, assignee);
+        vector::push_back(new_assignee_events, event_id);
+    };
 }
 
 // Complete event
@@ -514,6 +643,10 @@ public fun get_event_organizer(event: &Event): address {
     event.organizer
 }
 
+public fun get_event_assignee(event: &Event): String {
+    event.assignee
+}
+
 public fun get_event_capacity(event: &Event): u64 {
     event.capacity
 }
@@ -574,6 +707,11 @@ public fun event_exists(registry: &EventRegistry, event_id: ID): bool {
     table::contains(&registry.events, event_id)
 }
 
+public fun get_event_by_id(registry: &EventRegistry, event_id: ID): EventInfo {
+    assert!(table::contains(&registry.events, event_id), EEventNotFound);
+    *table::borrow(&registry.events, event_id)
+}
+
 public fun get_organizer_stats(profile: &OrganizerProfile): (u64, u64, u64, u64) {
     (
         profile.total_events,
@@ -583,11 +721,9 @@ public fun get_organizer_stats(profile: &OrganizerProfile): (u64, u64, u64, u64)
     )
 }
 
-public fun get_organizer_profile(profile: &OrganizerProfile): (address, String, String, u64, u64, u64, u64) {
+public fun get_organizer_profile(profile: &OrganizerProfile): (address, u64, u64, u64, u64) {
     (
         profile.address,
-        profile.name,
-        profile.bio,
         profile.total_events,
         profile.successful_events,
         profile.total_attendees_served,
@@ -687,6 +823,52 @@ public fun transfer_profile_cap(profile_cap: ProfileCap, new_owner: address) {
 
 public fun get_profile_cap_details(profile_cap: &ProfileCap): (ID, address) {
     (profile_cap.profile_id, profile_cap.owner)
+}
+
+// Check if X username exists
+public fun has_x_username(profile_registry: &ProfileRegistry, x_username: String): bool {
+    table::contains(&profile_registry.x_to_address, x_username)
+}
+
+// Check if Telegram username exists
+public fun has_telegram_username(profile_registry: &ProfileRegistry, telegram_username: String): bool {
+    table::contains(&profile_registry.telegram_to_address, telegram_username)
+}
+
+// Get address from X username
+public fun get_address_from_x(profile_registry: &ProfileRegistry, x_username: String): address {
+    assert!(table::contains(&profile_registry.x_to_address, x_username), EXUsernameNotFound); // X username not found
+    *table::borrow(&profile_registry.x_to_address, x_username)
+}
+
+// Get address from Telegram username
+public fun get_address_from_telegram(profile_registry: &ProfileRegistry, telegram_username: String): address {
+    assert!(table::contains(&profile_registry.telegram_to_address, telegram_username), ETelegramUsernameNotFound); // Telegram username not found
+    *table::borrow(&profile_registry.telegram_to_address, telegram_username)
+}
+
+// Get all events assigned to a specific user (excluding events where they are the organizer)
+public fun get_events_assigned_to_user(
+    registry: &EventRegistry,
+    assignee: String
+): vector<ID> {
+    if (table::contains(&registry.events_by_assignee, assignee)) {
+        *table::borrow(&registry.events_by_assignee, assignee)
+    } else {
+        vector::empty()
+    }
+}
+
+// Get all child events for a particular parent event
+public fun get_child_events(
+    registry: &EventRegistry,
+    parent_id: ID
+): vector<ID> {
+    if (table::contains(&registry.events_by_parent, parent_id)) {
+        *table::borrow(&registry.events_by_parent, parent_id)
+    } else {
+        vector::empty()
+    }
 }
 
 #[test_only]

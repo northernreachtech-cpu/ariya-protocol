@@ -1120,7 +1120,24 @@ async function createEventWithSubscriptionCheck(
         const eventId = tx.moveCall({
             target: `${PACKAGE_ID}::event_management::create_event`,
             arguments: [
-                // ... event creation arguments
+                tx.pure.string(eventData.name),
+                tx.pure.string(eventData.description),
+                tx.pure.string(eventData.location),
+                tx.pure.u64(eventData.startTime),
+                tx.pure.u64(eventData.endTime),
+                tx.pure.u64(eventData.capacity),
+                tx.pure.u64(eventData.feeAmount),
+                tx.pure.u64(eventData.minAttendees),
+                tx.pure.u64(eventData.minCompletionRate),
+                tx.pure.u64(eventData.minAvgRating),
+                tx.pure.string(eventData.metadataUri),
+                tx.pure(eventData.sponsors),
+                tx.pure.string(eventData.assignee || "self"),
+                tx.pure.bool(eventData.isChild || false),
+                tx.pure.id(eventData.parentId || "0x0"),
+                tx.object(CLOCK_ID),
+                tx.object(REGISTRY_ID),
+                tx.object(ORGANIZER_PROFILE_ID),
             ],
         });
 

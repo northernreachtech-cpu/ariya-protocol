@@ -1,12 +1,12 @@
 module ariya::document_flow;
 
-use std::string::String;
+use std::string::{Self, String};
 use sui::clock::{Self, Clock};
 use sui::table::{Self, Table};
 use sui::coin::{Self, Coin};
 use sui::sui::SUI;
 use sui::event;
-use ariya::event_management::{Self, Event};
+use ariya::event_management::{Self, Event, ProfileRegistry};
 
 // Error codes
 const ENotAuthorized: u64 = 100;
@@ -151,16 +151,23 @@ public fun create_chain_participant(
     }
 }
 
-// Create document flow for an event (only organizer can do this)
+// Create document flow for an event (only organizer and assignee can do this)
 public fun create_document_flow(
     event: &Event,
     participants: vector<ChainParticipant>,
     clock: &Clock,
     registry: &mut DocumentFlowRegistry,
+    profile_registry: &ProfileRegistry,
     ctx: &mut TxContext
 ): FlowManagerCap {
     let organizer = event_management::get_event_organizer(event);
-    assert!(organizer == tx_context::sender(ctx), ENotAuthorized);
+    let assignee = event_management::get_event_assignee(event);
+    let assignee_addr = if (assignee == string::utf8(b"self")) {
+        organizer
+    } else {
+        event_management::get_address_from_x(profile_registry, assignee)
+    };
+    assert!(assignee_addr == tx_context::sender(ctx) || organizer == tx_context::sender(ctx), ENotAuthorized);
     
     // Validate hierarchy levels are unique and properly ordered
     validate_chain_hierarchy(&participants);
@@ -201,15 +208,24 @@ public fun create_document_flow(
 // Submit document for approval
 public fun submit_document(
     flow: &DocumentFlow,
+    event: &Event,
     title: String,
     description: String,
     document_uri: String,
     document_type: String,
     clock: &Clock,
     registry: &mut DocumentFlowRegistry,
+    profile_registry: &ProfileRegistry,
     ctx: &mut TxContext
 ): ID {
-    assert!(flow.organizer == tx_context::sender(ctx), ENotAuthorized);
+    let organizer = event_management::get_event_organizer(event);
+    let assignee = event_management::get_event_assignee(event);
+    let assignee_addr = if (assignee == string::utf8(b"self")) {
+        organizer
+    } else {
+        event_management::get_address_from_x(profile_registry, assignee)
+    };
+    assert!(assignee_addr == tx_context::sender(ctx) || organizer == tx_context::sender(ctx), ENotAuthorized);
     assert!(flow.is_active, ENotAuthorized);
     
     // Find the starting reviewer (lowest hierarchy level)
@@ -355,9 +371,10 @@ public fun reject_document(
     });
 }
 
-// Direct funding to organizer (replaces escrow system)
-public fun fund_organizer_directly(
+// Direct funding (replaces escrow system)
+public fun fund_directly(
     submission: &mut DocumentSubmission,
+    receiver: address,
     flow: &DocumentFlow,
     payment: Coin<SUI>,
     clock: &Clock,
@@ -374,7 +391,7 @@ public fun fund_organizer_directly(
     let payment_amount = coin::value(&payment);
     
     // Transfer directly to organizer
-    transfer::public_transfer(payment, submission.organizer);
+    transfer::public_transfer(payment, receiver);
     
     submission.state = DOC_STATE_FUNDED;
     submission.last_updated = clock::timestamp_ms(clock);

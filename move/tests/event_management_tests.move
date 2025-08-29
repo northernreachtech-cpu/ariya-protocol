@@ -51,8 +51,6 @@ fun create_test_organizer_profile(
     test_scenario::next_tx(scenario, user);
     {
         let cap = event_management::create_organizer_profile(
-            string::utf8(b"Test Organizer"),
-            string::utf8(b"A test organizer bio"),
             clock,
             test_scenario::ctx(scenario)
         );
@@ -77,6 +75,7 @@ fun create_test_event(
         let mut profile = test_scenario::take_shared<OrganizerProfile>(scenario);
         
         let current_time = clock::timestamp_ms(clock);
+     
         let event_id = event_management::create_event(
             string::utf8(b"Test Event"),
             string::utf8(b"A test event description"),
@@ -89,6 +88,10 @@ fun create_test_event(
             8000, // min_completion_rate (80%)
             400, // min_avg_rating (4.0)
             string::utf8(b"https://walrus.example/metadata"),
+            vector[string::utf8(b"Mysten_labs")],
+            string::utf8(b"Self"),
+            false,
+            object::id_from_address(@0x0),
             clock,
             &mut registry,
             &mut profile,
@@ -115,8 +118,6 @@ fun test_create_organizer_profile() {
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
         let cap = event_management::create_organizer_profile(
-            string::utf8(b"Alice Events"),
-            string::utf8(b"Professional event organizer"),
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -167,11 +168,15 @@ fun test_create_event() {
             clock::timestamp_ms(&clock) + DAY_IN_MS,
             clock::timestamp_ms(&clock) + DAY_IN_MS + (8 * HOUR_IN_MS),
             500,
-            0,
-            50,
-            7500, // 75% completion rate
-            450, // 4.5 rating
+            0, // fee_amount
+            50, // min_attendees
+            7500, // min_completion_rate (75%)
+            450, // min_avg_rating (4.5)
             string::utf8(b"https://walrus.example/sdc-metadata"),
+            vector[string::utf8(b"Sui Foundation")], // sponsors
+            string::utf8(b"Self"), // assignee
+            false, // is_child
+            object::id_from_address(@0x0), // parent_id
             &clock,
             &mut registry,
             &mut profile,
@@ -439,11 +444,15 @@ fun test_create_event_not_organizer() {
             clock::timestamp_ms(&clock) + DAY_IN_MS,
             clock::timestamp_ms(&clock) + DAY_IN_MS + HOUR_IN_MS,
             100,
-            0,
-            10,
-            8000,
-            400,
-            string::utf8(b""),
+            0, // fee_amount
+            10, // min_attendees
+            8000, // min_completion_rate (80%)
+            400, // min_avg_rating (4.0)
+            string::utf8(b"https://walrus.example/metadata"),
+            vector[string::utf8(b"Test Sponsor")], // sponsors
+            string::utf8(b"Self"), // assignee
+            false, // is_child
+            object::id_from_address(@0x0), // parent_id
             &clock,
             &mut registry,
             &mut profile,
@@ -479,11 +488,15 @@ fun test_create_event_zero_capacity() {
             clock::timestamp_ms(&clock) + DAY_IN_MS,
             clock::timestamp_ms(&clock) + DAY_IN_MS + HOUR_IN_MS,
             0, // Zero capacity
-            0,
-            10,
-            8000,
-            400,
-            string::utf8(b""),
+            0, // fee_amount
+            10, // min_attendees
+            8000, // min_completion_rate (80%)
+            400, // min_avg_rating (4.0)
+            string::utf8(b"https://walrus.example/metadata"),
+            vector[string::utf8(b"Test Sponsor")], // sponsors
+            string::utf8(b"Self"), // assignee
+            false, // is_child
+            object::id_from_address(@0x0), // parent_id
             &clock,
             &mut registry,
             &mut profile,
@@ -520,11 +533,15 @@ fun test_create_event_past_start_time() {
             500000, // Past timestamp
             2000000,
             100,
-            0,
-            10,
-            8000,
-            400,
-            string::utf8(b""),
+            0, // fee_amount
+            10, // min_attendees
+            8000, // min_completion_rate (80%)
+            400, // min_avg_rating (4.0)
+            string::utf8(b"https://walrus.example/metadata"),
+            vector[string::utf8(b"Test Sponsor")], // sponsors
+            string::utf8(b"Self"), // assignee
+            false, // is_child
+            object::id_from_address(@0x0), // parent_id
             &clock,
             &mut registry,
             &mut profile,
@@ -562,11 +579,15 @@ fun test_create_event_end_before_start() {
             start_time,
             start_time - HOUR_IN_MS, // End before start
             100,
-            0,
-            10,
-            8000,
-            400,
-            string::utf8(b""),
+            0, // fee_amount
+            10, // min_attendees
+            8000, // min_completion_rate (80%)
+            400, // min_avg_rating (4.0)
+            string::utf8(b"https://walrus.example/metadata"),
+            vector[string::utf8(b"Test Sponsor")], // sponsors
+            string::utf8(b"Self"), // assignee
+            false, // is_child
+            object::id_from_address(@0x0), // parent_id
             &clock,
             &mut registry,
             &mut profile,
@@ -1016,11 +1037,15 @@ fun test_sponsor_conditions() {
             clock::timestamp_ms(&clock) + DAY_IN_MS,
             clock::timestamp_ms(&clock) + DAY_IN_MS + (6 * HOUR_IN_MS),
             1000,
-            0,
-            500,  // min 500 attendees
-            9000, // min 90% completion rate
-            480,  // min 4.8 rating
+            0, // fee_amount
+            500,  // min_attendees
+            9000, // min_completion_rate (90%)
+            480,  // min_avg_rating (4.8)
             string::utf8(b"https://walrus.example/premium-event"),
+            vector[string::utf8(b"Premium Sponsor")], // sponsors
+            string::utf8(b"Self"), // assignee
+            false, // is_child
+            object::id_from_address(@0x0), // parent_id
             &clock,
             &mut registry,
             &mut profile,
@@ -1144,11 +1169,15 @@ fun test_minimum_valid_event_duration() {
             start_time,
             start_time + 1, // Just 1ms duration
             10,
-            0,
-            1,
-            5000,
-            300,
-            string::utf8(b""),
+            0, // fee_amount
+            1, // min_attendees
+            5000, // min_completion_rate (50%)
+            300, // min_avg_rating (3.0)
+            string::utf8(b"https://walrus.example/metadata"),
+            vector[string::utf8(b"Quick Sponsor")], // sponsors
+            string::utf8(b"Self"), // assignee
+            false, // is_child
+            object::id_from_address(@0x0), // parent_id
             &clock,
             &mut registry,
             &mut profile,

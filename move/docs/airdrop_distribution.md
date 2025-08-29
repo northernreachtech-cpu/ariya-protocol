@@ -2,7 +2,7 @@
 
 ## Overview
 
-The ariya Airdrop Distribution contract enables event organizers to create and manage automated token distributions for event participants within the Ephemeral Identity & Attendance (ariya) Protocol. This contract supports multiple distribution strategies, customizable eligibility criteria, and automated claiming mechanisms based on verified event participation.
+The ariya Airdrop Distribution contract enables event organizers and assignees to create and manage automated token distributions for event participants within the Ephemeral Identity & Attendance (ariya) Protocol. This contract supports multiple distribution strategies, customizable eligibility criteria, and automated claiming mechanisms based on verified event participation. Both event organizers and their designated assignees have full control over airdrop creation, batch distribution, and fund management.
 
 ## Module Information
 
@@ -96,7 +96,7 @@ public struct ClaimRecord has store, drop, copy {
 
 | Error | Code | Description |
 |-------|------|-------------|
-| `ENotOrganizer` | 1 | Caller is not the event organizer |
+| `ENotOrganizer` | 1 | Caller is not the event organizer or assignee |
 | `EInsufficientFunds` | 2 | Insufficient funds for operation |
 | `EAirdropNotFound` | 3 | Airdrop does not exist |
 | `ENotEligible` | 4 | User does not meet eligibility criteria |
@@ -126,6 +126,7 @@ public fun create_airdrop(
     validity_days: u64,
     registry: &mut AirdropRegistry,
     attendance_registry: &AttendanceRegistry,
+    profile_registry: &ProfileRegistry,
     clock: &Clock,
     ctx: &mut TxContext
 ): ID
@@ -144,12 +145,13 @@ public fun create_airdrop(
 - `validity_days`: Number of days before airdrop expires
 - `registry`: Mutable reference to airdrop registry
 - `attendance_registry`: Reference to attendance registry
+- `profile_registry`: Reference to profile registry for assignee verification
 - `clock`: System clock reference
 - `ctx`: Transaction context
 
 **Returns:** `ID` - The created airdrop's identifier
 
-**Authorization:** Only event organizer can create airdrops
+**Authorization:** Event organizer OR event assignee can create airdrops
 
 **Frontend Usage:**
 ```typescript
@@ -169,6 +171,7 @@ const airdropId = tx.moveCall({
         tx.pure.u64(30), // Valid for 30 days
         tx.object(AIRDROP_REGISTRY_ID),
         tx.object(ATTENDANCE_REGISTRY_ID),
+        tx.object(PROFILE_REGISTRY_ID),
         tx.object(CLOCK_ID),
     ],
 });
@@ -230,16 +233,18 @@ const result = await wallet.signAndExecuteTransactionBlock({
 ```
 
 #### `batch_distribute`
-Distributes airdrop to multiple recipients in batch (organizer-initiated).
+Distributes airdrop to multiple recipients in batch (organizer or assignee initiated).
 
 ```move
 public fun batch_distribute(
     airdrop_id: ID,
+    event: &Event,
     recipients: vector<address>,
     registry: &mut AirdropRegistry,
     attendance_registry: &AttendanceRegistry,
     nft_registry: &NFTRegistry,
     rating_registry: &RatingRegistry,
+    profile_registry: &ProfileRegistry,
     clock: &Clock,
     ctx: &mut TxContext
 )
@@ -247,15 +252,17 @@ public fun batch_distribute(
 
 **Parameters:**
 - `airdrop_id`: Airdrop identifier
+- `event`: Reference to the event object
 - `recipients`: Vector of recipient wallet addresses
 - `registry`: Mutable reference to airdrop registry
 - `attendance_registry`: Reference to attendance registry
 - `nft_registry`: Reference to NFT registry
 - `rating_registry`: Reference to rating registry
+- `profile_registry`: Reference to profile registry for assignee verification
 - `clock`: System clock reference
 - `ctx`: Transaction context
 
-**Authorization:** Only airdrop organizer can initiate batch distribution
+**Authorization:** Airdrop organizer OR event assignee can initiate batch distribution
 
 **Use Cases:**
 - Mass distribution to all eligible participants
@@ -268,14 +275,24 @@ Withdraws unclaimed funds after airdrop expiration.
 ```move
 public fun withdraw_unclaimed(
     airdrop_id: ID,
+    event: &Event,
     registry: &mut AirdropRegistry,
+    profile_registry: &ProfileRegistry,
     clock: &Clock,
     ctx: &mut TxContext
 )
 ```
 
+**Parameters:**
+- `airdrop_id`: Airdrop identifier
+- `event`: Reference to the event object
+- `registry`: Mutable reference to airdrop registry
+- `profile_registry`: Reference to profile registry for assignee verification
+- `clock`: System clock reference
+- `ctx`: Transaction context
+
 **Requirements:**
-- Only organizer can withdraw
+- Only organizer OR event assignee can withdraw
 - Airdrop must be expired
 - Remaining funds will be returned to organizer
 
@@ -569,18 +586,20 @@ async function getAirdropDetails(airdropId: string) {
     return null;
 }
 
-// 5. Batch distribution (organizer only)
-async function batchDistribute(airdropId: string, recipients: string[]) {
+// 5. Batch distribution (organizer or assignee)
+async function batchDistribute(airdropId: string, eventId: string, recipients: string[]) {
     const tx = new Transaction();
     tx.moveCall({
         target: `${PACKAGE_ID}::airdrop_distribution::batch_distribute`,
         arguments: [
             tx.pure.id(airdropId),
+            tx.object(eventId), // Event object
             tx.pure.vector('address', recipients),
             tx.object(AIRDROP_REGISTRY_ID),
             tx.object(ATTENDANCE_REGISTRY_ID),
             tx.object(NFT_REGISTRY_ID),
             tx.object(RATING_REGISTRY_ID),
+            tx.object(PROFILE_REGISTRY_ID), // Profile registry for assignee verification
             tx.object(CLOCK_ID),
         ],
     });

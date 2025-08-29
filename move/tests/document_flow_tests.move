@@ -18,7 +18,7 @@ use ariya::document_flow::{
     EDocumentNotPending,
     EInvalidApprover,
 };
-use ariya::event_management::{Self, Event, EventRegistry, OrganizerProfile};
+use ariya::event_management::{Self, Event, EventRegistry, OrganizerProfile, ProfileRegistry};
 
 // Document states
 const DOC_STATE_IN_REVIEW: u8 = 0;
@@ -59,8 +59,6 @@ fun create_test_event(
     {
         // Create organizer profile first
         let cap = event_management::create_organizer_profile(
-            string::utf8(b"Test Organizer"),
-            string::utf8(b"Bio"),
             clock,
             test_scenario::ctx(scenario)
         );
@@ -79,11 +77,15 @@ fun create_test_event(
             clock::timestamp_ms(clock) + DAY_IN_MS,
             clock::timestamp_ms(clock) + DAY_IN_MS + (4 * HOUR_IN_MS),
             100,
-            0,
-            10,
-            8000,
-            400,
+            0, // fee_amount
+            10, // min_attendees
+            8000, // min_completion_rate (80%)
+            400, // min_avg_rating (4.0)
             string::utf8(b"https://walrus.example/metadata"),
+            vector[string::utf8(b"Test Sponsor")], // sponsors
+            string::utf8(b"self"), // assignee
+            false, // is_child
+            object::id_from_address(@0x0), // parent_id
             clock,
             &mut registry,
             &mut profile,
@@ -161,6 +163,7 @@ fun test_create_document_flow() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let chain = create_test_chain();
         
         let cap = document_flow::create_document_flow(
@@ -168,6 +171,7 @@ fun test_create_document_flow() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
@@ -177,6 +181,7 @@ fun test_create_document_flow() {
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     clock::destroy_for_testing(clock);
@@ -197,6 +202,7 @@ fun test_submit_document_not_organizer() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let chain = create_test_chain();
         
         let cap = document_flow::create_document_flow(
@@ -204,33 +210,41 @@ fun test_submit_document_not_organizer() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Try to submit as non-organizer
     test_scenario::next_tx(&mut scenario, REVIEWER1);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
-        
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
+
         let _submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Unauthorized Doc"),
             string::utf8(b"Should fail"),
             string::utf8(b"https://walrus.example/fail.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     clock::destroy_for_testing(clock);
@@ -251,6 +265,7 @@ fun test_approve_document_wrong_reviewer() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let chain = create_test_chain();
         
         let cap = document_flow::create_document_flow(
@@ -258,32 +273,40 @@ fun test_approve_document_wrong_reviewer() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
-        
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
+
         let _submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Test Doc"),
             string::utf8(b"Description"),
             string::utf8(b"https://walrus.example/doc.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Try to approve with wrong reviewer (REVIEWER2 when REVIEWER1 should review)
@@ -322,6 +345,7 @@ fun test_approve_already_approved_document() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let mut chain = vector::empty<ChainParticipant>();
         
         vector::push_back(&mut chain, document_flow::create_chain_participant(
@@ -333,32 +357,40 @@ fun test_approve_already_approved_document() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         
         let _submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Test Doc"),
             string::utf8(b"Description"),
             string::utf8(b"https://walrus.example/doc.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Approve once
@@ -415,6 +447,7 @@ fun test_fund_unapproved_document() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let mut chain = vector::empty<ChainParticipant>();
         
         vector::push_back(&mut chain, document_flow::create_chain_participant(
@@ -426,32 +459,40 @@ fun test_fund_unapproved_document() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         
         let _submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Unapproved Doc"),
             string::utf8(b"Not yet approved"),
             string::utf8(b"https://walrus.example/doc.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Try to fund without approval
@@ -462,8 +503,9 @@ fun test_fund_unapproved_document() {
         
         let payment = mint_for_testing<SUI>(1000000, test_scenario::ctx(&mut scenario));
         
-        document_flow::fund_organizer_directly(
+        document_flow::fund_directly(
             &mut submission,
+            ORGANIZER,
             &flow,
             payment,
             &clock,
@@ -492,6 +534,7 @@ fun test_fund_wrong_funder() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let mut chain = vector::empty<ChainParticipant>();
         
         vector::push_back(&mut chain, document_flow::create_chain_participant(
@@ -503,33 +546,41 @@ fun test_fund_wrong_funder() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Submit and approve document
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         
         let _submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Budget Request"),
             string::utf8(b"Need funding"),
             string::utf8(b"https://walrus.example/budget.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     test_scenario::next_tx(&mut scenario, FUNDER);
@@ -557,8 +608,9 @@ fun test_fund_wrong_funder() {
         
         let payment = mint_for_testing<SUI>(1000000, test_scenario::ctx(&mut scenario));
         
-        document_flow::fund_organizer_directly(
+        document_flow::fund_directly(
             &mut submission,
+            ORGANIZER,
             &flow,
             payment,
             &clock,
@@ -588,6 +640,7 @@ fun test_full_document_lifecycle() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let chain = create_test_chain();
         
         let cap = document_flow::create_document_flow(
@@ -595,33 +648,41 @@ fun test_full_document_lifecycle() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // 2. Submit document
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         
         let _submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Complete Lifecycle Doc"),
             string::utf8(b"Full approval and funding cycle"),
             string::utf8(b"https://walrus.example/lifecycle.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // 3. First approval
@@ -688,8 +749,9 @@ fun test_full_document_lifecycle() {
         
         let payment = mint_for_testing<SUI>(5000000, test_scenario::ctx(&mut scenario));
         
-        document_flow::fund_organizer_directly(
+        document_flow::fund_directly(
             &mut submission,
+            ORGANIZER,
             &flow,
             payment,
             &clock,
@@ -731,6 +793,7 @@ fun test_complex_hierarchy_levels() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let mut chain = vector::empty<ChainParticipant>();
         
         // Use levels 10, 25, 100 to test non-sequential ordering
@@ -749,33 +812,41 @@ fun test_complex_hierarchy_levels() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Submit and verify it starts at level 10
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         
         let _submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Complex Hierarchy Doc"),
             string::utf8(b"Testing non-sequential levels"),
             string::utf8(b"https://walrus.example/complex.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     test_scenario::next_tx(&mut scenario, @0x0);
@@ -866,6 +937,7 @@ fun test_submit_document() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let chain = create_test_chain();
         
         let cap = document_flow::create_document_flow(
@@ -873,35 +945,43 @@ fun test_submit_document() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Submit document
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         
         let submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Budget Proposal"),
             string::utf8(b"Q4 event budget"),
             string::utf8(b"https://walrus.example/budget.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         assert!(submission_id != object::id_from_address(@0x0), 10);
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Verify submission was created
@@ -933,6 +1013,7 @@ fun test_approve_document_single_level() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let mut chain = vector::empty<ChainParticipant>();
         
         vector::push_back(&mut chain, document_flow::create_chain_participant(
@@ -947,33 +1028,41 @@ fun test_approve_document_single_level() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Submit and approve document
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         
         let _submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Simple Doc"),
             string::utf8(b"Description"),
             string::utf8(b"https://walrus.example/doc.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Approve as the single reviewer
@@ -1014,6 +1103,7 @@ fun test_approve_document_multi_level() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let chain = create_test_chain();
         
         let cap = document_flow::create_document_flow(
@@ -1021,32 +1111,40 @@ fun test_approve_document_multi_level() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         
         let _submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Multi-level Doc"),
             string::utf8(b"Needs multiple approvals"),
             string::utf8(b"https://walrus.example/doc.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // First approval (REVIEWER1 - level 1)
@@ -1133,6 +1231,7 @@ fun test_reject_document() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let chain = create_test_chain();
         
         let cap = document_flow::create_document_flow(
@@ -1140,32 +1239,40 @@ fun test_reject_document() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         
         let _submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Doc to Reject"),
             string::utf8(b"This will be rejected"),
-            string::utf8(b"https://walrus.example/bad.pdf"),
+            string::utf8(b"https://walrus.example/doc.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Reject at first level
@@ -1206,6 +1313,7 @@ fun test_reject_and_send_back() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let chain = create_test_chain();
         
         let cap = document_flow::create_document_flow(
@@ -1213,32 +1321,40 @@ fun test_reject_and_send_back() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         
         let _submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Doc to Send Back"),
             string::utf8(b"Will be approved then sent back"),
             string::utf8(b"https://walrus.example/sendback.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Approve at first level
@@ -1300,6 +1416,7 @@ fun test_fund_organizer_directly() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let mut chain = vector::empty<ChainParticipant>();
         
         vector::push_back(&mut chain, document_flow::create_chain_participant(
@@ -1314,32 +1431,40 @@ fun test_fund_organizer_directly() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         
         let _submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Budget Request"),
             string::utf8(b"Funding needed"),
             string::utf8(b"https://walrus.example/budget.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Approve to make it fundable
@@ -1370,8 +1495,9 @@ fun test_fund_organizer_directly() {
         
         let payment = mint_for_testing<SUI>(1000000, test_scenario::ctx(&mut scenario));
         
-        document_flow::fund_organizer_directly(
+        document_flow::fund_directly(
             &mut submission,
+            ORGANIZER,
             &flow,
             payment,
             &clock,
@@ -1401,6 +1527,7 @@ fun test_is_user_current_reviewer() {
     {
         let event = test_scenario::take_shared<Event>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let chain = create_test_chain();
         
         let cap = document_flow::create_document_flow(
@@ -1408,32 +1535,40 @@ fun test_is_user_current_reviewer() {
             chain,
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
         transfer::public_transfer(cap, ORGANIZER);
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     test_scenario::next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared<Event>(&scenario);
         let flow = test_scenario::take_shared<DocumentFlow>(&scenario);
         let mut registry = test_scenario::take_shared<DocumentFlowRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         
         let _submission_id = document_flow::submit_document(
             &flow,
+            &event,
             string::utf8(b"Test Doc"),
             string::utf8(b"For reviewer check"),
             string::utf8(b"https://walrus.example/test.pdf"),
             string::utf8(b"pdf"),
             &clock,
             &mut registry,
+            &profile_registry,
             test_scenario::ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(flow);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
     };
     
     // Check current reviewer

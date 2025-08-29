@@ -33,6 +33,7 @@ public struct EventAttendance has store {
     check_in_count: u64,
     check_out_count: u64,
     unique_devices: Table<vector<u8>, bool>, // Device fingerprint tracking
+    attendee_addresses: vector<address>, // Track all attendee addresses for iteration
 }
 
 public struct AttendanceRecord has store, drop, copy {
@@ -125,6 +126,7 @@ public fun check_in(
             check_in_count: 0,
             check_out_count: 0,
             unique_devices: table::new(ctx),
+            attendee_addresses: vector::empty(),
         };
         table::add(&mut attendance_registry.event_attendances, event_id, event_attendance);
     };
@@ -172,6 +174,7 @@ public fun check_in(
     };
 
     event_attendance.check_in_count = event_attendance.check_in_count + 1;
+    vector::push_back(&mut event_attendance.attendee_addresses, wallet);
 
     // Update user's attendance history
     if (!table::contains(&attendance_registry.user_attendances, wallet)) {
@@ -311,6 +314,46 @@ public fun get_user_attendance_history(
     *table::borrow(&attendance_registry.user_attendances, wallet)
 }
 
+// Get all attendance records for a specific event
+public fun get_event_attendance_records(
+    event_id: ID,
+    attendance_registry: &AttendanceRegistry,
+): vector<AttendanceRecord> {
+    if (!table::contains(&attendance_registry.event_attendances, event_id)) {
+        return vector::empty()
+    };
+
+    let event_attendance = table::borrow(&attendance_registry.event_attendances, event_id);
+    let mut all_records = vector::empty<AttendanceRecord>();
+    
+    let mut i = 0;
+    let len = vector::length(&event_attendance.attendee_addresses);
+    
+    while (i < len) {
+        let attendee = *vector::borrow(&event_attendance.attendee_addresses, i);
+        if (table::contains(&event_attendance.records, attendee)) {
+            let record = table::borrow(&event_attendance.records, attendee);
+            vector::push_back(&mut all_records, *record);
+        };
+        i = i + 1;
+    };
+    
+    all_records
+}
+
+// Get all attendee addresses for a specific event
+public fun get_event_attendee_addresses(
+    event_id: ID,
+    attendance_registry: &AttendanceRegistry,
+): vector<address> {
+    if (!table::contains(&attendance_registry.event_attendances, event_id)) {
+        return vector::empty()
+    };
+
+    let event_attendance = table::borrow(&attendance_registry.event_attendances, event_id);
+    *&event_attendance.attendee_addresses
+}
+
 // Verify attendance completion for rating eligibility
 public fun verify_attendance_completion(
     wallet: address,
@@ -409,6 +452,7 @@ public fun simulate_checkin_for_testing(
             check_in_count: 0,
             check_out_count: 0,
             unique_devices: table::new(ctx),
+            attendee_addresses: vector::empty(),
         };
         table::add(&mut attendance_registry.event_attendances, event_id, event_attendance);
     };
@@ -434,6 +478,7 @@ public fun simulate_checkin_for_testing(
     } else {
         table::add(&mut event_attendance.records, wallet, record);
         event_attendance.check_in_count = event_attendance.check_in_count + 1;
+        vector::push_back(&mut event_attendance.attendee_addresses, wallet);
     };
     
     // Update user attendances

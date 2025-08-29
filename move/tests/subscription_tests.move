@@ -63,8 +63,6 @@ fun create_test_organizer_profile(
     test_scenario::next_tx(scenario, user);
     {
         let cap = event_management::create_organizer_profile(
-            string::utf8(b"Test Organizer"),
-            string::utf8(b"Test bio"),
             clock,
             test_scenario::ctx(scenario)
         );

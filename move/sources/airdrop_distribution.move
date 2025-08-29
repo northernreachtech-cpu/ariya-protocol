@@ -1,13 +1,13 @@
 module ariya::airdrop_distribution;
 
-use std::string::String;
+use std::string::{Self, String};
 use sui::coin::{Self, Coin};
 use sui::sui::SUI;
 use sui::balance::{Self, Balance};
 use sui::table::{Self, Table};
 use sui::event;
 use sui::clock::{Self, Clock};
-use ariya::event_management::{Self, Event};
+use ariya::event_management::{Self, Event, ProfileRegistry};
 use ariya::nft_minting::{Self, NFTRegistry};
 use ariya::attendance_verification::{Self, AttendanceRegistry};
 use ariya::rating_reputation::{Self, RatingRegistry};
@@ -122,14 +122,22 @@ public fun create_airdrop(
     validity_days: u64,
     registry: &mut AirdropRegistry,
     attendance_registry: &AttendanceRegistry,
+    profile_registry: &ProfileRegistry,
     clock: &Clock,
     ctx: &mut TxContext
 ): ID {
     let organizer = tx_context::sender(ctx);
     let event_id = event_management::get_event_id(event);
     
-    // Verify sender is event organizer
-    assert!(event_management::get_event_organizer(event) == organizer, ENotOrganizer);
+    // Verify sender is either event organizer or event assignee (same pattern as document_flow.move)
+    let event_organizer = event_management::get_event_organizer(event);
+    let assignee = event_management::get_event_assignee(event);
+    let assignee_addr = if (assignee == string::utf8(b"self")) {
+        event_organizer
+    } else {
+        event_management::get_address_from_x(profile_registry, assignee)
+    };
+    assert!(assignee_addr == organizer || event_organizer == organizer, ENotOrganizer);
     
     let amount = coin::value(&payment);
     assert!(amount > 0, EInsufficientFunds);
@@ -297,21 +305,33 @@ public fun claim_airdrop(
     };
 }
 
-// Batch claim for multiple eligible users (organizer initiated)
+// Batch claim for multiple eligible users (organizer or assignee initiated)
 public fun batch_distribute(
     airdrop_id: ID,
+    event: &Event,
     recipients: vector<address>,
     registry: &mut AirdropRegistry,
     attendance_registry: &AttendanceRegistry,
     nft_registry: &NFTRegistry,
     rating_registry: &RatingRegistry,
+    profile_registry: &ProfileRegistry,
     clock: &Clock,
     ctx: &mut TxContext
 ) {
     assert!(table::contains(&registry.airdrops, airdrop_id), EAirdropNotFound);
     
     let airdrop = table::borrow_mut(&mut registry.airdrops, airdrop_id);
-    assert!(tx_context::sender(ctx) == airdrop.organizer, ENotOrganizer);
+    let sender = tx_context::sender(ctx);
+    
+    // Verify sender is either the airdrop organizer or the event assignee (same pattern as document_flow.move)
+    let event_organizer = event_management::get_event_organizer(event);
+    let assignee = event_management::get_event_assignee(event);
+    let assignee_addr = if (assignee == string::utf8(b"self")) {
+        event_organizer
+    } else {
+        event_management::get_address_from_x(profile_registry, assignee)
+    };
+    assert!(assignee_addr == sender || event_organizer == sender, ENotOrganizer);
     assert!(airdrop.active, EAirdropNotActive);
     
     let current_time = clock::timestamp_ms(clock);
@@ -375,17 +395,29 @@ public fun batch_distribute(
     };
 }
 
-// Withdraw unclaimed funds after expiry
+// Withdraw unclaimed funds after expiry (organizer or assignee)
 public fun withdraw_unclaimed(
     airdrop_id: ID,
+    event: &Event,
     registry: &mut AirdropRegistry,
+    profile_registry: &ProfileRegistry,
     clock: &Clock,
     ctx: &mut TxContext
 ) {
     assert!(table::contains(&registry.airdrops, airdrop_id), EAirdropNotFound);
     
     let airdrop = table::borrow_mut(&mut registry.airdrops, airdrop_id);
-    assert!(tx_context::sender(ctx) == airdrop.organizer, ENotOrganizer);
+    let sender = tx_context::sender(ctx);
+    
+    // Verify sender is either the airdrop organizer or the event assignee (same pattern as document_flow.move)
+    let event_organizer = event_management::get_event_organizer(event);
+    let assignee = event_management::get_event_assignee(event);
+    let assignee_addr = if (assignee == string::utf8(b"self")) {
+        event_organizer
+    } else {
+        event_management::get_address_from_x(profile_registry, assignee)
+    };
+    assert!(assignee_addr == sender || event_organizer == sender, ENotOrganizer);
     assert!(clock::timestamp_ms(clock) > airdrop.expires_at, EAirdropNotActive);
     
     let remaining = balance::value(&airdrop.pool);
