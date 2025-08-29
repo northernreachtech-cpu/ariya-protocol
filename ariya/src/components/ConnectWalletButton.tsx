@@ -14,17 +14,43 @@ import {
   // useConnectWallet, // COMMENTED OUT: Regular wallet connections disabled
   useDisconnectWallet,
   // useWallets, // COMMENTED OUT: Regular wallet connections disabled
+  useSuiClient,
 } from "@mysten/dapp-kit";
 import Button from "./Button";
 import Card from "./Card";
 import { useZkLogin } from "../contexts/ZkLoginContext";
 
+// Google Icon Component
+const GoogleIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      fill="#4285F4"
+    />
+    <path
+      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      fill="#34A853"
+    />
+    <path
+      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+      fill="#FBBC05"
+    />
+    <path
+      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+      fill="#EA4335"
+    />
+  </svg>
+);
+
 const ConnectWalletButton = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [balance, setBalance] = useState<string | null>(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   // const [isConnecting, setIsConnecting] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const currentAccount = useCurrentAccount();
+  const suiClient = useSuiClient();
   // const { mutate: connect } = useConnectWallet(); // COMMENTED OUT: Regular wallet connections disabled
   const { mutate: disconnect } = useDisconnectWallet();
   // const wallets = useWallets(); // COMMENTED OUT: Regular wallet connections disabled
@@ -57,6 +83,27 @@ const ConnectWalletButton = () => {
     window.open(`https://suiscan.xyz/mainnet/account/${address}`, "_blank");
   };
 
+  // Fetch balance for the connected wallet
+  const fetchBalance = async (address: string) => {
+    try {
+      setIsLoadingBalance(true);
+      const balanceData = await suiClient.getBalance({
+        owner: address,
+        coinType: "0x2::sui::SUI"
+      });
+      
+      // Convert balance to Sui (divide by 10^9) and format to 2 decimal places
+      const balanceInSui = Number(balanceData.totalBalance) / 1000000000;
+      const formattedBalance = balanceInSui.toFixed(2);
+      setBalance(formattedBalance);
+    } catch (error) {
+      console.error("Failed to fetch balance:", error);
+      setBalance(null);
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -64,6 +111,16 @@ const ConnectWalletButton = () => {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  // Fetch balance when address changes
+  useEffect(() => {
+    const activeAddress = currentAccount?.address || zkAddress;
+    if (activeAddress) {
+      fetchBalance(activeAddress);
+    } else {
+      setBalance(null);
+    }
+  }, [currentAccount?.address, zkAddress]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -159,8 +216,8 @@ const ConnectWalletButton = () => {
             showDropdown ? "ring-2 ring-primary/50 border-primary/50" : ""
           }`}
         >
-          <Shield className="mr-2 h-4 w-4" />
-          Connect with zkLogin
+          <GoogleIcon className="mr-2 h-4 w-4" />
+          Sign in with Google
           <ChevronDown
             className={`ml-2 h-4 w-4 transition-transform duration-300 ${
               showDropdown ? "rotate-180" : ""
@@ -273,15 +330,15 @@ const ConnectWalletButton = () => {
                               : "bg-card hover:bg-card-secondary border-border hover:border-primary/30"
                           }`}
                         >
-                          <Shield className="h-5 w-5 mr-3 text-primary" />
+                          <GoogleIcon className="h-5 w-5 mr-3" />
                           <div>
                             <div className="font-medium text-foreground">
-                              zkLogin (Google)
+                              Sign in with Google
                             </div>
                             <div className="text-sm text-foreground-muted">
                               {isZkConnecting
                                 ? "Connecting..."
-                                : "Sign in with Google"}
+                                : "Use your Google account"}
                             </div>
                           </div>
                         </button>
@@ -298,9 +355,9 @@ const ConnectWalletButton = () => {
               <div className="absolute top-full right-0 mt-3 z-[10000]">
                 <Card className="min-w-80 p-6 shadow-2xl border border-border bg-background/90 backdrop-blur-xl">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-foreground">
-                      Connect with zkLogin
-                    </h3>
+                                            <h3 className="text-lg font-bold text-foreground">
+                          Sign in with Google
+                        </h3>
                     <button
                       onClick={() => setShowDropdown(false)}
                       className="p-1 rounded-lg hover:bg-card transition-colors"
@@ -367,19 +424,19 @@ const ConnectWalletButton = () => {
                           ? "bg-card border-border text-foreground-muted cursor-not-allowed"
                           : "bg-card hover:bg-card-secondary border-border hover:border-primary/30"
                       }`}
-                    >
-                      <Shield className="h-5 w-5 mr-3 text-primary" />
-                      <div>
-                        <div className="font-medium text-foreground">
-                          zkLogin (Google)
-                        </div>
-                        <div className="text-sm text-foreground-muted">
-                          {isZkConnecting
-                            ? "Connecting..."
-                            : "Sign in with Google"}
-                        </div>
-                      </div>
-                    </button>
+                                            >
+                          <GoogleIcon className="h-5 w-5 mr-3" />
+                          <div>
+                            <div className="font-medium text-foreground">
+                              Sign in with Google
+                            </div>
+                            <div className="text-sm text-foreground-muted">
+                              {isZkConnecting
+                                ? "Connecting..."
+                                : "Use your Google account"}
+                            </div>
+                          </div>
+                        </button>
                   </div>
                 </Card>
               </div>
@@ -404,6 +461,11 @@ const ConnectWalletButton = () => {
           <Shield className="mr-2 h-4 w-4" />
         )}
         {formatAddress(displayAddress || "")}
+        {balance && (
+          <span className="ml-2 text-sm text-foreground-muted">
+            {isLoadingBalance ? "..." : `${balance} SUI`}
+          </span>
+        )}
         <ChevronDown
           className={`ml-2 h-4 w-4 transition-transform duration-300 ${
             showDropdown ? "rotate-180" : ""
@@ -460,6 +522,11 @@ const ConnectWalletButton = () => {
                         <div className="font-mono text-foreground text-sm break-all">
                           {displayAddress}
                         </div>
+                        {balance && (
+                          <div className="text-sm text-foreground-muted mt-1">
+                            Balance: {isLoadingBalance ? "Loading..." : `${balance} SUI`}
+                          </div>
+                        )}
                         {zkUser && (
                           <div className="text-xs text-foreground-muted mt-1">
                             {zkUser.email}
@@ -543,6 +610,11 @@ const ConnectWalletButton = () => {
                     <div className="font-mono text-foreground text-sm break-all">
                       {displayAddress}
                     </div>
+                    {balance && (
+                      <div className="text-sm text-foreground-muted mt-1">
+                        Balance: {isLoadingBalance ? "Loading..." : `${balance} SUI`}
+                      </div>
+                    )}
                     {zkUser && (
                       <div className="text-xs text-foreground-muted mt-1">
                         {zkUser.email}
