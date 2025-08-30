@@ -13,6 +13,7 @@ import {
   RefreshCw,
   DollarSign,
   CheckCircle,
+  Eye,
 } from "lucide-react";
 import {
   useCurrentAccount,
@@ -197,6 +198,8 @@ const EventDetails = () => {
   const [hasPoACapability, setHasPoACapability] = useState(false);
   const [isCommunityMember, setIsCommunityMember] = useState(false);
   const [communityId, setCommunityId] = useState<string | null>(null);
+  const [subEvents, setSubEvents] = useState<EventData[]>([]);
+  const [subEventsLoading, setSubEventsLoading] = useState(false);
 
   useEffect(() => {
     setEscrowSDK(new EscrowSettlementSDK(sdk.eventManagement.getPackageId()));
@@ -231,17 +234,28 @@ const EventDetails = () => {
     }
   };
 
-
+  // Load sub-events for this event
+  const loadSubEvents = useCallback(async (eventId?: string) => {
+    const targetEventId = eventId || event?.id;
+    if (!targetEventId) return;
+    
+    setSubEventsLoading(true);
+    try {
+      const childEvents = await sdk.eventManagement.getChildEventsForParent(targetEventId);
+      setSubEvents(childEvents);
+    } catch (error) {
+      setSubEvents([]);
+    } finally {
+      setSubEventsLoading(false);
+    }
+  }, [event, sdk]);
 
   const checkCommunityMembership = useCallback(async () => {
     if (!currentAccount || !event || !communityRegistryId || !nftRegistryId) {
-      console.log("❌ Missing required data for community membership check");
       return;
     }
 
     try {
-      console.log("🔍 Checking community membership for event:", event.id);
-
       // First, get communities for this event
       const communities = await sdk.communityAccess.getEventCommunities(
         event.id,
@@ -249,7 +263,6 @@ const EventDetails = () => {
       );
 
       if (communities.length === 0) {
-        console.log("❌ No communities found for this event");
         setIsCommunityMember(false);
         setCommunityId(null);
         return;
@@ -258,7 +271,6 @@ const EventDetails = () => {
       // For now, check the first community
       const community = communities[0];
       setCommunityId(community.id);
-      console.log("🎯 Found community:", community.id);
 
       // Check if user is already an active member
       const membershipCheck = await sdk.communityAccess.isActiveCommunityMember(
@@ -268,32 +280,17 @@ const EventDetails = () => {
         nftRegistryId
       );
 
-      console.log("Membership check result:", membershipCheck);
       setIsCommunityMember(membershipCheck.isActive);
-
-      if (membershipCheck.isActive) {
-        console.log("✅ User is already a community member!");
-      } else {
-        console.log("❌ User is not a community member");
-      }
     } catch (error) {
-      console.error("Error checking community membership:", error);
       setIsCommunityMember(false);
       setCommunityId(null);
     }
   }, [currentAccount, event, communityRegistryId, nftRegistryId, sdk]);
 
   const checkPoACapability = useCallback(async () => {
-    console.log("🚀 checkPoACapability function called!");
-
     if (!currentAccount || !event) {
-      console.log("❌ Missing currentAccount or event, returning");
       return;
     }
-
-    console.log("=== CHECKING POA CAPABILITY ===");
-    console.log("User address:", currentAccount.address);
-    console.log("Event ID:", event.id);
 
     try {
       const { data: objects } = await suiClient.getOwnedObjects({
@@ -304,15 +301,10 @@ const EventDetails = () => {
         options: { showContent: true },
       });
 
-      console.log("Found MintPoACapability objects:", objects.length);
-      console.log("All objects:", objects);
-
       // Check if user has a MintPoACapability for this specific event
       let hasCapability = false;
       for (const obj of objects) {
         const content = obj.data?.content;
-        console.log("Checking object:", obj.data?.objectId);
-        console.log("Content type:", content?.dataType);
 
         if (
           content &&
@@ -321,38 +313,21 @@ const EventDetails = () => {
         ) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const fields = (content as any).fields;
-          console.log("Object fields:", fields);
-          console.log("Looking for event_id:", event.id);
-          console.log("Found event_id in object:", fields?.event_id);
 
           if (fields && fields.event_id === event.id) {
-            console.log(
-              "✅ MATCH FOUND! This capability is for the current event"
-            );
             hasCapability = true;
             break;
-          } else {
-            console.log(
-              "❌ No match - this capability is for a different event"
-            );
           }
-        } else {
-          console.log("❌ Object doesn't have expected structure");
         }
       }
 
-      console.log("Final result - User has PoA capability:", hasCapability);
-      console.log("=== END POA CAPABILITY CHECK ===");
-
       setHasPoACapability(hasCapability);
     } catch (error) {
-      console.error("Error checking PoA capability:", error);
       setHasPoACapability(false);
     }
   }, [currentAccount, event, sdk]);
 
   const refreshEventData = useCallback(async () => {
-    console.log("🔄 Force refreshing event data...");
     if (currentAccount && event) {
       // Reset states
       setHasPoACapability(false);
@@ -366,8 +341,13 @@ const EventDetails = () => {
       setTimeout(() => {
         checkCommunityMembership();
       }, 1000);
+
+      // Re-load sub-events if this is a parent event
+      if (!event.is_child) {
+        await loadSubEvents(event.id);
+      }
     }
-  }, [currentAccount, event, checkPoACapability, checkCommunityMembership]);
+  }, [currentAccount, event, checkPoACapability, checkCommunityMembership, loadSubEvents]);
 
   const handleMintPoA = async () => {
     if (!currentAccount || !nftRegistryId || !event) return;
@@ -402,9 +382,6 @@ const EventDetails = () => {
     setJoiningCommunity(true);
     try {
       // First check if user has PoA NFT for this event
-      console.log(
-        "🔍 Checking if user has PoA NFT before joining community..."
-      );
       const hasPoA = await sdk.attendanceVerification.hasPoANFT(
         currentAccount.address,
         event.id,
@@ -427,16 +404,11 @@ const EventDetails = () => {
         return;
       }
 
-      console.log("✅ User has PoA NFT, proceeding to join community...");
-
       // Check if there are communities for this event
-      console.log("🔍 Fetching communities for event:", event.id);
       const communities = await sdk.communityAccess.getEventCommunities(
         event.id,
         communityRegistryId
       );
-
-      console.log("🌐 Found communities:", communities);
 
       if (communities.length === 0) {
         setMintResult({
@@ -449,7 +421,6 @@ const EventDetails = () => {
 
       // For now, join the first community
       const communityId = communities[0].id;
-      console.log("🎯 Attempting to join community:", communityId);
 
       // Check if user is already an active member
       const membershipCheck = await sdk.communityAccess.isActiveCommunityMember(
@@ -523,26 +494,10 @@ const EventDetails = () => {
   };
 
   useEffect(() => {
-    console.log("🔄 useEffect triggered!");
-    console.log("Dependencies:", {
-      id,
-      currentAccount,
-      sdk,
-      registrationRegistryId,
-      attendanceRegistryId,
-    });
-
     const loadEvent = async () => {
-      console.log("🔥 loadEvent function called!");
-      console.log("id:", id);
-      console.log("currentAccount:", currentAccount?.address);
-
       if (!id) {
-        console.log("❌ No id, returning");
         return;
       }
-
-      console.log("✅ ID exists, continuing with event load...");
 
       // Small delay to ensure wallet connection is fully established
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -550,15 +505,9 @@ const EventDetails = () => {
       try {
         setLoading(true);
         const eventData = await sdk.eventManagement.getEvent(id);
-        console.log("🔍 Event data fetched:", eventData);
-        console.log("🔍 Fee amount from event data:", eventData?.fee_amount);
-        console.log("🔍 Fee amount type:", typeof eventData?.fee_amount);
         
-        // For now, use the fee amount from the event object
-        // The Move function call is having issues, so we'll debug this separately
         if (eventData) {
-          console.log("🔍 Using fee amount from event object:", eventData.fee_amount);
-        setEvent(eventData);
+          setEvent(eventData);
         } else {
           setEvent(eventData);
         }
@@ -578,28 +527,16 @@ const EventDetails = () => {
           setIsOrganizer(organizerCheck);
         }
 
-        // Only fetch attendance state if not passed via navigation
-        console.log("🔍 Checking if we should fetch attendance state...");
-        console.log("currentAccount exists:", !!currentAccount);
-        console.log("navAttendanceState:", navAttendanceState);
-        console.log(
-          "navAttendanceState === null:",
-          navAttendanceState === null
-        );
-        console.log(
-          "navAttendanceState === undefined:",
-          navAttendanceState === undefined
-        );
-        console.log(
-          "Condition result:",
-          navAttendanceState === null || navAttendanceState === undefined
-        );
+        // Load sub-events if this is a parent event
+        if (eventData && !eventData.is_child) {
+          await loadSubEvents(eventData.id);
+        }
 
+        // Only fetch attendance state if not passed via navigation
         if (
           currentAccount &&
           (navAttendanceState === null || navAttendanceState === undefined)
         ) {
-          console.log("✅ Fetching attendance state from blockchain...");
           try {
             const tx = new Transaction();
             tx.moveCall({
@@ -648,18 +585,12 @@ const EventDetails = () => {
 
           // Check PoA capability for checked-in users
           if (attendanceState === 1) {
-            console.log("🎯 User is checked in, calling checkPoACapability...");
             checkPoACapability();
 
             // Also check community membership after PoA capability check
             setTimeout(() => {
               checkCommunityMembership();
             }, 1000);
-          } else {
-            console.log(
-              "❌ User is not checked in, attendanceState:",
-              attendanceState
-            );
           }
 
           // Also check if we have navigation state and user is checked in
@@ -668,43 +599,26 @@ const EventDetails = () => {
             Array.isArray(navAttendanceState) &&
             navAttendanceState[0] === 1
           ) {
-            console.log(
-              "🎯 User is checked in (from nav), calling checkPoACapability..."
-            );
             checkPoACapability();
           }
         } else {
-          console.log(
-            "📱 ELSE BLOCK REACHED - Using navigation attendance state:",
-            navAttendanceState
-          );
-
           // Set attendance state from navigation
           if (Array.isArray(navAttendanceState)) {
             setAttendanceState(navAttendanceState[0]);
-            console.log("Set attendanceState to:", navAttendanceState[0]);
 
             // Check PoA capability for checked-in users
             if (navAttendanceState[0] === 1) {
-              console.log(
-                "🎯 User is checked in (from nav), calling checkPoACapability..."
-              );
               checkPoACapability();
 
               // Also check community membership after PoA capability check
               setTimeout(() => {
                 checkCommunityMembership();
               }, 1000);
-            } else {
-              console.log(
-                "❌ User is not checked in (from nav), attendanceState:",
-                navAttendanceState[0]
-              );
             }
           }
         }
       } catch (error) {
-        console.error("Error loading event:", error);
+        // Error loading event
       } finally {
         setLoading(false);
       }
@@ -725,7 +639,6 @@ const EventDetails = () => {
   // Refresh data when user returns to the page
   useEffect(() => {
     const handleFocus = () => {
-      console.log("🔄 Page focused, refreshing event data...");
       refreshEventData();
     };
 
@@ -803,7 +716,6 @@ const EventDetails = () => {
           profileRegistryId
         );
       } catch (error) {
-        console.error("Error fetching organizer data:", error);
         // If we can't fetch organizer data, we'll use fallback values
         organizerSubscriptionId = null;
         organizerProfileId = null;
@@ -848,21 +760,15 @@ const EventDetails = () => {
       );
 
       if (result) {
-        console.log("User registered successfully!");
-        console.log("QR Data:", result.qrData);
-
         // Generate QR code string for display
         const qrDataString = JSON.stringify(result.qrData);
         setQrData(qrDataString);
         setShowQR(true);
         setIsRegistered(true);
       } else {
-        console.error("Failed to register for event");
         alert("Registration failed. Please try again.");
       }
     } catch (error: unknown) {
-      console.error("Error in registration flow:", error);
-
       // Show user-friendly error message
       let errorMessage = "Registration failed";
       const errorObj = error as { message?: string };
@@ -906,7 +812,7 @@ const EventDetails = () => {
         setShowQR(true);
       }
     } catch (error) {
-      console.error("Error generating QR code:", error);
+      // Error generating QR code
     }
   };
 
@@ -1155,6 +1061,92 @@ const EventDetails = () => {
                 </Button>
               </div>
             </Card>
+
+            {/* Sub-Events Section */}
+            {!event.is_child && (
+              <Card className="p-4 sm:p-6">
+                <h2 className="text-2xl font-semibold mb-4 text-foreground">
+                  Sub-Events
+                </h2>
+                {subEventsLoading ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-foreground-muted" />
+                    <p className="text-foreground-secondary">Loading sub-events...</p>
+                  </div>
+                ) : subEvents.length > 0 ? (
+                  <div className="space-y-4">
+                    <p className="text-foreground-secondary mb-4">
+                      This event includes the following sub-events. You can register for each one individually.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {subEvents.map((subEvent) => (
+                        <div
+                          key={subEvent.id}
+                          className="bg-card-secondary rounded-lg border border-border p-4 hover:bg-card transition-all duration-200"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <h3 className="text-lg font-semibold text-foreground line-clamp-2">
+                              {subEvent.name}
+                            </h3>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ml-2 flex-shrink-0 ${
+                                subEvent.state === 0
+                                  ? "bg-yellow-500/20 text-yellow-600"
+                                  : subEvent.state === 1
+                                  ? "bg-green-500/20 text-green-600"
+                                  : "bg-blue-500/20 text-blue-600"
+                              }`}
+                            >
+                              {subEvent.state === 0 ? "Upcoming" : subEvent.state === 1 ? "Active" : "Completed"}
+                            </span>
+                          </div>
+                          
+                          <div className="space-y-2 text-sm text-foreground-secondary mb-4">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              <span>{new Date(subEvent.start_time).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4" />
+                              <span>{subEvent.current_attendees}/{subEvent.capacity} attendees</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="truncate">{subEvent.location}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => navigate(`/event/${subEvent.id}`)}
+                              className="flex-1"
+                            >
+                              <Eye className="mr-1 h-3 w-3" />
+                              View Details
+                            </Button>
+                            {subEvent.state === 1 && (
+                              <Button
+                                size="sm"
+                                onClick={() => navigate(`/event/${subEvent.id}`)}
+                                className="flex-1"
+                              >
+                                <Users className="mr-1 h-3 w-3" />
+                                Register
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-foreground-secondary">
+                    <p>No sub-events available for this event.</p>
+                  </div>
+                )}
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}

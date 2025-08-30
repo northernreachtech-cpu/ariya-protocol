@@ -18,6 +18,7 @@ import Button from "../components/Button";
 import EventCardSkeleton from "../components/EventCardSkeleton";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { useAriyaSDK } from "../lib/sdk";
+import { useNetworkVariable } from "../config/sui";
 import { getWalrusImageUrl } from "../utils/walrus";
 
 interface Event {
@@ -38,6 +39,7 @@ interface Event {
   fee_amount: number;
   start_time: number;
   end_time: number;
+  is_child: boolean;
 }
 
 // Helper function to fetch metadata from Walrus
@@ -63,10 +65,9 @@ const fetchEventMetadata = async (metadataUri: string) => {
     }
     
     return null;
-  } catch (error) {
-    console.error("Error fetching event metadata:", error);
-    return null;
-  }
+      } catch (error) {
+      return null;
+    }
 };
 
 const Events = () => {
@@ -74,6 +75,7 @@ const Events = () => {
   const navigate = useNavigate();
   const currentAccount = useCurrentAccount();
   const sdk = useAriyaSDK();
+  const registrationRegistryId = useNetworkVariable("registrationRegistryId");
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -126,6 +128,19 @@ const Events = () => {
             }
           }
 
+          // Get real-time attendee count from registration system
+          let realTimeAttendees = event.current_attendees || 0;
+          try {
+            const attendeeCount = await sdk.eventManagement.getEventAttendeeCount(
+              event.id,
+              registrationRegistryId
+            );
+            realTimeAttendees = attendeeCount;
+          } catch (error) {
+            // Fallback to stored count if real-time query fails
+            realTimeAttendees = event.current_attendees || 0;
+          }
+
           // Determine price display
           const feeAmount = event.fee_amount || 0;
           const price = feeAmount > 0 
@@ -142,7 +157,7 @@ const Events = () => {
               hour: "2-digit",
               minute: "2-digit",
             }),
-            attendees: event.current_attendees || 0,
+            attendees: realTimeAttendees,
             maxAttendees: event.capacity || 100,
             rating: organizerProfile?.avg_rating ? organizerProfile.avg_rating / 100 : 0,
             image: imageUrl || "/api/placeholder/400/250",
@@ -153,15 +168,18 @@ const Events = () => {
             fee_amount: feeAmount,
             start_time: event.start_time,
             end_time: event.end_time,
+            is_child: event.is_child || false,
           };
         })
       );
 
-      setEvents(transformedEvents);
-      setFilteredEvents(transformedEvents);
+      // Filter out child events (sub-events) from the main events list
+      const parentEventsOnly = transformedEvents.filter(event => !event.is_child);
+
+      setEvents(parentEventsOnly);
+      setFilteredEvents(parentEventsOnly);
       hasFetchedRef.current = true;
     } catch (error) {
-      console.error("Error loading events:", error);
       setEvents([]);
       setFilteredEvents([]);
     } finally {

@@ -465,13 +465,13 @@ export class CommunityAccessSDK {
    * Get community features
    */
   public async getCommunityFeatures(
-    communityId: string,
+    _communityId: string,
     _communityRegistryId: string
   ): Promise<string[]> {
     try {
       // For now, return default features since the Move function might not be implemented yet
       // This can be updated when the actual Move function is available
-      console.log("📋 Returning default community features for:", communityId);
+
       return ["forum", "directory"];
     } catch (e) {
       console.error("Error getting community features:", e);
@@ -488,9 +488,6 @@ export class CommunityAccessSDK {
     communityRegistryId: string
   ): Promise<CommunityInfo[]> {
     try {
-      console.log("🔍 Querying communities for event:", eventId);
-      console.log("🔍 Using community registry:", communityRegistryId);
-
       // Query for CommunityCreated events for this specific event
       const { data: events } = await suiClient.queryEvents({
         query: {
@@ -499,8 +496,6 @@ export class CommunityAccessSDK {
         limit: 50, // Reasonable limit
         order: "descending",
       });
-
-      console.log("📅 Found CommunityCreated events:", events.length);
 
       const communities: CommunityInfo[] = [];
 
@@ -511,10 +506,6 @@ export class CommunityAccessSDK {
 
           // Check if this community is for our event
           if (eventData && eventData.event_id === eventId) {
-            console.log(
-              "✅ Found community for event:",
-              eventData.community_id
-            );
 
             // Fetch community details using the community ID
             const communityDetails = await this.getCommunityDetails(
@@ -532,10 +523,6 @@ export class CommunityAccessSDK {
         }
       }
 
-      console.log("🌐 Found communities for event:", communities.length);
-      if (communities.length > 0) {
-        console.log("📋 Community details:", communities[0]);
-      }
       return communities;
     } catch (e) {
       console.error("Error fetching event communities:", e);
@@ -579,7 +566,7 @@ export class CommunityAccessSDK {
     _communityRegistryId: string
   ): Promise<CommunityInfo | null> {
     try {
-      console.log("🔍 Getting details for community:", communityId);
+
 
       // For now, return a basic community info object since we have the ID
       // This avoids the devInspectTransactionBlock issue

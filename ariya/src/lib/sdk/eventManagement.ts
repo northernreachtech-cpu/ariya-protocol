@@ -56,9 +56,16 @@ export interface CustomBenchmark {
 export interface EventInfo {
   id: string;
   name: string;
+  description: string;
+  location: string;
   organizer: string;
   start_time: number;
+  end_time: number;
+  capacity: number;
+  current_attendees: number;
   state: number;
+  fee_amount: number;
+  metadata_uri: string;
 }
 
 // Event States
@@ -308,7 +315,7 @@ export class EventManagementSDK {
         sponsors: string[];
         assignee: string;
         is_child: boolean;
-        parent_id: { id: string };
+        parent_id: string;
         state: string;
         created_at: string;
         sponsor_conditions: {
@@ -337,7 +344,7 @@ export class EventManagementSDK {
         sponsors: fields.sponsors || [],
         assignee: fields.assignee || "",
         is_child: fields.is_child || false,
-        parent_id: fields.parent_id?.id || "",
+        parent_id: fields.parent_id || "",
         state: parseInt(fields.state),
         created_at: parseInt(fields.created_at),
         sponsor_conditions: fields.sponsor_conditions,
@@ -451,16 +458,30 @@ export class EventManagementSDK {
                 if (eventResponse.data?.content?.dataType === "moveObject") {
                   const fields = eventResponse.data.content.fields as {
                     name: string;
+                    description: string;
+                    location: string;
                     organizer: string;
                     start_time: string;
+                    end_time: string;
+                    capacity: string;
+                    current_attendees: string;
                     state: string;
+                    fee_amount: string;
+                    metadata_uri: string;
                   };
                   eventInfos.push({
                     id: eventData.event_id,
                     name: fields.name,
+                    description: fields.description || "",
+                    location: fields.location || "",
                     organizer: fields.organizer,
                     start_time: parseInt(fields.start_time),
+                    end_time: parseInt(fields.end_time),
+                    capacity: parseInt(fields.capacity),
+                    current_attendees: parseInt(fields.current_attendees),
                     state: parseInt(fields.state),
+                    fee_amount: parseInt(fields.fee_amount),
+                    metadata_uri: fields.metadata_uri || "",
                   });
                 }
               }
@@ -520,17 +541,36 @@ export class EventManagementSDK {
                 if (eventResponse.data?.content?.dataType === "moveObject") {
                   const fields = eventResponse.data.content.fields as {
                     name: string;
+                    description: string;
+                    location: string;
                     organizer: string;
                     start_time: string;
+                    end_time: string;
+                    capacity: string;
+                    current_attendees: string;
                     state: string;
+                    is_child: boolean;
+                    fee_amount: string;
+                    metadata_uri: string;
                   };
-                  eventInfos.push({
-                    id: eventData.event_id,
-                    name: fields.name,
-                    organizer: fields.organizer,
-                    start_time: parseInt(fields.start_time),
-                    state: parseInt(fields.state),
-                  });
+                  
+                  // Only include parent events (not child events)
+                  if (!fields.is_child) {
+                    eventInfos.push({
+                      id: eventData.event_id,
+                      name: fields.name,
+                      description: fields.description || "",
+                      location: fields.location || "",
+                      organizer: fields.organizer,
+                      start_time: parseInt(fields.start_time),
+                      end_time: parseInt(fields.end_time),
+                      capacity: parseInt(fields.capacity),
+                      current_attendees: parseInt(fields.current_attendees),
+                      state: parseInt(fields.state),
+                      fee_amount: parseInt(fields.fee_amount),
+                      metadata_uri: fields.metadata_uri || "",
+                    });
+                  }
                 }
               }
             }
@@ -622,7 +662,6 @@ export class EventManagementSDK {
 
   async hasOrganizerProfile(address: string): Promise<boolean> {
     try {
-      console.log("🔍 Checking for OrganizerCap objects owned by:", address);
       const { data: objects } = await suiClient.getOwnedObjects({
         owner: address,
         filter: {
@@ -631,15 +670,12 @@ export class EventManagementSDK {
         options: { showContent: true },
       });
 
-      console.log("📦 Found OrganizerCap objects:", objects.length);
       if (objects.length === 0) return false;
 
       for (const obj of objects) {
-        console.log("🔍 Examining OrganizerCap object:", obj.data?.objectId);
         const fields = extractMoveObjectFields(obj);
 
         if (fields) {
-          console.log("📋 OrganizerCap fields:", fields);
           const profileId = fields.profile_id;
 
           const profileResponse = await suiClient.getObject({
@@ -648,10 +684,8 @@ export class EventManagementSDK {
           });
 
           const profileFields = extractMoveObjectFields(profileResponse);
-          console.log("📋 OrganizerProfile fields:", profileFields);
 
           if (profileFields && profileFields.address === address) {
-            console.log("✅ Found matching organizer profile!");
             return true;
           }
         }
@@ -988,9 +1022,16 @@ export class EventManagementSDK {
               events.push({
                 id: field.objectId,
                 name: fields.name || "",
+                description: fields.description || "",
+                location: fields.location || "",
                 organizer: fields.organizer || "",
                 start_time: parseInt(fields.start_time) || 0,
+                end_time: parseInt(fields.end_time) || 0,
+                capacity: parseInt(fields.capacity) || 0,
+                current_attendees: parseInt(fields.current_attendees) || 0,
                 state: parseInt(fields.state) || 0,
+                fee_amount: parseInt(fields.fee_amount) || 0,
+                metadata_uri: fields.metadata_uri || "",
               });
             }
           }
@@ -1034,9 +1075,16 @@ export class EventManagementSDK {
               childEvents.push({
                 id: field.objectId,
                 name: fields.name || "",
+                description: fields.description || "",
+                location: fields.location || "",
                 organizer: fields.organizer || "",
                 start_time: parseInt(fields.start_time) || 0,
+                end_time: parseInt(fields.end_time) || 0,
+                capacity: parseInt(fields.capacity) || 0,
+                current_attendees: parseInt(fields.current_attendees) || 0,
                 state: parseInt(fields.state) || 0,
+                fee_amount: parseInt(fields.fee_amount) || 0,
+                metadata_uri: fields.metadata_uri || "",
               });
             }
           }
@@ -1048,6 +1096,106 @@ export class EventManagementSDK {
       return childEvents;
     } catch (error) {
       console.error("Error fetching child events:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get child events for a parent event (alternative method using direct query)
+   */
+  async getChildEventsForParent(parentEventId: string): Promise<Event[]> {
+    try {
+      // Query for all events and filter for children of this parent
+      const { data: transactions } = await suiClient.queryTransactionBlocks({
+        filter: {
+          MoveFunction: {
+            package: this.packageId,
+            module: "event_management",
+            function: "create_event",
+          },
+        },
+        options: {
+          showEffects: true,
+          showEvents: true,
+          showObjectChanges: true,
+        },
+        limit: 100,
+      });
+
+      const childEvents: Event[] = [];
+
+      for (const txn of transactions) {
+        if (txn.events) {
+          for (const event of txn.events) {
+            if (event.type?.includes("EventCreated")) {
+              const eventData = event.parsedJson as {
+                event_id: string;
+                organizer: string;
+              };
+              if (eventData && eventData.event_id) {
+                // Get the full event object
+                const eventResponse = await suiClient.getObject({
+                  id: eventData.event_id,
+                  options: {
+                    showContent: true,
+                    showType: true,
+                  },
+                });
+
+                if (eventResponse.data?.content?.dataType === "moveObject") {
+                  const fields = eventResponse.data.content.fields as {
+                    id: { id: string };
+                    name: string;
+                    description: string;
+                    location: string;
+                    start_time: string;
+                    end_time: string;
+                    capacity: string;
+                    current_attendees: string;
+                    organizer: string;
+                    sponsors: string[];
+                    assignee: string;
+                    is_child: boolean;
+                    parent_id: string;
+                    state: string;
+                    created_at: string;
+                    sponsor_conditions: any;
+                    metadata_uri: string;
+                    fee_amount: string;
+                  };
+                  
+                  // Check if this is a child event of the specified parent
+                  if (fields.is_child && fields.parent_id === parentEventId) {
+                    childEvents.push({
+                      id: fields.id.id,
+                      name: fields.name,
+                      description: fields.description,
+                      location: fields.location,
+                      start_time: parseInt(fields.start_time),
+                      end_time: parseInt(fields.end_time),
+                      capacity: parseInt(fields.capacity),
+                      current_attendees: parseInt(fields.current_attendees),
+                      organizer: fields.organizer,
+                      sponsors: fields.sponsors || [],
+                      assignee: fields.assignee || "",
+                      is_child: fields.is_child,
+                      parent_id: fields.parent_id,
+                      state: parseInt(fields.state),
+                      created_at: parseInt(fields.created_at),
+                      sponsor_conditions: fields.sponsor_conditions,
+                      metadata_uri: fields.metadata_uri,
+                      fee_amount: parseInt(fields.fee_amount),
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return childEvents;
+    } catch (error) {
       return [];
     }
   }

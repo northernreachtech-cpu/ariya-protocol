@@ -23,6 +23,7 @@ import {
   Send,
   Download,
   X,
+ 
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -900,6 +901,9 @@ const OrganizerDashboard = () => {
   // Event Details Modal state
   const [showEventDetailsModal, setShowEventDetailsModal] = useState(false);
   const [selectedEventForDetails, setSelectedEventForDetails] = useState<Event | null>(null);
+  const [subEvents, setSubEvents] = useState<{ [parentId: string]: Event[] }>({});
+  const [_loadingSubEvents, setLoadingSubEvents] = useState<{ [parentId: string]: boolean }>({});
+  const [subEventPages, setSubEventPages] = useState<{ [parentId: string]: number }>({});
 
   // Airdrop validation state
   const [eventEligibleRecipients, setEventEligibleRecipients] = useState<{
@@ -1303,6 +1307,43 @@ const OrganizerDashboard = () => {
     }
   }, [communityRegistryId, sdk]);
 
+  const loadSubEvents = useCallback(async (parentEventId: string) => {
+    if (!eventRegistryId) return;
+
+    setLoadingSubEvents(prev => ({ ...prev, [parentEventId]: true }));
+    try {
+      // Use the new method to get child events
+      const childEvents = await sdk.eventManagement.getChildEventsForParent(parentEventId);
+      
+      if (childEvents.length > 0) {
+        const subEventDetails = await Promise.all(
+          childEvents.map(async (event) => {
+            const attendeeCount = await sdk.eventManagement.getEventAttendeeCount(
+              event.id,
+              eventRegistryId
+            );
+            
+            return {
+              ...event,
+              checkedIn: attendeeCount,
+              revenue: (event.fee_amount * attendeeCount) / 1000000000,
+            };
+          })
+        );
+
+        setSubEvents(prev => ({ ...prev, [parentEventId]: subEventDetails }));
+        setSubEventPages(prev => ({ ...prev, [parentEventId]: 1 }));
+      } else {
+        setSubEvents(prev => ({ ...prev, [parentEventId]: [] }));
+      }
+    } catch (error) {
+      console.error("Error loading sub-events:", error);
+      setSubEvents(prev => ({ ...prev, [parentEventId]: [] }));
+    } finally {
+      setLoadingSubEvents(prev => ({ ...prev, [parentEventId]: false }));
+    }
+  }, [eventRegistryId, sdk]);
+
   const checkNFTMintingStatus = useCallback(async (eventId: string) => {
     if (!nftRegistryId) return;
 
@@ -1436,6 +1477,27 @@ const OrganizerDashboard = () => {
   const handleOpenDocFlow = (event: Event) => {
     setSelectedEventForDocFlow(event);
     setShowDocFlowModal(true);
+  };
+
+  const handleCreateSubEvent = (parentEvent: Event) => {
+    // Navigate to create event page with parent event pre-filled
+    navigate(`/event/create?parentId=${parentEvent.id}&parentName=${encodeURIComponent(parentEvent.name)}`);
+  };
+
+  const handleSubEventPageChange = (parentEventId: string, newPage: number) => {
+    setSubEventPages(prev => ({ ...prev, [parentEventId]: newPage }));
+  };
+
+  const getSubEventsForPage = (parentEventId: string, page: number) => {
+    const allSubEvents = subEvents[parentEventId] || [];
+    const startIndex = (page - 1) * 4;
+    const endIndex = startIndex + 4;
+    return allSubEvents.slice(startIndex, endIndex);
+  };
+
+  const getTotalSubEventPages = (parentEventId: string) => {
+    const allSubEvents = subEvents[parentEventId] || [];
+    return Math.ceil(allSubEvents.length / 4);
   };
 
   const checkEligibleRecipients = async (eventId: string) => {
@@ -1573,7 +1635,7 @@ const OrganizerDashboard = () => {
         eventRegistryId
       );
 
-      // Transform events to match interface with full details
+            // Transform events to match interface with full details
       const transformedEvents = await Promise.all(
         organizerEvents.map(async (event) => {
           // Get full event details
@@ -1604,8 +1666,8 @@ const OrganizerDashboard = () => {
             };
           } else {
             // Fallback to basic event info if full details not available
-            return {
-              id: event.id,
+          return {
+            id: event.id,
               name: event.name,
               description: "",
               location: "",
@@ -1628,24 +1690,67 @@ const OrganizerDashboard = () => {
               },
               metadata_uri: "",
               fee_amount: 0,
-              title: event.name,
-              date: new Date(event.start_time * 1000).toISOString().split("T")[0],
-              status: (event.state === 0
-                ? "upcoming"
-                : event.state === 1
-                ? "active"
-                : "completed") as "upcoming" | "active" | "completed",
+            title: event.name,
+            date: new Date(event.start_time * 1000).toISOString().split("T")[0],
+            status: (event.state === 0
+              ? "upcoming"
+              : event.state === 1
+              ? "active"
+              : "completed") as "upcoming" | "active" | "completed",
               checkedIn: attendeeCount,
               totalCapacity: 100,
-              escrowStatus: "pending" as "pending" | "released" | "locked",
+            escrowStatus: "pending" as "pending" | "released" | "locked",
               rating: 0,
               revenue: 0,
-            };
+          };
           }
         })
       );
 
-      setEvents(transformedEvents);
+      // Group events by parent-child relationships
+      const parentEvents: Event[] = [];
+      const childEventsMap: { [parentId: string]: Event[] } = {};
+
+      console.log("🔍 === SUB-EVENTS DEBUGGING ===");
+      console.log("📋 Total events loaded:", transformedEvents.length);
+
+      // First, separate parent and child events
+      transformedEvents.forEach(event => {
+        console.log(`📋 Event: ${event.name} (ID: ${event.id})`);
+        console.log(`   - is_child: ${event.is_child}`);
+        console.log(`   - parent_id: "${event.parent_id}" (length: ${event.parent_id.length})`);
+        console.log(`   - parent_id type: ${typeof event.parent_id}`);
+        
+        if (event.is_child) {
+          // This is a child event, group it by parent_id
+          const parentId = event.parent_id;
+          console.log(`   ✅ This is a CHILD event, parent_id: ${parentId}`);
+          
+          if (!childEventsMap[parentId]) {
+            childEventsMap[parentId] = [];
+          }
+          childEventsMap[parentId].push(event);
+          console.log(`   📦 Added to childEventsMap[${parentId}], now has ${childEventsMap[parentId].length} children`);
+        } else {
+          // This is a parent event
+          console.log(`   🏠 This is a PARENT event`);
+          parentEvents.push(event);
+        }
+      });
+
+      console.log("📊 Final grouping results:");
+      console.log(`   - Parent events: ${parentEvents.length}`);
+      console.log(`   - Child events map keys: ${Object.keys(childEventsMap)}`);
+      Object.keys(childEventsMap).forEach(parentId => {
+        console.log(`   - Parent ${parentId} has ${childEventsMap[parentId].length} children`);
+      });
+      console.log("🔍 === END SUB-EVENTS DEBUGGING ===");
+
+      // Set the parent events as the main events list
+      setEvents(parentEvents);
+
+      // Set the child events map for display in sub-events sections
+      setSubEvents(childEventsMap);
 
       // Check for existing communities for each event
       if (communityRegistryId) {
@@ -1658,12 +1763,14 @@ const OrganizerDashboard = () => {
       for (const event of transformedEvents) {
         await checkNFTMintingStatus(event.id);
       }
+
+
     } catch {
       // Only keep error log if needed for debugging
     } finally {
       setLoading(false);
     }
-  }, [currentAccount, sdk, navigate, eventRegistryId, communityRegistryId, checkEventCommunity, checkNFTMintingStatus]);
+  }, [currentAccount, sdk, navigate, eventRegistryId, communityRegistryId, checkEventCommunity, checkNFTMintingStatus, loadSubEvents]);
 
   useEffect(() => {
     loadOrganizerData();
@@ -2301,6 +2408,113 @@ const OrganizerDashboard = () => {
                                 <Trash2 className="mr-1 h-3 w-3" />
                                 Delete
                               </Button>
+                            )}
+                          </div>
+
+                          {/* Sub-Events Section */}
+                          <div className="mt-4 border-t border-border pt-4">
+                            <div className="flex items-center justify-between mb-4">
+                              <h4 className="text-sm font-semibold text-foreground">
+                                Sub-Events ({subEvents[event.id]?.length || 0})
+                              </h4>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleCreateSubEvent(event)}
+                                className="text-xs"
+                              >
+                                <Plus className="mr-1 h-3 w-3" />
+                                Create Sub-Event
+                              </Button>
+                            </div>
+                            
+                            {subEvents[event.id] && subEvents[event.id].length > 0 ? (
+                              <div>
+                                {/* Sub-Events Grid */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                                  {getSubEventsForPage(event.id, subEventPages[event.id] || 1).map((subEvent) => (
+                                    <div
+                                      key={subEvent.id}
+                                      className="bg-card-secondary rounded-lg border border-border hover:bg-card transition-all duration-200 cursor-pointer p-4 hover:shadow-md"
+                                      onClick={() => {
+                                        setSelectedEventForDetails(subEvent);
+                                        setShowEventDetailsModal(true);
+                                      }}
+                                    >
+                                      <div className="flex items-start justify-between mb-2">
+                                        <h5 className="text-sm font-semibold text-foreground line-clamp-2">
+                                          {subEvent.name}
+                                        </h5>
+                                        <span
+                                          className={`px-2 py-1 rounded-full text-xs font-medium ml-2 flex-shrink-0 ${getStatusColor(
+                                            subEvent.state === 0 ? "upcoming" : subEvent.state === 1 ? "active" : "completed"
+                                          )}`}
+                                        >
+                                          {subEvent.state === 0 ? "Upcoming" : subEvent.state === 1 ? "Active" : "Completed"}
+                                        </span>
+                                      </div>
+                                      
+                                      <div className="space-y-2 text-xs text-foreground-secondary">
+                                        <div className="flex items-center gap-1">
+                                          <Calendar className="h-3 w-3" />
+                                          <span>{new Date(subEvent.start_time).toLocaleDateString()}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <Users className="h-3 w-3" />
+                                          <span>{subEvent.checkedIn || 0}/{subEvent.capacity} attendees</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <span className="truncate">{subEvent.location}</span>
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="mt-3 pt-2 border-t border-border">
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="text-foreground-secondary">Revenue:</span>
+                                          <span className="font-medium text-foreground">
+                                            ${(subEvent.revenue || 0).toFixed(2)}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {/* Pagination for Sub-Events */}
+                                {getTotalSubEventPages(event.id) > 1 && (
+                                  <div className="flex items-center justify-between">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleSubEventPageChange(event.id, (subEventPages[event.id] || 1) - 1)}
+                                      disabled={(subEventPages[event.id] || 1) <= 1}
+                                      className="text-xs"
+                                    >
+                                      Previous
+                                    </Button>
+                                    <span className="text-xs text-foreground-secondary">
+                                      Page {subEventPages[event.id] || 1} of {getTotalSubEventPages(event.id)}
+                                    </span>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleSubEventPageChange(event.id, (subEventPages[event.id] || 1) + 1)}
+                                      disabled={(subEventPages[event.id] || 1) >= getTotalSubEventPages(event.id)}
+                                      className="text-xs"
+                                    >
+                                      Next
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-center py-6 text-sm text-foreground-muted bg-card-secondary rounded-lg border border-dashed border-border">
+                                <div className="mb-2">
+                                  <Plus className="h-8 w-8 mx-auto text-foreground-muted" />
+                                </div>
+                                <p>No sub-events yet</p>
+                                <p className="text-xs mt-1">Create sub-events to organize related activities</p>
+                              </div>
                             )}
                           </div>
                         </div>

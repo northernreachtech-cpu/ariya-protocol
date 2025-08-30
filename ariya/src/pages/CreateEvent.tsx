@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   MapPin,
   Users,
@@ -27,11 +28,16 @@ const IMGBB_KEY = import.meta.env.VITE_IMGBB_API_KEY;
 const CreateEvent = () => {
   useScrollToTop();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const currentAccount = useCurrentAccount();
   const { zkAddress, isZkAuthenticated } = useZkLogin();
   const sdk = useAriyaSDK();
   const { mutate: signAndExecute } = useSignAndExecuteTransaction();
   const eventRegistryId = useNetworkVariable("eventRegistryId");
+
+  // Get parent event info from URL params
+  const parentEventId = searchParams.get("parentId");
+  const parentEventName = searchParams.get("parentName");
 
   // Get the active address (either wallet or zkLogin)
   const activeAddress = currentAccount?.address || zkAddress;
@@ -254,8 +260,8 @@ const CreateEvent = () => {
         formData.imageUrl || "", // metadataUri
         formData.sponsors, // sponsors from form data
         "self", // assignee - default to "self"
-        false, // isChild - all fresh events are parent events
-        "0x0000000000000000000000000000000000000000000000000000000000000000", // parentId - zero ID for fresh events
+        !!parentEventId, // isChild - true if parentEventId exists
+        parentEventId || "0x0000000000000000000000000000000000000000000000000000000000000000", // parentId - use parentEventId if exists, otherwise zero ID
         eventRegistryId, // eventRegistryId
         profileId // organizerProfile
       );
@@ -345,11 +351,20 @@ const CreateEvent = () => {
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-3xl sm:text-4xl font-livvic font-bold mb-2 sm:mb-4 text-foreground">
-            Create New Event
+            {parentEventId ? "Create Sub-Event" : "Create New Event"}
           </h1>
           <p className="text-foreground-secondary text-sm sm:text-base">
-            Set up your decentralized event in a few simple steps
+            {parentEventId 
+              ? `Creating a sub-event for "${parentEventName}"`
+              : "Set up your decentralized event in a few simple steps"
+            }
           </p>
+          {parentEventId && (
+            <div className="mt-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+              <span className="mr-1">📋</span>
+              Sub-Event
+            </div>
+          )}
         </div>
 
         {/* Mobile Progress Steps - Horizontal scroll on mobile */}
