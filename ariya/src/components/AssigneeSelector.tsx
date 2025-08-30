@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, User, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { User, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useAriyaSDK } from '../lib/sdk';
 import { useNetworkVariable } from '../config/sui';
 import Button from './Button';
