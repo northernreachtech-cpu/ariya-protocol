@@ -1,3 +1,5 @@
+// SPONSOR DASHBOARD - TEMPORARILY DISABLED
+/*
 import { useEffect, useState } from "react";
 import {
   Target,
@@ -17,7 +19,10 @@ import { useAriyaSDK, EscrowSettlementSDK } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
 import Button from "../components/Button";
 import { useNavigate } from "react-router-dom";
+*/
 
+// SPONSOR DASHBOARD - TEMPORARILY DISABLED
+/*
 // Skeleton loader components
 const AvailableEventSkeleton = () => (
   <Card className="p-4 sm:p-6 animate-pulse">
@@ -251,331 +256,335 @@ const SponsorDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 sm:pb-12">
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl font-livvic font-bold bg-gradient-to-r from-primary to-secondary text-transparent bg-clip-text mb-2">
-            Sponsor Dashboard
-          </h1>
-          <p className="text-foreground-muted text-sm sm:text-base font-open-sans">
-            Fund events and track your sponsorships
-          </p>
-        </div>
+        {/* Header */
+//         <div className="mb-6 sm:mb-8">
+//           <h1 className="text-3xl sm:text-4xl font-livvic font-bold bg-gradient-to-r from-primary to-secondary text-transparent bg-clip-text mb-2">
+//             Sponsor Dashboard
+//           </h1>
+//           <p className="text-foreground-muted text-sm sm:text-base font-open-sans">
+//             Fund events and track your sponsorships
+//           </p>
+//         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <StatCard
-            title="Total Sponsored"
-                            value={`${(totalSponsored / 1e9).toFixed(2)} Sui`}
-            icon={DollarSign}
-            color="primary"
-            description="Total funds committed"
-          />
-          <StatCard
-            title="Total Check-ins"
-            value={totalCheckIns}
-            icon={Users}
-            color="secondary"
-            description="Across all events"
-          />
-          <StatCard
-            title="Average Rating"
-            value={avgRating ? avgRating.toFixed(1) : "0.0"}
-            icon={Star}
-            color="accent"
-            description="Event feedback"
-          />
-          <StatCard
-            title="Completed Events"
-            value={completedEvents}
-            icon={Calendar}
-            color="success"
-            description="Settled sponsorships"
-          />
-        </div>
+//         {/* Stats Grid */}
+//         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+//           <StatCard
+//             title="Total Sponsored"
+//                             value={`${(totalSponsored / 1e9).toFixed(2)} Sui`}
+//             icon={DollarSign}
+//             color="primary"
+//             description="Total funds committed"
+//           />
+//           <StatCard
+//             title="Total Check-ins"
+//             value={totalCheckIns}
+//             icon={Users}
+//             color="secondary"
+//             description="Across all events"
+//           />
+//           <StatCard
+//             title="Average Rating"
+//             value={avgRating ? avgRating.toFixed(1) : "0.0"}
+//             icon={Star}
+//             color="accent"
+//             description="Event feedback"
+//           />
+//           <StatCard
+//             title="Completed Events"
+//             value={completedEvents}
+//             icon={Calendar}
+//             color="success"
+//             description="Settled sponsorships"
+//           />
+//         </div>
 
-        {/* Available Events to Sponsor */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl sm:text-2xl font-livvic font-bold text-foreground">
-              Available Events to Sponsor
-            </h2>
-            <span className="text-foreground-muted text-sm font-open-sans">
-              {loading
-                ? "Loading..."
-                : `${availableEvents.length} events available`}
-            </span>
-          </div>
+//         {/* Available Events to Sponsor */}
+//         <div className="mb-8">
+//           <div className="flex items-center justify-between mb-4">
+//             <h2 className="text-xl sm:text-2xl font-livvic font-bold text-foreground">
+//               Available Events to Sponsor
+//             </h2>
+//             <span className="text-foreground-muted text-sm font-open-sans">
+//               {loading
+//                 ? "Loading..."
+//                 : `${availableEvents.length} events available`}
+//             </span>
+//           </div>
 
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <AvailableEventSkeleton key={index} />
-              ))}
-            </div>
-          ) : availableEvents.length === 0 ? (
-            <Card className="p-8 text-center">
-              <Calendar className="h-12 w-12 mx-auto text-foreground-muted mb-4" />
-              <h3 className="text-lg font-livvic font-semibold text-foreground-secondary mb-2">
-                No events available for sponsorship
-              </h3>
-              <p className="text-foreground-muted font-open-sans">
-                All events are either already sponsored or completed.
-              </p>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-              {availableEvents.map((event) => (
-                <Card
-                  key={event.id}
-                  className="p-4 sm:p-6 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-livvic font-semibold text-foreground mb-2">
-                        {event.name}
-                      </h3>
-                      <p className="text-foreground-muted text-sm font-open-sans mb-2">
-                        {event.description}
-                      </p>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span
-                          className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getEventStateColor(
-                            event.state
-                          )}`}
-                        >
-                          {getEventStateText(event.state)}
-                        </span>
-                        <span className="text-foreground-muted text-xs font-open-sans">
-                          {getEventStateDescription(event.state)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+//           {loading ? (
+//             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+//               {Array.from({ length: 6 }).map((_, index) => (
+//                 <AvailableEventSkeleton key={index} />
+//               ))}
+//             </div>
+//           ) : availableEvents.length === 0 ? (
+//             <Card className="p-8 text-center">
+//               <Calendar className="h-12 w-12 mx-auto text-foreground-muted mb-4" />
+//               <h3 className="text-lg font-livvic font-semibold text-foreground-secondary mb-2">
+//                 No events available for sponsorship
+//               </h3>
+//               <p className="text-foreground-muted font-open-sans">
+//                 All events are either already sponsored or completed.
+//               </p>
+//             </Card>
+//           ) : (
+//             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+//               {availableEvents.map((event) => (
+//                 <Card
+//                   key={event.id}
+//                   className="p-4 sm:p-6 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
+//                 >
+//                   <div className="flex items-start justify-between mb-4">
+//                     <div className="flex-1">
+//                       <h3 className="text-lg font-livvic font-semibold text-foreground mb-2">
+//                         {event.name}
+//                       </h3>
+//                       <p className="text-foreground-muted text-sm font-open-sans mb-2">
+//                         {event.description}
+//                       </p>
+//                       <div className="flex items-center gap-2 mb-2">
+//                         <span
+//                           className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getEventStateColor(
+//                             event.state
+//                           )}`}
+//                         >
+//                           {getEventStateText(event.state)}
+//                         </span>
+//                         <span className="text-foreground-muted text-xs font-open-sans">
+//                           {getEventStateDescription(event.state)}
+//                         </span>
+//                       </div>
+//                     </div>
+//                   </div>
 
-                  <div className="space-y-2 mb-4 font-open-sans">
-                    <div className="flex items-center text-foreground-muted text-sm">
-                      <Calendar className="mr-2 h-4 w-4 flex-shrink-0" />
-                      <span>{formatDate(event.start_time)}</span>
-                    </div>
-                    <div className="flex items-center text-foreground-muted text-sm">
-                      <Users className="mr-2 h-4 w-4 flex-shrink-0" />
-                      <span>Capacity: {event.capacity}</span>
-                    </div>
-                  </div>
+//                   <div className="space-y-2 mb-4 font-open-sans">
+//                     <div className="flex items-center text-foreground-muted text-sm">
+//                       <Calendar className="mr-2 h-4 w-4 flex-shrink-0" />
+//                       <span>{formatDate(event.start_time)}</span>
+//                     </div>
+//                     <div className="flex items-center text-foreground-muted text-sm">
+//                       <Users className="mr-2 h-4 w-4 flex-shrink-0" />
+//                       <span>Capacity: {event.capacity}</span>
+//                     </div>
+//                   </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => navigate(`/event/${event.id}`)}
-                    >
-                      <Eye className="mr-1 h-3 w-3" />
-                      View Details
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="flex-1"
-                      onClick={() => navigate(`/event/${event.id}`)}
-                    >
-                      <Plus className="mr-1 h-3 w-3" />
-                      Sponsor
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+//                   <div className="flex gap-2">
+//                     <Button
+//                       size="sm"
+//                       className="flex-1"
+//                       onClick={() => navigate(`/event/${event.id}`)}
+//                     >
+//                       <Eye className="mr-1 h-3 w-3" />
+//                       View Details
+//                     </Button>
+//                     <Button
+//                       size="sm"
+//                       variant="secondary"
+//                       className="flex-1"
+//                       onClick={() => navigate(`/event/${event.id}`)}
+//                     >
+//                       <Plus className="mr-1 h-3 w-3" />
+//                       Sponsor
+//                     </Button>
+//                   </div>
+//                 </Card>
+//               ))}
+//             </div>
+//           )}
+//         </div>
 
-        {/* Sponsored Events */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl sm:text-2xl font-livvic font-bold text-foreground">
-              Your Sponsored Events
-            </h2>
-            <span className="text-foreground-muted text-sm font-open-sans">
-              {loading
-                ? "Loading..."
-                : `${sponsoredEvents.length} events sponsored`}
-            </span>
-          </div>
+//         {/* Sponsored Events */}
+//         <div className="mb-8">
+//           <div className="flex items-center justify-between mb-4">
+//             <h2 className="text-xl sm:text-2xl font-livvic font-bold text-foreground">
+//               Your Sponsored Events
+//             </h2>
+//             <span className="text-foreground-muted text-sm font-open-sans">
+//               {loading
+//                 ? "Loading..."
+//                 : `${sponsoredEvents.length} events sponsored`}
+//             </span>
+//           </div>
 
-          {loading ? (
-            <div className="grid gap-4 sm:gap-6">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <SponsoredEventSkeleton key={index} />
-              ))}
-            </div>
-          ) : sponsoredEvents.length === 0 ? (
-            <Card className="p-8 text-center">
-              <Target className="h-12 w-12 mx-auto text-foreground-muted mb-4" />
-              <h3 className="text-lg font-livvic font-semibold text-foreground-secondary mb-2">
-                No sponsored events yet
-              </h3>
-              <p className="text-foreground-muted font-open-sans mb-4">
-                Start sponsoring events to see them here.
-              </p>
-              <Button onClick={() => navigate("/events")}>Browse Events</Button>
-            </Card>
-          ) : (
-            <div className="grid gap-4 sm:gap-6">
-              {sponsoredEvents.map((event) => (
-                <Card
-                  key={event.id}
-                  className="p-4 sm:p-6 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
-                >
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Event Info */}
-                    <div className="flex flex-col justify-between">
-                      <div className="mb-4">
-                        <h3 className="text-lg sm:text-xl font-livvic font-semibold text-foreground mb-2">
-                          {event.name}
-                        </h3>
-                        <p className="text-foreground-muted text-sm font-open-sans mb-3">
-                          {event.description}
-                        </p>
-                        <div className="flex items-center gap-2 mb-3">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                              event.escrow?.settled || false
-                            )}`}
-                          >
-                            {event.escrow?.settled ? "Settled" : "Active"}
-                          </span>
-                          <span className="text-foreground-muted text-sm font-open-sans">
-                            {formatDate(event.start_time)}
-                          </span>
-                        </div>
-                      </div>
+//           {loading ? (
+//             <div className="grid gap-4 sm:gap-6">
+//               {Array.from({ length: 3 }).map((_, index) => (
+//                 <SponsoredEventSkeleton key={index} />
+//               ))}
+//             </div>
+//           ) : sponsoredEvents.length === 0 ? (
+//             <Card className="p-8 text-center">
+//               <Target className="h-12 w-12 mx-auto text-foreground-muted mb-4" />
+//               <h3 className="text-lg font-livvic font-semibold text-foreground-secondary mb-2">
+//                 No sponsored events yet
+//               </h3>
+//               <p className="text-foreground-muted font-open-sans mb-4">
+//                 Start sponsoring events to see them here.
+//               </p>
+//               <Button onClick={() => navigate("/events")}>Browse Events</Button>
+//             </Card>
+//           ) : (
+//             <div className="grid gap-4 sm:gap-6">
+//               {sponsoredEvents.map((event) => (
+//                 <Card
+//                   key={event.id}
+//                   className="p-4 sm:p-6 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
+//                 >
+//                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+//                     {/* Event Info */}
+//                     <div className="flex flex-col justify-between">
+//                       <div className="mb-4">
+//                         <h3 className="text-lg sm:text-xl font-livvic font-semibold text-foreground mb-2">
+//                           {event.name}
+//                         </h3>
+//                         <p className="text-foreground-muted text-sm font-open-sans mb-3">
+//                           {event.description}
+//                         </p>
+//                         <div className="flex items-center gap-2 mb-3">
+//                           <span
+//                             className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+//                               event.escrow?.settled || false
+//                             )}`}
+//                           >
+//                             {event.escrow?.settled ? "Settled" : "Active"}
+//                           </span>
+//                           <span className="text-foreground-muted text-sm font-open-sans">
+//                             {formatDate(event.start_time)}
+//                           </span>
+//                         </div>
+//                       </div>
 
-                      {/* Sponsorship Amount */}
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <div className="text-xs text-foreground-muted font-open-sans mb-1">
-                          Sponsored Amount
-                        </div>
-                        <div className="text-lg font-livvic font-bold text-primary">
-                          {(event.escrow?.balance / 1e9).toFixed(2)} Sui
-                        </div>
-                      </div>
-                    </div>
+//                       {/* Sponsorship Amount */}
+//                       <div className="bg-white/5 rounded-lg p-3">
+//                         <div className="text-xs text-foreground-muted font-open-sans mb-1">
+//                           Sponsored Amount
+//                         </div>
+//                         <div className="text-lg font-livvic font-bold text-primary">
+//                           {(event.escrow?.balance / 1e9).toFixed(2)} Sui
+//                         </div>
+//                       </div>
+//                     </div>
 
-                    {/* Progress Metrics */}
-                    <div className="space-y-4">
-                      {event.settlement && (
-                        <>
-                          {/* Attendees Progress */}
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm text-foreground-muted font-open-sans">
-                                Attendees
-                              </span>
-                              <span className="text-foreground font-open-sans">
-                                {event.settlement.attendees_actual} /{" "}
-                                {event.settlement.attendees_required}
-                              </span>
-                            </div>
-                            <div className="w-full bg-white/10 rounded-full h-2">
-                              <div
-                                className={`bg-gradient-to-r h-2 rounded-full transition-all duration-500 ${getProgressColor(
-                                  event.settlement.attendees_actual,
-                                  event.settlement.attendees_required
-                                )}`}
-                                style={{
-                                  width: `${Math.min(
-                                    (event.settlement.attendees_actual /
-                                      event.settlement.attendees_required) *
-                                      100,
-                                    100
-                                  )}%`,
-                                }}
-                              ></div>
-                            </div>
-                          </div>
+//                     {/* Progress Metrics */}
+//                     <div className="space-y-4">
+//                       {event.settlement && (
+//                         <>
+//                           {/* Attendees Progress */}
+//                           <div>
+//                             <div className="flex items-center justify-between mb-2">
+//                               <span className="text-sm text-foreground-muted font-open-sans">
+//                                 Attendees
+//                               </span>
+//                               <span className="text-foreground font-open-sans">
+//                                 {event.settlement.attendees_actual} /{" "}
+//                                 {event.settlement.attendees_required}
+//                               </span>
+//                             </div>
+//                             <div className="w-full bg-white/10 rounded-full h-2">
+//                               <div
+//                                 className={`bg-gradient-to-r h-2 rounded-full transition-all duration-500 ${getProgressColor(
+//                                   event.settlement.attendees_actual,
+//                                   event.settlement.attendees_required
+//                                 )}`}
+//                                 style={{
+//                                   width: `${Math.min(
+//                                     (event.settlement.attendees_actual /
+//                                       event.settlement.attendees_required) *
+//                                       100,
+//                                     100
+//                                   )}%`,
+//                                 }}
+//                               ></div>
+//                             </div>
+//                           </div>
 
-                          {/* Completion Rate Progress */}
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm text-foreground-muted font-open-sans">
-                                Completion Rate
-                              </span>
-                              <span className="text-foreground font-open-sans">
-                                {event.settlement.completion_rate_actual}% /{" "}
-                                {event.settlement.completion_rate_required}%
-                              </span>
-                            </div>
-                            <div className="w-full bg-white/10 rounded-full h-2">
-                              <div
-                                className={`bg-gradient-to-r h-2 rounded-full transition-all duration-500 ${getProgressColor(
-                                  event.settlement.completion_rate_actual,
-                                  event.settlement.completion_rate_required
-                                )}`}
-                                style={{
-                                  width: `${Math.min(
-                                    (event.settlement.completion_rate_actual /
-                                      event.settlement
-                                        .completion_rate_required) *
-                                      100,
-                                    100
-                                  )}%`,
-                                }}
-                              ></div>
-                            </div>
-                          </div>
+//                           {/* Completion Rate Progress */}
+//                           <div>
+//                             <div className="flex items-center justify-between mb-2">
+//                               <span className="text-sm text-foreground-muted font-open-sans">
+//                                 Completion Rate
+//                               </span>
+//                               <span className="text-foreground font-open-sans">
+//                                 {event.settlement.completion_rate_actual}% /{" "}
+//                                 {event.settlement.completion_rate_required}%
+//                               </span>
+//                             </div>
+//                             <div className="w-full bg-white/10 rounded-full h-2">
+//                               <div
+//                                 className={`bg-gradient-to-r h-2 rounded-full transition-all duration-500 ${getProgressColor(
+//                                   event.settlement.completion_rate_actual,
+//                                   event.settlement.completion_rate_required
+//                                 )}`}
+//                                 style={{
+//                                   width: `${Math.min(
+//                                     (event.settlement.completion_rate_actual /
+//                                       event.settlement
+//                                         .completion_rate_required) *
+//                                       100,
+//                                     100
+//                                   )}%`,
+//                                 }}
+//                               ></div>
+//                             </div>
+//                           </div>
 
-                          {/* Rating Progress */}
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm text-foreground-muted font-open-sans">
-                                Average Rating
-                              </span>
-                              <span className="text-foreground font-open-sans">
-                                {event.settlement.avg_rating_actual} /{" "}
-                                {event.settlement.avg_rating_required}
-                              </span>
-                            </div>
-                            <div className="w-full bg-white/10 rounded-full h-2">
-                              <div
-                                className={`bg-gradient-to-r h-2 rounded-full transition-all duration-500 ${getProgressColor(
-                                  event.settlement.avg_rating_actual,
-                                  event.settlement.avg_rating_required
-                                )}`}
-                                style={{
-                                  width: `${Math.min(
-                                    (event.settlement.avg_rating_actual /
-                                      event.settlement.avg_rating_required) *
-                                      100,
-                                    100
-                                  )}%`,
-                                }}
-                              ></div>
-                            </div>
-                          </div>
-                        </>
-                      )}
+//                           {/* Rating Progress */}
+//                           <div>
+//                             <div className="flex items-center justify-between mb-2">
+//                               <span className="text-sm text-foreground-muted font-open-sans">
+//                                 Average Rating
+//                               </span>
+//                               <span className="text-foreground font-open-sans">
+//                                 {event.settlement.avg_rating_actual} /{" "}
+//                                 {event.settlement.avg_rating_required}
+//                               </span>
+//                             </div>
+//                             <div className="w-full bg-white/10 rounded-full h-2">
+//                               <div
+//                                 className={`bg-gradient-to-r h-2 rounded-full transition-all duration-500 ${getProgressColor(
+//                                   event.settlement.avg_rating_actual,
+//                                   event.settlement.avg_rating_required
+//                                 )}`}
+//                                 style={{
+//                                   width: `${Math.min(
+//                                     (event.settlement.avg_rating_actual /
+//                                       event.settlement.avg_rating_required) *
+//                                       100,
+//                                     100
+//                                   )}%`,
+//                                 }}
+//                               ></div>
+//                             </div>
+//                           </div>
+//                         </>
+//                       )}
 
-                      {/* Action Buttons */}
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => navigate(`/event/${event.id}`)}
-                        >
-                          <Eye className="mr-1 h-3 w-3" />
-                          View Event
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
+//                       {/* Action Buttons */}
+//                       <div className="flex gap-2 pt-2">
+//                         <Button
+//                           size="sm"
+//                           variant="outline"
+//                           className="flex-1"
+//                           onClick={() => navigate(`/event/${event.id}`)}
+//                         >
+//                           <Eye className="mr-1 h-3 w-3" />
+//                           View Event
+//                         </Button>
+//                       </div>
+//                     </div>
+//                   </div>
+//                 </Card>
+//               ))}
+//             </div>
+//           )}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
 
+
+// SPONSOR DASHBOARD - TEMPORARILY DISABLED
+/*
 export default SponsorDashboard;
+*/

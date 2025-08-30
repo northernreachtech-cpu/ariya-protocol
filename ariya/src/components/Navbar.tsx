@@ -72,15 +72,20 @@ const Navbar = () => {
           icon: <Users size={16} />,
         },
         {
+          name: "My Assigned Events",
+          href: "/my-assigned-events",
+          icon: <Calendar size={16} />,
+        },
+        {
           name: "Organizer Dashboard",
           href: "/dashboard/organizer",
           icon: <Users size={16} />,
         },
-        {
-          name: "Sponsor Dashboard",
-          href: "/dashboard/sponsor",
-          icon: <Users size={16} />,
-        },
+        // {
+        //   name: "Sponsor Dashboard",
+        //   href: "/dashboard/sponsor",
+        //   icon: <Users size={16} />,
+        // },
         {
           name: "Subscription",
           href: "/subscription",

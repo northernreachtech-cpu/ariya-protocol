@@ -693,7 +693,6 @@ export class EventManagementSDK {
 
       return false;
     } catch (error) {
-      console.error("Error checking organizer profile:", error);
       return false;
     }
   }
@@ -850,7 +849,6 @@ export class EventManagementSDK {
         created_at: parseInt(fields.created_at),
       };
     } catch (error) {
-      console.error("Error fetching user profile:", error);
       return null;
     }
   }
@@ -1002,47 +1000,117 @@ export class EventManagementSDK {
     eventRegistryId: string
   ): Promise<EventInfo[]> {
     try {
-      const { data } = await suiClient.getDynamicFields({
-        parentId: eventRegistryId,
+      // Validate parameters
+      if (!eventRegistryId || !eventRegistryId.startsWith('0x')) {
+        return [];
+      }
+
+      if (!assignee || assignee.trim() === '') {
+        return [];
+      }
+
+      // Try a different approach - query the EventRegistry directly
+      try {
+        const registryResponse = await suiClient.getObject({
+          id: eventRegistryId,
+          options: {
+            showContent: true,
+            showType: true,
+          },
+        });
+
+        if (registryResponse.data?.content?.dataType === "moveObject") {
+          const registryFields = registryResponse.data.content.fields as any;
+          
+          // Check if there's an events_by_assignee field
+          if (registryFields.events_by_assignee) {
+            // This would require additional processing to extract the data
+            // For now, let's fall back to the transaction query approach
+          }
+        }
+      } catch (registryError) {
+        // Could not query EventRegistry directly, continue with fallback
+      }
+
+      // Fall back to querying all events and filtering by assignee
+      const { data: transactions } = await suiClient.queryTransactionBlocks({
+        filter: {
+          MoveFunction: {
+            package: this.packageId,
+            module: "event_management",
+            function: "create_event",
+          },
+        },
+        options: {
+          showEffects: true,
+          showEvents: true,
+          showObjectChanges: true,
+        },
+        limit: 100,
       });
 
       const events: EventInfo[] = [];
-      
-      for (const field of data) {
-        // Since getDynamicFields doesn't return content, we need to fetch each object separately
-        try {
-          const objectResponse = await suiClient.getObject({
-            id: field.objectId,
-            options: { showContent: true },
-          });
-          
-          if (objectResponse.data?.content?.dataType === "moveObject") {
-            const fields = objectResponse.data.content.fields as any;
-            if (fields?.assignee === assignee) {
-              events.push({
-                id: field.objectId,
-                name: fields.name || "",
-                description: fields.description || "",
-                location: fields.location || "",
-                organizer: fields.organizer || "",
-                start_time: parseInt(fields.start_time) || 0,
-                end_time: parseInt(fields.end_time) || 0,
-                capacity: parseInt(fields.capacity) || 0,
-                current_attendees: parseInt(fields.current_attendees) || 0,
-                state: parseInt(fields.state) || 0,
-                fee_amount: parseInt(fields.fee_amount) || 0,
-                metadata_uri: fields.metadata_uri || "",
-              });
+
+      for (const txn of transactions) {
+        if (txn.events) {
+          for (const event of txn.events) {
+            if (event.type?.includes("EventCreated")) {
+              const eventData = event.parsedJson as {
+                event_id: string;
+                organizer: string;
+              };
+              if (eventData && eventData.event_id) {
+                // Get the full event object
+                const eventResponse = await suiClient.getObject({
+                  id: eventData.event_id,
+                  options: {
+                    showContent: true,
+                    showType: true,
+                  },
+                });
+
+                if (eventResponse.data?.content?.dataType === "moveObject") {
+                  const fields = eventResponse.data.content.fields as {
+                    name: string;
+                    description: string;
+                    location: string;
+                    organizer: string;
+                    start_time: string;
+                    end_time: string;
+                    capacity: string;
+                    current_attendees: string;
+                    state: string;
+                    assignee: string;
+                    fee_amount: string;
+                    metadata_uri: string;
+                  };
+                  
+                  // Check if this event is assigned to the user
+                  if (fields.assignee === assignee) {
+                    events.push({
+                      id: eventData.event_id,
+                      name: fields.name,
+                      description: fields.description || "",
+                      location: fields.location || "",
+                      organizer: fields.organizer,
+                      start_time: parseInt(fields.start_time),
+                      end_time: parseInt(fields.end_time),
+                      capacity: parseInt(fields.capacity),
+                      current_attendees: parseInt(fields.current_attendees),
+                      state: parseInt(fields.state),
+                      fee_amount: parseInt(fields.fee_amount),
+                      metadata_uri: fields.metadata_uri || "",
+                    });
+                  }
+                }
+              }
             }
           }
-        } catch (error) {
-          console.error("Error fetching object:", error);
         }
       }
 
       return events;
     } catch (error) {
-      console.error("Error fetching events assigned to user:", error);
       return [];
     }
   }
@@ -1089,13 +1157,12 @@ export class EventManagementSDK {
             }
           }
         } catch (error) {
-          console.error("Error fetching object:", error);
+          // Error fetching object
         }
       }
 
       return childEvents;
     } catch (error) {
-      console.error("Error fetching child events:", error);
       return [];
     }
   }
@@ -1226,13 +1293,12 @@ export class EventManagementSDK {
             }
           }
         } catch (error) {
-          console.error("Error fetching object:", error);
+          // Error fetching object
         }
       }
 
       return false;
     } catch (error) {
-      console.error("Error checking X username:", error);
       return false;
     }
   }
@@ -1263,13 +1329,12 @@ export class EventManagementSDK {
             }
           }
         } catch (error) {
-          console.error("Error fetching object:", error);
+          // Error fetching object
         }
       }
 
       return false;
     } catch (error) {
-      console.error("Error checking Telegram username:", error);
       return false;
     }
   }
@@ -1301,13 +1366,12 @@ export class EventManagementSDK {
             }
           }
         } catch (error) {
-          console.error("Error fetching object:", error);
+          // Error fetching object
         }
       }
 
       return null;
     } catch (error) {
-      console.error("Error getting address from X username:", error);
       return null;
     }
   }
@@ -1340,13 +1404,12 @@ export class EventManagementSDK {
             }
           }
         } catch (error) {
-          console.error("Error fetching object:", error);
+          // Error fetching object
         }
       }
 
       return null;
     } catch (error) {
-      console.error("Error getting address from Telegram username:", error);
       return null;
     }
   }
@@ -1363,7 +1426,6 @@ export class EventManagementSDK {
 
       return event.sponsor_conditions.custom_benchmarks || [];
     } catch (error) {
-      console.error("Error fetching custom benchmarks:", error);
       return [];
     }
   }
@@ -1518,7 +1580,6 @@ export class EventManagementSDK {
         error: 'Invalid assignee format. Use address, @username, or t.me/username',
       };
     } catch (error) {
-      console.error('Error validating assignee:', error);
       return {
         isValid: false,
         address: null,
@@ -1540,6 +1601,7 @@ export class EventManagementSDK {
       
       // Get events assigned to user by X username
       const profile = await this.getUserProfileByAddress(userAddress, eventRegistryId);
+      
       let xUsernameEvents: EventInfo[] = [];
       if (profile?.x_username) {
         xUsernameEvents = await this.getEventsAssignedToUser(profile.x_username, eventRegistryId);
@@ -1559,7 +1621,6 @@ export class EventManagementSDK {
 
       return uniqueEvents;
     } catch (error) {
-      console.error('Error getting assigned events:', error);
       return [];
     }
   }
@@ -1589,7 +1650,6 @@ export class EventManagementSDK {
       
       return null;
     } catch (error) {
-      console.error('Error getting username from address:', error);
       return null;
     }
   }

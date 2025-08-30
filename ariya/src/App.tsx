@@ -18,10 +18,11 @@ import LandingPage from "./pages/LandingPage";
 import CreateEvent from "./pages/CreateEvent";
 import Events from "./pages/Events";
 import MyEventsPage from "./pages/MyEvents";
+import MyAssignedEvents from "./pages/MyAssignedEvents";
 import EventDetails from "./pages/EventDetails";
 import ConvenerMarketplace from "./pages/ConvenerMarketplace";
 import OrganizerDashboard from "./pages/OrganizerDashboard";
-import SponsorDashboard from "./pages/SponsorDashboard";
+// import SponsorDashboard from "./pages/SponsorDashboard"; // TEMPORARILY DISABLED
 
 import useScrollToTop from "./hooks/useScrollToTop";
 import SUIWorkshop from "./pages/SUIWorkshop";
@@ -96,12 +97,13 @@ function AppContent() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/events" element={<Events />} />
         <Route path="/my-events" element={<MyEventsPage />} />
+        <Route path="/my-assigned-events" element={<MyAssignedEvents />} />
         <Route path="/event/create" element={<CreateEvent />} />
         <Route path="/event/:id" element={<EventDetails />} />
         <Route path="/organizers" element={<ConvenerMarketplace />} />
         <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/dashboard/organizer" element={<OrganizerDashboard />} />
-        <Route path="/dashboard/sponsor" element={<SponsorDashboard />} />
+        {/* <Route path="/dashboard/sponsor" element={<SponsorDashboard />} /> */}
         <Route path="/subscription" element={<SubscriptionManagement />} />
         <Route path="/community/:communityId" element={<Community />} />
         <Route path="/communities" element={<Communities />} />

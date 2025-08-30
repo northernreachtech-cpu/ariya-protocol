@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, User, Calendar, Plus, Crown } from "lucide-react";
+import { Loader2, User, Calendar, Plus, Crown, Eye, MapPin, Clock, Users } from "lucide-react";
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { useAriyaSDK } from "../lib/sdk";
-import { useNetworkVariable, suiClient } from "../config/sui";
+import { useNetworkVariable } from "../config/sui";
 import type { UserSubscription } from "../lib/sdk";
 import Card from "../components/Card";
 import Button from "../components/Button";
@@ -30,6 +30,7 @@ const UserDashboard = () => {
   const sdk = useAriyaSDK();
   const profileRegistryId = useNetworkVariable("profileRegistryId");
   const subscriptionRegistryId = useNetworkVariable("subscriptionRegistryId");
+  const eventRegistryId = useNetworkVariable("eventRegistryId");
   // const platformTreasuryId = useNetworkVariable("platformTreasuryId");
 
   // Get the active address (either wallet or zkLogin)
@@ -43,6 +44,47 @@ const UserDashboard = () => {
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [isCreatingOrganizer, setIsCreatingOrganizer] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [assignedEvents, setAssignedEvents] = useState<any[]>([]);
+  const [loadingAssignedEvents, setLoadingAssignedEvents] = useState(false);
+
+  const loadAssignedEvents = async () => {
+    if (!activeAddress || !eventRegistryId || !profileRegistryId) {
+      setAssignedEvents([]);
+      return;
+    }
+
+    setLoadingAssignedEvents(true);
+    try {
+      const events = await sdk.eventManagement.getMyAssignedEvents(activeAddress, eventRegistryId);
+      
+      // Get full event details for each assigned event
+      const eventsWithDetails = await Promise.all(
+        events.map(async (event) => {
+          const fullEvent = await sdk.eventManagement.getEvent(event.id);
+          if (fullEvent) {
+            return {
+              ...fullEvent,
+              // Add UI-specific fields
+              title: fullEvent.name,
+              date: new Date(fullEvent.start_time).toISOString().split("T")[0],
+              status: (fullEvent.state === 0
+                ? "upcoming"
+                : fullEvent.state === 1
+                ? "active"
+                : "completed") as "upcoming" | "active" | "completed",
+            };
+          }
+          return event;
+        })
+      );
+
+      setAssignedEvents(eventsWithDetails);
+    } catch (error) {
+      setAssignedEvents([]);
+    } finally {
+      setLoadingAssignedEvents(false);
+    }
+  };
 
   const loadUserData = async () => {
     if (!activeAddress) {
@@ -54,11 +96,9 @@ const UserDashboard = () => {
       setLoading(true);
 
       // Check if user is organizer
-      console.log("🔍 Checking organizer profile for address:", activeAddress);
       const hasOrganizerProfile = await sdk.eventManagement.hasOrganizerProfile(
         activeAddress
       );
-      console.log("📋 Has organizer profile:", hasOrganizerProfile);
       setIsOrganizer(hasOrganizerProfile);
 
       // Check if user has a profile
@@ -87,30 +127,24 @@ const UserDashboard = () => {
             }
           }
         } catch (error) {
-          console.error("Error loading user profile:", error);
+          // Error loading user profile
         }
       }
 
       // Load or create subscription data
       if (subscriptionRegistryId) {
         try {
-          console.log("🔍 Checking subscription for address:", activeAddress);
           const subscriptionId = await sdk.subscription.getUserSubscriptionId(
             subscriptionRegistryId,
             activeAddress
           );
           
           if (subscriptionId) {
-            console.log("📋 Found existing subscription ID:", subscriptionId);
             const subscriptionData = await sdk.subscription.getUserSubscription(subscriptionId);
             if (subscriptionData) {
-              console.log("✅ Loaded subscription data:", subscriptionData);
               setSubscription(subscriptionData);
-            } else {
-              console.warn("⚠️ Found subscription ID but failed to load subscription data");
             }
           } else {
-            console.log("📋 No subscription found, creating free subscription...");
             // Create free subscription for user
             try {
               const tx = sdk.subscription.createFreeSubscription(activeAddress, subscriptionRegistryId);
@@ -120,13 +154,12 @@ const UserDashboard = () => {
                 await signAndExecute(
                   { transaction: tx },
                   {
-                    onSuccess: async (result) => {
-                      console.log("✅ Free subscription created successfully:", result);
+                    onSuccess: async () => {
                       // Reload subscription data
                       await loadUserData();
                     },
-                    onError: (error) => {
-                      console.error("❌ Error creating free subscription:", error);
+                    onError: () => {
+                      // Error creating free subscription
                     },
                   }
                 );
@@ -138,27 +171,29 @@ const UserDashboard = () => {
                 await signAndExecute(
                   { transaction: txWithSender },
                   {
-                    onSuccess: async (result) => {
-                      console.log("✅ Free subscription created successfully:", result);
+                    onSuccess: async () => {
                       // Reload subscription data
                       await loadUserData();
                     },
-                    onError: (error) => {
-                      console.error("❌ Error creating free subscription:", error);
+                    onError: () => {
+                      // Error creating free subscription
                     },
                   }
                 );
               }
             } catch (createError) {
-              console.error("❌ Error creating free subscription transaction:", createError);
+              // Error creating free subscription transaction
             }
           }
         } catch (error) {
-          console.error("Error loading subscription:", error);
+          // Error loading subscription
         }
       }
+
+      // Load assigned events
+      await loadAssignedEvents();
     } catch (error) {
-      console.error("Error loading user data:", error);
+      // Error loading user data
     } finally {
       setLoading(false);
     }
@@ -168,48 +203,32 @@ const UserDashboard = () => {
     loadUserData();
   }, [activeAddress, sdk]);
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active":
+        return "text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-400/20";
+      case "completed":
+        return "text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-400/20";
+      case "upcoming":
+        return "text-yellow-600 bg-yellow-100 dark:text-yellow-400 dark:bg-yellow-400/20";
+      default:
+        return "text-foreground-muted bg-card-secondary";
+    }
+  };
+
   const handleBecomeOrganizer = async () => {
     if (!activeAddress || !isAuthenticated) return;
 
     setIsCreatingOrganizer(true);
     try {
-      console.log("🚀 Creating organizer profile transaction...");
       const tx = sdk.eventManagement.createOrganizerProfile(activeAddress);
-      console.log("📦 Organizer transaction created:", tx);
       
       if (currentAccount) {
         // For regular wallet
         await signAndExecute(
           { transaction: tx },
           {
-            onSuccess: async (result) => {
-              console.log("✅ Organizer profile created successfully:", result);
-              
-              // Debug transaction effects
-              try {
-                const fullTx = await suiClient.getTransactionBlock({
-                  digest: result.digest,
-                  options: {
-                    showObjectChanges: true,
-                  },
-                });
-                console.log("🔍 Organizer transaction effects:", fullTx);
-                if (fullTx.objectChanges) {
-                  const createdObjects = fullTx.objectChanges.filter(
-                    (change) => change.type === "created"
-                  );
-                  console.log(`📦 Found ${createdObjects.length} created objects in organizer transaction`);
-                  createdObjects.forEach((change, index) => {
-                    console.log(`[Object ${index + 1}]`);
-                    console.log(`  ID: ${change.objectId}`);
-                    console.log(`  Owner: ${JSON.stringify(change.owner)}`);
-                    console.log(`  Type: ${change.objectType}`);
-                  });
-                }
-              } catch (txError) {
-                console.error("Failed to fetch organizer transaction details:", txError);
-              }
-              
+            onSuccess: async () => {
               // Wait a moment for the transaction to be indexed
               await new Promise(resolve => setTimeout(resolve, 2000));
               
@@ -217,8 +236,7 @@ const UserDashboard = () => {
               await loadUserData();
               setIsCreatingOrganizer(false);
             },
-            onError: (error) => {
-              console.error("❌ Error creating organizer profile:", error);
+            onError: () => {
               setIsCreatingOrganizer(false);
             },
           }
@@ -231,25 +249,21 @@ const UserDashboard = () => {
         await signAndExecute(
           { transaction: txWithSender },
           {
-            onSuccess: async (result) => {
-              console.log("✅ Organizer profile created successfully:", result);
-              
+            onSuccess: async () => {
               // Wait a moment for the transaction to be indexed
               await new Promise(resolve => setTimeout(resolve, 2000));
               
               // Reload user data to check if organizer profile was created
               await loadUserData();
-              setIsCreatingOrganizer(false);
+              setIsCreatingOrganizer(false); 
             },
-            onError: (error) => {
-              console.error("❌ Error creating organizer profile:", error);
+            onError: () => {
               setIsCreatingOrganizer(false);
             },
           }
         );
       }
     } catch (error) {
-      console.error("❌ Error creating organizer profile:", error);
       setIsCreatingOrganizer(false);
     }
   };
@@ -368,6 +382,128 @@ const UserDashboard = () => {
                 Loading...
               </Button>
             </div>
+          </Card>
+        )}
+
+        {/* Assigned Events Section */}
+        {hasProfile && (
+          <Card className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Calendar className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Events Assigned to You
+                  </h3>
+                  <p className="text-sm text-foreground-secondary">
+                    Events you've been assigned to manage
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/my-assigned-events")}
+                >
+                  View All
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadAssignedEvents}
+                  disabled={loadingAssignedEvents}
+                >
+                  {loadingAssignedEvents ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Refresh"
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {loadingAssignedEvents ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
+                <p className="text-sm text-foreground-secondary">Loading assigned events...</p>
+              </div>
+            ) : assignedEvents.length > 0 ? (
+              <div className="space-y-4">
+                {assignedEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-card-secondary rounded-lg border border-border hover:bg-card transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-semibold text-foreground truncate">
+                          {event.name}
+                        </h4>
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ml-2 flex-shrink-0 ${getStatusColor(
+                            event.status
+                          )}`}
+                        >
+                          {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                        </span>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-foreground-secondary">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          <span className="truncate">{event.location}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{new Date(event.start_time).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          <span>{event.current_attendees || 0}/{event.capacity} attendees</span>
+                        </div>
+                      </div>
+
+                      {event.description && (
+                        <p className="text-sm text-foreground-muted mt-2 line-clamp-2">
+                          {event.description}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2 flex-shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => navigate(`/event/${event.id}`)}
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Calendar className="h-12 w-12 mx-auto mb-3 text-foreground-muted" />
+                <h4 className="text-lg font-semibold text-foreground-secondary mb-2">
+                  No Assigned Events
+                </h4>
+                <p className="text-sm text-foreground-muted mb-4">
+                  You haven't been assigned to manage any events yet.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/events")}
+                >
+                  Browse Events
+                </Button>
+              </div>
+            )}
           </Card>
         )}
 
