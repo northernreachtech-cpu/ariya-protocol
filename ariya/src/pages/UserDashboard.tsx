@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, User, Edit, Calendar, Plus, Crown } from "lucide-react";
+import { Loader2, User, Calendar, Plus, Crown } from "lucide-react";
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { useAriyaSDK } from "../lib/sdk";
 import { useNetworkVariable, suiClient } from "../config/sui";
@@ -8,6 +8,7 @@ import type { UserSubscription } from "../lib/sdk";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import ProfilePicture from "../components/ProfilePicture";
+import ProfileCreationModal from "../components/ProfileCreationModal";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { useZkLogin } from "../contexts/ZkLoginContext";
 
@@ -37,12 +38,17 @@ const UserDashboard = () => {
 
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [hasProfile, setHasProfile] = useState(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [isCreatingOrganizer, setIsCreatingOrganizer] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const loadUserData = async () => {
-    if (!activeAddress) return;
+    if (!activeAddress) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -55,22 +61,30 @@ const UserDashboard = () => {
       console.log("📋 Has organizer profile:", hasOrganizerProfile);
       setIsOrganizer(hasOrganizerProfile);
 
-      // Load user profile
+      // Check if user has a profile
       if (profileRegistryId) {
         try {
-          const profile = await sdk.eventManagement.getUserProfileByAddress(
+          const hasUserProfile = await sdk.eventManagement.hasProfile(
             activeAddress,
             profileRegistryId
           );
-          if (profile) {
-            setUserProfile({
-              id: profile.id,
-              name: profile.name,
-              bio: profile.bio,
-              photoUrl: profile.photo_url,
-              telegramUsername: profile.telegram_username,
-              xUsername: profile.x_username,
-            });
+          setHasProfile(hasUserProfile);
+          
+          if (hasUserProfile) {
+            const profile = await sdk.eventManagement.getUserProfileByAddress(
+              activeAddress,
+              profileRegistryId
+            );
+            if (profile) {
+              setUserProfile({
+                id: profile.id,
+                name: profile.name,
+                bio: profile.bio,
+                photoUrl: profile.photo_url,
+                telegramUsername: profile.telegram_username,
+                xUsername: profile.x_username,
+              });
+            }
           }
         } catch (error) {
           console.error("Error loading user profile:", error);
@@ -251,6 +265,25 @@ const UserDashboard = () => {
     );
   }
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <User className="h-16 w-16 mx-auto mb-6 text-foreground-muted" />
+          <h2 className="text-2xl font-bold text-foreground mb-4">
+            Connect Your Wallet
+          </h2>
+          <p className="text-foreground-secondary mb-6">
+            Please connect your wallet or sign in with Google to access your dashboard.
+          </p>
+          <Button onClick={() => navigate("/")}>
+            Go to Home
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 sm:pb-12">
@@ -286,10 +319,7 @@ const UserDashboard = () => {
                     )}
                   </div>
                 </div>
-                <Button variant="outline" size="sm" disabled>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit Profile
-                </Button>
+
               </div>
             </div>
           </div>
@@ -341,50 +371,79 @@ const UserDashboard = () => {
           </Card>
         )}
 
-        {/* Organizer Dashboard Content (if user is organizer) */}
-        {isOrganizer ? (
-          <div className="text-center py-12 sm:py-16">
-            <div className="mb-6">
-              <Calendar className="h-16 w-16 mx-auto text-foreground-muted" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
-              Organizer Dashboard
-            </h3>
-            <p className="text-foreground-muted mb-6 max-w-md mx-auto">
-              You're an organizer! Your events and management tools will appear
-              here.
-            </p>
-            <Button onClick={() => navigate("/dashboard/organizer")}>
-              <Plus className="mr-2 h-4 w-4" />
-              Go to Organizer Dashboard
-            </Button>
-          </div>
-        ) : (
-          /* Regular User Content (if not organizer) */
+        {/* Profile Creation Prompt (if user doesn't have a profile) */}
+        {!hasProfile ? (
           <div className="text-center py-12 sm:py-16">
             <div className="mb-6">
               <User className="h-16 w-16 mx-auto text-foreground-muted" />
             </div>
             <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
-              Welcome to Ariya!
+              Complete Your Profile
             </h3>
             <p className="text-foreground-muted mb-6 max-w-md mx-auto">
-              Your profile is set up. Browse events or become an organizer to
-              create your own events.
+              You need to create your profile before you can access the full dashboard features.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={() => navigate("/events")}>Browse Events</Button>
-              <Button
-                variant="outline"
-                onClick={handleBecomeOrganizer}
-                disabled={isCreatingOrganizer}
-              >
-                {isCreatingOrganizer ? "Creating..." : "Become Organizer"}
+            <Button onClick={() => setShowProfileModal(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Profile
+            </Button>
+          </div>
+        ) : (
+          /* Organizer Dashboard Content (if user is organizer) */
+          isOrganizer ? (
+            <div className="text-center py-12 sm:py-16">
+              <div className="mb-6">
+                <Calendar className="h-16 w-16 mx-auto text-foreground-muted" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
+                Organizer Dashboard
+              </h3>
+              <p className="text-foreground-muted mb-6 max-w-md mx-auto">
+                You're an organizer! Your events and management tools will appear
+                here.
+              </p>
+              <Button onClick={() => navigate("/dashboard/organizer")}>
+                <Plus className="mr-2 h-4 w-4" />
+                Go to Organizer Dashboard
               </Button>
             </div>
-          </div>
+          ) : (
+            /* Regular User Content (if not organizer) */
+            <div className="text-center py-12 sm:py-16">
+              <div className="mb-6">
+                <User className="h-16 w-16 mx-auto text-foreground-muted" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
+                Welcome to Ariya!
+              </h3>
+              <p className="text-foreground-muted mb-6 max-w-md mx-auto">
+                Your profile is set up. Browse events or become an organizer to
+                create your own events.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button onClick={() => navigate("/events")}>Browse Events</Button>
+                <Button
+                  variant="outline"
+                  onClick={handleBecomeOrganizer}
+                  disabled={isCreatingOrganizer}
+                >
+                  {isCreatingOrganizer ? "Creating..." : "Become Organizer"}
+                </Button>
+              </div>
+            </div>
+          )
         )}
       </div>
+
+      {/* Profile Creation Modal */}
+      <ProfileCreationModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        onSuccess={() => {
+          setShowProfileModal(false);
+          loadUserData(); // Reload user data to check for profile
+        }}
+      />
     </div>
   );
 };

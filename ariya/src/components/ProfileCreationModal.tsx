@@ -353,6 +353,10 @@ const ProfileCreationModal = ({
           onClose();
         }}
         onBecomeOrganizer={async () => {
+          if (!activeAddress) {
+            setError("No active address found");
+            return;
+          }
           setIsCreatingOrganizer(true);
           try {
             const tx = sdk.eventManagement.createOrganizerProfile(activeAddress);
