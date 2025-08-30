@@ -1388,4 +1388,209 @@ export class EventManagementSDK {
   getBenchmarkComparisonType(benchmark: CustomBenchmark): number {
     return benchmark.comparison_type;
   }
+
+  /**
+   * Update event assignee
+   */
+  updateEventAssignee(
+    eventId: string,
+    assignee: string,
+    eventRegistryId: string
+  ): Transaction {
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${this.packageId}::event_management::update_event_assignee`,
+      arguments: [
+        tx.object(eventId),
+        tx.pure.string(assignee),
+        tx.object(eventRegistryId),
+      ],
+    });
+    tx.setGasBudget(50000000); // 50,000,000 MIST = 0.05 SUI
+    return tx;
+  }
+
+  /**
+   * Validate assignee input (address, X username, or Telegram username)
+   */
+  async validateAssignee(
+    input: string,
+    profileRegistryId: string
+  ): Promise<{
+    isValid: boolean;
+    address: string | null;
+    error?: string;
+    displayName?: string;
+  }> {
+    try {
+      // Check if input is a valid Sui address
+      if (input.startsWith('0x') && input.length === 66) {
+        const hasProfile = await this.hasProfile(input, profileRegistryId);
+        if (hasProfile) {
+          const profile = await this.getUserProfileByAddress(input, profileRegistryId);
+          return {
+            isValid: true,
+            address: input,
+            displayName: profile?.name || input,
+          };
+        }
+        return {
+          isValid: false,
+          address: null,
+          error: 'Address does not have a profile',
+        };
+      }
+
+      // Check if input is X username (starts with @ or contains @)
+      if (input.startsWith('@') || input.includes('@')) {
+        const xUsername = input.startsWith('@') ? input.slice(1) : input;
+        const hasXUsername = await this.hasXUsername(xUsername, profileRegistryId);
+        if (hasXUsername) {
+          const address = await this.getAddressFromX(xUsername, profileRegistryId);
+          if (address) {
+            const profile = await this.getUserProfileByAddress(address, profileRegistryId);
+            return {
+              isValid: true,
+              address,
+              displayName: profile?.name || `@${xUsername}`,
+            };
+          }
+        }
+        return {
+          isValid: false,
+          address: null,
+          error: 'X username not found',
+        };
+      }
+
+      // Check if input is Telegram username (starts with t.me/ or @)
+      if (input.startsWith('t.me/') || input.startsWith('@')) {
+        const telegramUsername = input.replace('t.me/', '').replace('@', '');
+        const hasTelegramUsername = await this.hasTelegramUsername(telegramUsername, profileRegistryId);
+        if (hasTelegramUsername) {
+          const address = await this.getAddressFromTelegram(telegramUsername, profileRegistryId);
+          if (address) {
+            const profile = await this.getUserProfileByAddress(address, profileRegistryId);
+            return {
+              isValid: true,
+              address,
+              displayName: profile?.name || `@${telegramUsername}`,
+            };
+          }
+        }
+        return {
+          isValid: false,
+          address: null,
+          error: 'Telegram username not found',
+        };
+      }
+
+      // Check if input is just a username (try both X and Telegram)
+      const hasXUsername = await this.hasXUsername(input, profileRegistryId);
+      if (hasXUsername) {
+        const address = await this.getAddressFromX(input, profileRegistryId);
+        if (address) {
+          const profile = await this.getUserProfileByAddress(address, profileRegistryId);
+          return {
+            isValid: true,
+            address,
+            displayName: profile?.name || `@${input}`,
+          };
+        }
+      }
+
+      const hasTelegramUsername = await this.hasTelegramUsername(input, profileRegistryId);
+      if (hasTelegramUsername) {
+        const address = await this.getAddressFromTelegram(input, profileRegistryId);
+        if (address) {
+          const profile = await this.getUserProfileByAddress(address, profileRegistryId);
+          return {
+            isValid: true,
+            address,
+            displayName: profile?.name || `@${input}`,
+          };
+        }
+      }
+
+      return {
+        isValid: false,
+        address: null,
+        error: 'Invalid assignee format. Use address, @username, or t.me/username',
+      };
+    } catch (error) {
+      console.error('Error validating assignee:', error);
+      return {
+        isValid: false,
+        address: null,
+        error: 'Error validating assignee',
+      };
+    }
+  }
+
+  /**
+   * Get events assigned to current user
+   */
+  async getMyAssignedEvents(
+    userAddress: string,
+    eventRegistryId: string
+  ): Promise<EventInfo[]> {
+    try {
+      // Get events assigned to user by address
+      const addressEvents = await this.getEventsAssignedToUser(userAddress, eventRegistryId);
+      
+      // Get events assigned to user by X username
+      const profile = await this.getUserProfileByAddress(userAddress, eventRegistryId);
+      let xUsernameEvents: EventInfo[] = [];
+      if (profile?.x_username) {
+        xUsernameEvents = await this.getEventsAssignedToUser(profile.x_username, eventRegistryId);
+      }
+
+      // Get events assigned to user by Telegram username
+      let telegramUsernameEvents: EventInfo[] = [];
+      if (profile?.telegram_username) {
+        telegramUsernameEvents = await this.getEventsAssignedToUser(profile.telegram_username, eventRegistryId);
+      }
+
+      // Combine and deduplicate events
+      const allEvents = [...addressEvents, ...xUsernameEvents, ...telegramUsernameEvents];
+      const uniqueEvents = allEvents.filter((event, index, self) => 
+        index === self.findIndex(e => e.id === event.id)
+      );
+
+      return uniqueEvents;
+    } catch (error) {
+      console.error('Error getting assigned events:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get username from address (reverse lookup)
+   */
+  async getUsernameFromAddress(
+    address: string,
+    profileRegistryId: string
+  ): Promise<{
+    name: string;
+    x_username: string;
+    telegram_username: string;
+  } | null> {
+    try {
+      // Get user profile by address
+      const profile = await this.getUserProfileByAddress(address, profileRegistryId);
+      
+      if (profile) {
+        return {
+          name: profile.name,
+          x_username: profile.x_username,
+          telegram_username: profile.telegram_username,
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting username from address:', error);
+      return null;
+    }
+  }
 }

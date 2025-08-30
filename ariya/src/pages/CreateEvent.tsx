@@ -19,6 +19,7 @@ import { useAriyaSDK } from "../lib/sdk";
 import { useZkLogin } from "../contexts/ZkLoginContext";
 import Button from "../components/Button";
 import Card from "../components/Card";
+import AssigneeSelector from "../components/AssigneeSelector";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { suiClient, useNetworkVariable } from "../config/sui";
 
@@ -58,6 +59,7 @@ const CreateEvent = () => {
     minCompletionRate: "",
     minAvgRating: "",
     sponsors: [] as string[], // Add sponsors array
+    assignee: "self", // Add assignee field - default to "self"
     bannerImage: null as File | null,
     imageUrl: "", // Added for IPFS URL
     previewUrl: "", // Add this for local preview
@@ -259,7 +261,7 @@ const CreateEvent = () => {
         parseInt(formData.minAvgRating) || 0, // minAvgRating
         formData.imageUrl || "", // metadataUri
         formData.sponsors, // sponsors from form data
-        "self", // assignee - default to "self"
+        formData.assignee, // Use assignee from form data
         !!parentEventId, // isChild - true if parentEventId exists
         parentEventId || "0x0000000000000000000000000000000000000000000000000000000000000000", // parentId - use parentEventId if exists, otherwise zero ID
         eventRegistryId, // eventRegistryId
@@ -555,6 +557,24 @@ const CreateEvent = () => {
                   placeholder="0.0"
                 />
               </div>
+
+              {/* Assignee field - only show for sub-events */}
+              {parentEventId && (
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-foreground">
+                    Assignee (Optional)
+                  </label>
+                  <AssigneeSelector
+                    value={formData.assignee}
+                    onChange={(assignee) => handleInputChange("assignee", assignee)}
+                    placeholder="Enter assignee (address, @username, or t.me/username)"
+                    disabled={isSubmitting}
+                  />
+                  <p className="mt-1 text-xs text-foreground-muted">
+                    Leave as "self" to manage this sub-event yourself, or assign to another user
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>

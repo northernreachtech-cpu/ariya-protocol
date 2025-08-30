@@ -37,6 +37,7 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import StatCard from "../components/StatCard";
 import AirdropCreationModal from "../components/AirdropCreationModal";
+import AssigneeSelector from "../components/AssigneeSelector";
 // import AirdropManagement from "../components/AirdropManagement";
 import ErrorModal from "../components/ErrorModal";
 
@@ -91,11 +92,90 @@ const EventDetailsModal = ({
   isOpen,
   event,
   onClose,
+  onUpdateAssignee,
+  sdk,
+  profileRegistryId,
 }: {
   isOpen: boolean;
   event: Event | null;
   onClose: () => void;
+  onUpdateAssignee: (event: Event) => void;
+  sdk: any;
+  profileRegistryId: string;
 }) => {
+  const [assigneeProfile, setAssigneeProfile] = useState<{
+    name: string;
+    x_username: string;
+    telegram_username: string;
+  } | null>(null);
+  const [loadingAssignee, setLoadingAssignee] = useState(false);
+
+  // Fetch assignee profile information
+  useEffect(() => {
+    const fetchAssigneeProfile = async () => {
+      if (!event || !event.assignee || event.assignee === "self") {
+        setAssigneeProfile(null);
+        return;
+      }
+
+      setLoadingAssignee(true);
+      try {
+        // Check if assignee is already a username format
+        if (event.assignee.startsWith('@') || event.assignee.startsWith('t.me/')) {
+          setAssigneeProfile({
+            name: event.assignee,
+            x_username: event.assignee.startsWith('@') ? event.assignee : '',
+            telegram_username: event.assignee.startsWith('t.me/') ? event.assignee : '',
+          });
+          return;
+        }
+
+        // If it's an address, try to get the profile
+        if (event.assignee.startsWith('0x')) {
+          if (sdk && profileRegistryId) {
+            const profile = await sdk.eventManagement.getUsernameFromAddress(event.assignee, profileRegistryId);
+            
+            if (profile) {
+              setAssigneeProfile(profile);
+            } else {
+              // Fallback if no profile found
+              setAssigneeProfile({
+                name: `User (${formatAddress(event.assignee)})`,
+                x_username: '',
+                telegram_username: '',
+              });
+            }
+          } else {
+            // Fallback if SDK not available
+            setAssigneeProfile({
+              name: `User (${formatAddress(event.assignee)})`,
+              x_username: '',
+              telegram_username: '',
+            });
+          }
+        } else {
+          // Fallback for other formats
+          setAssigneeProfile({
+            name: event.assignee,
+            x_username: '',
+            telegram_username: '',
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching assignee profile:', error);
+        setAssigneeProfile({
+          name: event.assignee.startsWith('0x') ? `User (${formatAddress(event.assignee)})` : event.assignee,
+          x_username: '',
+          telegram_username: '',
+        });
+      } finally {
+        setLoadingAssignee(false);
+      }
+    };
+
+    fetchAssigneeProfile();
+  }, [event, sdk, profileRegistryId]);
+
   if (!isOpen || !event) return null;
 
   const formatDate = (timestamp: number) => {
@@ -121,121 +201,183 @@ const EventDetailsModal = ({
 
   const getStateColor = (state: number) => {
     switch (state) {
-      case 0: return "text-yellow-600 bg-yellow-100";
-      case 1: return "text-green-600 bg-green-100";
-      case 2: return "text-blue-600 bg-blue-100";
-      case 3: return "text-purple-600 bg-purple-100";
-      default: return "text-gray-600 bg-gray-100";
+      case 0: return "text-yellow-600 bg-yellow-100 dark:text-yellow-400 dark:bg-yellow-400/20";
+      case 1: return "text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-400/20";
+      case 2: return "text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-400/20";
+      case 3: return "text-purple-600 bg-purple-100 dark:text-purple-400 dark:bg-purple-400/20";
+      default: return "text-gray-600 bg-gray-100 dark:text-gray-400 dark:bg-gray-400/20";
     }
+  };
+
+  const formatAddress = (address: string) => {
+    if (address.length > 20) {
+      return `${address.slice(0, 10)}...${address.slice(-10)}`;
+    }
+    return address;
   };
 
   return (
     <div className="fixed inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-card border border-border rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
+      <div className="bg-card border border-border rounded-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">{event.name}</h2>
-            <p className="text-foreground-secondary mt-1">Event Details</p>
+        <div className="sticky top-0 bg-card border-b border-border p-6 z-10">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-foreground">{event.name}</h2>
+              <div className="flex items-center gap-4 mt-2">
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStateColor(event.state)}`}>
+                  {getStateText(event.state)}
+                </span>
+                <span className="text-foreground-secondary text-sm">
+                  {event.is_child ? "Sub-Event" : "Main Event"}
+                </span>
+                <span className="text-foreground-secondary text-sm">
+                  Created {formatDate(event.created_at)}
+                </span>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-5 w-5" />
+            </Button>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-8">
           {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground mb-3">Basic Information</h3>
-                <div className="space-y-3">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Event Details */}
+            <div className="lg:col-span-2">
+              <div className="bg-card-secondary rounded-lg p-6 border border-border">
+                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Event Information
+                </h3>
+                <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-foreground-secondary">Description</label>
-                    <p className="text-foreground mt-1">{event.description || "No description"}</p>
+                    <p className="text-foreground mt-1 bg-card p-3 rounded-lg border border-border">
+                      {event.description || "No description provided"}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground-secondary">Location</label>
-                    <p className="text-foreground mt-1">{event.location}</p>
+                    <p className="text-foreground mt-1 bg-card p-3 rounded-lg border border-border">
+                      {event.location}
+                    </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground-secondary">Status</label>
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${getStateColor(event.state)}`}>
-                      {getStateText(event.state)}
-                    </span>
+                    <label className="text-sm font-medium text-foreground-secondary">Event Type</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStateColor(event.state)}`}>
+                        {getStateText(event.state)}
+                      </span>
+                      <span className="text-foreground-secondary text-sm">
+                        {event.is_child ? "Sub-Event" : "Main Event"}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground mb-3">Timing</h3>
-                <div className="space-y-3">
+            {/* Timing Information */}
+            <div>
+              <div className="bg-card-secondary rounded-lg p-6 border border-border">
+                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Timing
+                </h3>
+                <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-foreground-secondary">Start Time</label>
-                    <p className="text-foreground mt-1">{formatDate(event.start_time)}</p>
+                    <p className="text-foreground mt-1 bg-card p-2 rounded border border-border text-sm">
+                      {formatDate(event.start_time)}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground-secondary">End Time</label>
-                    <p className="text-foreground mt-1">{formatDate(event.end_time)}</p>
+                    <p className="text-foreground mt-1 bg-card p-2 rounded border border-border text-sm">
+                      {formatDate(event.end_time)}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground-secondary">Duration</label>
-                    <p className="text-foreground mt-1">{formatDuration(event.start_time, event.end_time)}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground-secondary">Created</label>
-                    <p className="text-foreground mt-1">{formatDate(event.created_at)}</p>
+                    <p className="text-foreground mt-1 bg-card p-2 rounded border border-border text-sm font-medium">
+                      {formatDuration(event.start_time, event.end_time)}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Capacity and Attendance */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground mb-3">Capacity & Attendance</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-foreground-secondary">Capacity:</span>
-                  <span className="text-foreground font-medium">{(event.capacity || 0).toLocaleString()}</span>
+          {/* Capacity, Attendance & Financial */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Capacity & Attendance */}
+            <div className="bg-card-secondary rounded-lg p-6 border border-border">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Capacity & Attendance
+              </h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-card p-4 rounded-lg border border-border text-center">
+                    <div className="text-2xl font-bold text-primary">
+                      {(event.capacity || 0).toLocaleString()}
+                    </div>
+                    <div className="text-sm text-foreground-secondary">Capacity</div>
+                  </div>
+                  <div className="bg-card p-4 rounded-lg border border-border text-center">
+                    <div className="text-2xl font-bold text-secondary">
+                      {(event.current_attendees || 0).toLocaleString()}
+                    </div>
+                    <div className="text-sm text-foreground-secondary">Attendees</div>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-foreground-secondary">Current Attendees:</span>
-                  <span className="text-foreground font-medium">{(event.current_attendees || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-foreground-secondary">Attendance Rate:</span>
-                  <span className="text-foreground font-medium">
-                    {(event.capacity || 0) > 0 ? (((event.current_attendees || 0) / (event.capacity || 1)) * 100).toFixed(1) : 0}%
-                  </span>
-                </div>
-                <div className="w-full bg-border rounded-full h-2 mt-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(event.capacity || 0) > 0 ? ((event.current_attendees || 0) / (event.capacity || 1)) * 100 : 0}%` }}
-                  ></div>
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-foreground-secondary">Attendance Rate</span>
+                    <span className="text-sm font-medium text-foreground">
+                      {(event.capacity || 0) > 0 ? (((event.current_attendees || 0) / (event.capacity || 1)) * 100).toFixed(1) : 0}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-border rounded-full h-3">
+                    <div 
+                      className="bg-gradient-to-r from-primary to-secondary h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${(event.capacity || 0) > 0 ? ((event.current_attendees || 0) / (event.capacity || 1)) * 100 : 0}%` }}
+                    ></div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div>
-              <h3 className="text-lg font-semibold text-foreground mb-3">Financial</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-foreground-secondary">Fee Amount:</span>
-                  <span className="text-foreground font-medium">
-                    {((event.fee_amount || 0) / 1000000000).toFixed(2)} SUI
-                  </span>
+            {/* Financial Information */}
+            <div className="bg-card-secondary rounded-lg p-6 border border-border">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Financial
+              </h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-card p-4 rounded-lg border border-border text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {((event.fee_amount || 0) / 1000000000).toFixed(2)}
+                    </div>
+                    <div className="text-sm text-foreground-secondary">Fee (SUI)</div>
+                  </div>
+                  <div className="bg-card p-4 rounded-lg border border-border text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {(((event.fee_amount || 0) * (event.current_attendees || 0)) / 1000000000).toFixed(2)}
+                    </div>
+                    <div className="text-sm text-foreground-secondary">Revenue (SUI)</div>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-foreground-secondary">Total Revenue:</span>
-                  <span className="text-foreground font-medium">
-                    {(((event.fee_amount || 0) * (event.current_attendees || 0)) / 1000000000).toFixed(2)} SUI
-                  </span>
+                <div className="bg-card p-3 rounded-lg border border-border">
+                  <div className="text-sm text-foreground-secondary mb-1">Revenue Calculation</div>
+                  <div className="text-xs text-foreground-muted">
+                    {((event.fee_amount || 0) / 1000000000).toFixed(2)} SUI × {(event.current_attendees || 0)} attendees
+                  </div>
                 </div>
               </div>
             </div>
@@ -243,12 +385,16 @@ const EventDetailsModal = ({
 
           {/* Sponsors */}
           {event.sponsors.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-foreground mb-3">Sponsors</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="bg-card-secondary rounded-lg p-6 border border-border">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Gift className="h-5 w-5" />
+                Sponsors ({event.sponsors.length})
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {event.sponsors.map((sponsor, index) => (
-                  <div key={index} className="bg-card-secondary p-3 rounded-lg border border-border">
-                    <span className="text-foreground">{sponsor}</span>
+                  <div key={index} className="bg-card p-4 rounded-lg border border-border text-center hover:bg-card-secondary transition-colors">
+                    <div className="text-lg font-semibold text-foreground">{sponsor}</div>
+                    <div className="text-xs text-foreground-muted mt-1">Sponsor #{index + 1}</div>
                   </div>
                 ))}
               </div>
@@ -256,45 +402,64 @@ const EventDetailsModal = ({
           )}
 
           {/* Sponsor Conditions */}
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-3">Sponsor Conditions</h3>
+          <div className="bg-card-secondary rounded-lg p-6 border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Star className="h-5 w-5" />
+              Sponsor Performance Conditions
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-card-secondary p-4 rounded-lg border border-border">
-                <label className="text-sm font-medium text-foreground-secondary">Min Attendees</label>
-                <p className="text-foreground font-medium mt-1">
+              <div className="bg-card p-4 rounded-lg border border-border text-center">
+                <div className="text-2xl font-bold text-blue-600">
                   {(event.sponsor_conditions?.min_attendees || 0).toLocaleString()}
-                </p>
+                </div>
+                <div className="text-sm text-foreground-secondary">Min Attendees</div>
+                <div className="text-xs text-foreground-muted mt-1">Required for payout</div>
               </div>
-              <div className="bg-card-secondary p-4 rounded-lg border border-border">
-                <label className="text-sm font-medium text-foreground-secondary">Min Completion Rate</label>
-                <p className="text-foreground font-medium mt-1">
+              <div className="bg-card p-4 rounded-lg border border-border text-center">
+                <div className="text-2xl font-bold text-green-600">
                   {((event.sponsor_conditions?.min_completion_rate || 0) / 100).toFixed(1)}%
-                </p>
+                </div>
+                <div className="text-sm text-foreground-secondary">Min Completion Rate</div>
+                <div className="text-xs text-foreground-muted mt-1">Event success threshold</div>
               </div>
-              <div className="bg-card-secondary p-4 rounded-lg border border-border">
-                <label className="text-sm font-medium text-foreground-secondary">Min Avg Rating</label>
-                <p className="text-foreground font-medium mt-1">
+              <div className="bg-card p-4 rounded-lg border border-border text-center">
+                <div className="text-2xl font-bold text-yellow-600">
                   {((event.sponsor_conditions?.min_avg_rating || 0) / 100).toFixed(1)}/5
-                </p>
+                </div>
+                <div className="text-sm text-foreground-secondary">Min Avg Rating</div>
+                <div className="text-xs text-foreground-muted mt-1">Quality benchmark</div>
               </div>
             </div>
           </div>
 
           {/* Custom Benchmarks */}
           {event.sponsor_conditions?.custom_benchmarks?.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-foreground mb-3">Custom Benchmarks</h3>
-              <div className="space-y-3">
+            <div className="bg-card-secondary rounded-lg p-6 border border-border">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Custom Benchmarks ({event.sponsor_conditions.custom_benchmarks.length})
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {event.sponsor_conditions.custom_benchmarks.map((benchmark, index) => (
-                  <div key={index} className="bg-card-secondary p-4 rounded-lg border border-border">
-                    <div className="flex justify-between items-center">
+                  <div key={index} className="bg-card p-4 rounded-lg border border-border">
+                    <div className="flex items-center justify-between mb-2">
                       <span className="text-foreground font-medium">{benchmark.metric_name}</span>
-                      <span className="text-foreground-secondary">
-                        Target: {benchmark.target_value}
-                      </span>
+                      <span className="text-sm text-foreground-secondary">#{index + 1}</span>
                     </div>
-                    <div className="text-sm text-foreground-secondary mt-1">
-                      Comparison: {benchmark.comparison_type === 0 ? ">=" : benchmark.comparison_type === 1 ? "<=" : "=="}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-foreground-secondary">Target Value:</span>
+                      <span className="text-foreground font-medium">{benchmark.target_value}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-sm text-foreground-secondary">Comparison:</span>
+                      <span className={`text-sm font-medium ${
+                        benchmark.comparison_type === 0 ? 'text-green-600' : 
+                        benchmark.comparison_type === 1 ? 'text-red-600' : 'text-blue-600'
+                      }`}>
+                        {benchmark.comparison_type === 0 ? "≥ (Greater than or equal)" : 
+                         benchmark.comparison_type === 1 ? "≤ (Less than or equal)" : 
+                         "== (Equal to)"}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -303,48 +468,129 @@ const EventDetailsModal = ({
           )}
 
           {/* Additional Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground mb-3">Event Details</h3>
-              <div className="space-y-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Event Management Details */}
+            <div className="bg-card-secondary rounded-lg p-6 border border-border">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Event Management
+              </h3>
+              <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-foreground-secondary">Assignee</label>
-                  <p className="text-foreground mt-1">{event.assignee}</p>
+                  <div className="flex items-center justify-between mt-1">
+                    <div className="flex-1">
+                      {loadingAssignee ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-foreground-muted">Loading assignee info...</span>
+                        </div>
+                      ) : assigneeProfile ? (
+                        <div className="space-y-1">
+                          <div className="font-medium text-foreground">
+                            {event.assignee === "self" ? "You (Event Organizer)" : assigneeProfile.name}
+                          </div>
+                          <div className="text-sm text-foreground-secondary">
+                            {event.assignee === "self" ? (
+                              "Managing this event yourself"
+                            ) : (
+                              <div className="space-y-1">
+                                {event.assignee.startsWith('0x') && (
+                                  <div className="font-mono text-xs text-foreground-muted">
+                                    {formatAddress(event.assignee)}
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                  {assigneeProfile.x_username && (
+                                    <span className="text-blue-500 text-xs">@{assigneeProfile.x_username.replace('@', '')}</span>
+                                  )}
+                                  {assigneeProfile.telegram_username && (
+                                    <span className="text-blue-500 text-xs">t.me/{assigneeProfile.telegram_username.replace('t.me/', '')}</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <div className="font-medium text-foreground">
+                            {event.assignee === "self" ? "You (Event Organizer)" : event.assignee}
+                          </div>
+                          {event.assignee !== "self" && (
+                            <div className="text-sm text-foreground-secondary font-mono">
+                              {formatAddress(event.assignee)}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onUpdateAssignee(event)}
+                      className="ml-2 flex-shrink-0"
+                    >
+                      Edit
+                    </Button>
+                  </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground-secondary">Is Child Event</label>
-                  <p className="text-foreground mt-1">{event.is_child ? "Yes" : "No"}</p>
+                  <label className="text-sm font-medium text-foreground-secondary">Event Type</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      event.is_child ? 'bg-blue-100 text-blue-700 dark:bg-blue-400/20 dark:text-blue-400' : 'bg-green-100 text-green-700 dark:bg-green-400/20 dark:text-green-400'
+                    }`}>
+                      {event.is_child ? "Sub-Event" : "Main Event"}
+                    </span>
+                  </div>
                 </div>
                 {event.is_child && (
                   <div>
                     <label className="text-sm font-medium text-foreground-secondary">Parent Event ID</label>
-                    <p className="text-foreground mt-1 font-mono text-sm">{event.parent_id}</p>
+                    <p className="text-foreground mt-1 font-mono text-xs bg-card p-2 rounded border border-border break-all">
+                      {event.parent_id}
+                    </p>
                   </div>
                 )}
                 <div>
                   <label className="text-sm font-medium text-foreground-secondary">Event ID</label>
-                  <p className="text-foreground mt-1 font-mono text-sm">{event.id}</p>
+                  <p className="text-foreground mt-1 font-mono text-xs bg-card p-2 rounded border border-border break-all">
+                    {event.id}
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div>
-              <h3 className="text-lg font-semibold text-foreground mb-3">Metadata</h3>
-              <div className="space-y-3">
+            {/* Metadata */}
+            <div className="bg-card-secondary rounded-lg p-6 border border-border">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Media & Metadata
+              </h3>
+              <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-foreground-secondary">Metadata URI</label>
-                  <p className="text-foreground mt-1 break-all text-sm">
-                    {event.metadata_uri || "No metadata"}
-                  </p>
+                  <div className="mt-1">
+                    {event.metadata_uri ? (
+                      <div className="bg-card p-3 rounded border border-border">
+                        <p className="text-foreground text-xs break-all">
+                          {event.metadata_uri}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-foreground-muted text-sm">No metadata provided</p>
+                    )}
+                  </div>
                 </div>
                 {event.metadata_uri && (
                   <div>
                     <label className="text-sm font-medium text-foreground-secondary">Banner Image</label>
-                    <div className="mt-1">
+                    <div className="mt-2">
                       <img 
                         src={event.metadata_uri} 
                         alt="Event banner" 
-                        className="w-full h-32 object-cover rounded-lg"
+                        className="w-full h-40 object-cover rounded-lg border border-border"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
                         }}
@@ -930,6 +1176,12 @@ const OrganizerDashboard = () => {
     null
   );
 
+  // Assignee management state
+  const [updatingAssignee, setUpdatingAssignee] = useState<string | null>(null);
+  const [showAssigneeModal, setShowAssigneeModal] = useState(false);
+  const [eventToUpdateAssignee, setEventToUpdateAssignee] = useState<Event | null>(null);
+  const [newAssignee, setNewAssignee] = useState("");
+
   const eventsPerPage = 5;
   const [currentPage, setCurrentPage] = useState(1);
   const indexOfLastEvent = currentPage * eventsPerPage;
@@ -1283,6 +1535,53 @@ const OrganizerDashboard = () => {
       setShowErrorModal(true);
     } finally {
       setDeletingEvent(null);
+    }
+  };
+
+  const handleUpdateAssignee = (event: Event) => {
+    setEventToUpdateAssignee(event);
+    setNewAssignee(event.assignee);
+    setShowAssigneeModal(true);
+  };
+
+  const confirmUpdateAssignee = async () => {
+    if (!eventToUpdateAssignee || !newAssignee.trim()) return;
+    setUpdatingAssignee(eventToUpdateAssignee.id);
+    try {
+      const tx = sdk.eventManagement.updateEventAssignee(
+        eventToUpdateAssignee.id,
+        newAssignee.trim(),
+        eventRegistryId
+      );
+      console.log("Updating assignee:", {
+        eventId: eventToUpdateAssignee.id,
+        newAssignee: newAssignee.trim(),
+        eventRegistryId,
+      });
+      await signAndExecute({ transaction: tx });
+      setSuccessMessage("Event assignee updated successfully!");
+      setShowSuccessModal(true);
+      setShowAssigneeModal(false);
+      await loadOrganizerData();
+    } catch (e: unknown) {
+      // Enhanced error handling for Move abort codes
+      const error = e as { message?: string };
+      let message = error.message || "Failed to update assignee.";
+      if (
+        message.includes("MoveAbort") &&
+        message.includes('function_name: Some("update_event_assignee")')
+      ) {
+        if (message.includes(", 1)")) {
+          message = "You are not the organizer of this event.";
+        } else {
+          message = "Assignee update failed due to a contract error.";
+        }
+      }
+      setErrorMessage(message);
+      setErrorDetails(error as Error);
+      setShowErrorModal(true);
+    } finally {
+      setUpdatingAssignee(null);
     }
   };
 
@@ -2606,6 +2905,9 @@ const OrganizerDashboard = () => {
             setShowEventDetailsModal(false);
             setSelectedEventForDetails(null);
           }}
+          onUpdateAssignee={handleUpdateAssignee}
+          sdk={sdk}
+          profileRegistryId={profileRegistryId}
         />
         {/* Error Modal */}
         <ErrorModal
@@ -2688,6 +2990,53 @@ const OrganizerDashboard = () => {
             </div>
           </div>
         )}
+
+        {/* Assignee Update Modal */}
+        {showAssigneeModal && eventToUpdateAssignee && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+            <div className="bg-card border border-border rounded-lg p-8 max-w-md mx-4 shadow-lg">
+              <h3 className="text-xl font-semibold mb-4 text-primary">
+                Update Event Assignee
+              </h3>
+              <p className="text-foreground mb-4">
+                Update the assignee for <span className="font-bold">{eventToUpdateAssignee.name}</span>
+              </p>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-2 text-foreground">
+                  New Assignee
+                </label>
+                <AssigneeSelector
+                  value={newAssignee}
+                  onChange={setNewAssignee}
+                  placeholder="Enter assignee (address, @username, or t.me/username)"
+                  disabled={updatingAssignee === eventToUpdateAssignee.id}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={confirmUpdateAssignee}
+                  disabled={updatingAssignee === eventToUpdateAssignee.id || !newAssignee.trim()}
+                  className="flex-1"
+                >
+                  {updatingAssignee === eventToUpdateAssignee.id
+                    ? "Updating..."
+                    : "Update Assignee"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAssigneeModal(false)}
+                  className="flex-1"
+                  disabled={updatingAssignee === eventToUpdateAssignee.id}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {showShareModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
             <div className="bg-card border border-border rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
