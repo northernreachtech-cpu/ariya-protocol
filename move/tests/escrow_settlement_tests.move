@@ -76,8 +76,6 @@ fun create_test_organizer_profile(scenario: &mut Scenario, user: address): ID {
         let clock = test_scenario::take_shared<Clock>(scenario);
         
         let cap = event_management::create_organizer_profile(
-            string::utf8(b"Test Organizer"),
-            string::utf8(b"A test organizer bio"),
             &clock,
             test_scenario::ctx(scenario)
         );
@@ -115,11 +113,15 @@ fun create_and_activate_test_event(
             current_time + start_offset,
             current_time + start_offset + (4 * HOUR_IN_MS),
             capacity,
-            0,
+            0, // fee_amount
             min_attendees,
             min_completion_rate,
             min_avg_rating,
             string::utf8(b"https://walrus.example/metadata"),
+            vector[string::utf8(b"Test Sponsor")], // sponsors
+            string::utf8(b"Self"), // assignee
+            false, // is_child
+            object::id_from_address(@0x0), // parent_id
             &clock,
             &mut registry,
             &mut profile,

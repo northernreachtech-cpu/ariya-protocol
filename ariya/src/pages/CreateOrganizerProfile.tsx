@@ -81,11 +81,7 @@ const CreateOrganizerProfile = () => {
 
     try {
       // Create the transaction for organizer profile creation
-      const tx = sdk.eventManagement.createOrganizerProfile(
-        formData.name.trim(),
-        formData.bio.trim(),
-        currentAccount.address
-      );
+      const tx = sdk.eventManagement.createOrganizerProfile(currentAccount.address);
 
       // Sign and execute the transaction
       signAndExecute(

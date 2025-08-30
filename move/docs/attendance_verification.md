@@ -33,6 +33,7 @@ public struct EventAttendance has store {
     check_in_count: u64,                         // Total check-ins
     check_out_count: u64,                        // Total check-outs
     unique_devices: Table<vector<u8>, bool>,     // Device fingerprint tracking
+    attendee_addresses: vector<address>,         // Track all attendee addresses for iteration
 }
 ```
 
@@ -271,6 +272,70 @@ public fun get_user_attendance_history(
 ```
 
 **Returns:** Vector of all attendance records for the user
+
+#### `get_event_attendance_records`
+Gets all attendance records for a specific event.
+
+```move
+public fun get_event_attendance_records(
+    event_id: ID,
+    attendance_registry: &AttendanceRegistry,
+): vector<AttendanceRecord>
+```
+
+**Returns:** Vector of all attendance records for the specified event
+
+**Frontend Usage:**
+```typescript
+const tx = new Transaction();
+tx.moveCall({
+    target: `${PACKAGE_ID}::attendance_verification::get_event_attendance_records`,
+    arguments: [
+        tx.pure.id(eventId),
+        tx.object(ATTENDANCE_REGISTRY_ID),
+    ],
+});
+
+const result = await client.devInspectTransactionBlock({
+    transactionBlock: tx,
+    sender: userWallet,
+});
+
+// Parse the result to get all attendance records
+const attendanceRecords = result.results[0].returnValues;
+```
+
+#### `get_event_attendee_addresses`
+Gets all attendee addresses for a specific event.
+
+```move
+public fun get_event_attendee_addresses(
+    event_id: ID,
+    attendance_registry: &AttendanceRegistry,
+): vector<address>
+```
+
+**Returns:** Vector of all attendee addresses for the specified event
+
+**Frontend Usage:**
+```typescript
+const tx = new Transaction();
+tx.moveCall({
+    target: `${PACKAGE_ID}::attendance_verification::get_event_attendee_addresses`,
+    arguments: [
+        tx.pure.id(eventId),
+        tx.object(ATTENDANCE_REGISTRY_ID),
+    ],
+});
+
+const result = await client.devInspectTransactionBlock({
+    transactionBlock: tx,
+    sender: userWallet,
+});
+
+// Parse the result to get all attendee addresses
+const attendeeAddresses = result.results[0].returnValues;
+```
 
 #### `verify_attendance_completion`
 Verifies if a user completed attendance (checked in and out) for rating eligibility.

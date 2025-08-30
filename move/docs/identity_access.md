@@ -70,7 +70,7 @@ public struct PassInfo has store, drop, copy {
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `PASS_VALIDITY_DURATION` | 86400000 | Pass validity duration (24 hours in milliseconds) |
+| `PASS_VALIDITY_DURATION` | 1814400000 | Pass validity duration (3 Weeks in milliseconds) |
 | `FREE_PLATFORM_FEE_BPS` | 500 | Platform fee for free subscription (5%) |
 | `BASIC_PLATFORM_FEE_BPS` | 300 | Platform fee for basic subscription (3%) |
 | `BASIS_POINTS_DENOMINATOR` | 10000 | Denominator for basis points calculations |
@@ -802,7 +802,7 @@ This contract integrates with:
 1. **Payment Flow**: Attendees pay only the event fee; platform fees are deducted from organizer revenue
 2. **Subscription Limits**: Free subscriptions have attendee limits that are validated during registration
 3. **Fee Structure**: Platform fees vary by subscription tier (5% for Free, 3% for Basic, 0% for Pro)
-4. **Pass Validity**: All passes expire after 24 hours regardless of event duration
+4. **Pass Validity**: All passes expire after 3 Weeks regardless of event duration
 5. **Revenue Split**: Organizers receive event_fee - platform_fee per registration
 6. **Free Events**: No platform fees are charged for free events (fee_amount = 0)
 7. **Automatic Refunds**: Excess payments are automatically returned to the attendee

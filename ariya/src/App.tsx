@@ -22,7 +22,7 @@ import EventDetails from "./pages/EventDetails";
 import ConvenerMarketplace from "./pages/ConvenerMarketplace";
 import OrganizerDashboard from "./pages/OrganizerDashboard";
 import SponsorDashboard from "./pages/SponsorDashboard";
-import CreateOrganizerProfile from "./pages/CreateOrganizerProfile";
+
 import useScrollToTop from "./hooks/useScrollToTop";
 import SUIWorkshop from "./pages/SUIWorkshop";
 import AdminWorkshopResponses from "./pages/AdminWorkshopResponses";
@@ -99,10 +99,6 @@ function AppContent() {
         <Route path="/event/create" element={<CreateEvent />} />
         <Route path="/event/:id" element={<EventDetails />} />
         <Route path="/organizers" element={<ConvenerMarketplace />} />
-        <Route
-          path="/create-organizer-profile"
-          element={<CreateOrganizerProfile />}
-        />
         <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/dashboard/organizer" element={<OrganizerDashboard />} />
         <Route path="/dashboard/sponsor" element={<SponsorDashboard />} />

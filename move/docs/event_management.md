@@ -68,8 +68,6 @@ Tracks organizer reputation and statistics across all events.
 public struct OrganizerProfile has key, store {
     id: UID,
     address: address,
-    name: String,
-    bio: String,
     total_events: u64,
     successful_events: u64,
     total_attendees_served: u64,
@@ -118,6 +116,8 @@ Global registry for profile discovery and validation.
 public struct ProfileRegistry has key {
     id: UID,
     profiles: Table<address, ID>,    // address -> profile_id
+    x_to_address: Table<String, address>,    // x_username -> address
+    telegram_to_address: Table<String, address>,    // telegram_username -> address
 }
 ```
 
@@ -129,6 +129,8 @@ public struct EventRegistry has key {
     id: UID,
     events: Table<ID, EventInfo>,
     events_by_organizer: Table<address, vector<ID>>,
+    events_by_assignee: Table<String, vector<ID>>,    // assignee -> event_ids
+    events_by_parent: Table<ID, vector<ID>>,    // parent_id -> child_event_ids
 }
 ```
 
@@ -237,16 +239,12 @@ Creates a new organizer profile and returns capability object.
 
 ```move
 public fun create_organizer_profile(
-    name: String,
-    bio: String,
     clock: &Clock,
     ctx: &mut TxContext
 ): OrganizerCap
 ```
 
 **Parameters:**
-- `name`: Organizer's display name
-- `bio`: Organizer's biography/description
 - `clock`: System clock reference
 - `ctx`: Transaction context
 
@@ -258,8 +256,6 @@ const tx = new Transaction();
 const [organizerCap] = tx.moveCall({
     target: `${PACKAGE_ID}::event_management::create_organizer_profile`,
     arguments: [
-        tx.pure.string("EventCorp LLC"),
-        tx.pure.string("Professional event organizer with 5+ years experience"),
         tx.object(CLOCK_ID),
     ],
 });
@@ -268,7 +264,7 @@ const [organizerCap] = tx.moveCall({
 ### Event Creation and Management
 
 #### `create_event`
-Creates a new event with sponsor conditions.
+Creates a new event with sponsor conditions and optional parent-child relationships.
 
 ```move
 public fun create_event(
@@ -283,6 +279,10 @@ public fun create_event(
     min_completion_rate: u64,
     min_avg_rating: u64,
     metadata_uri: String,
+    sponsors: vector<String>,
+    assignee: String,
+    is_child: bool,
+    parent_id: ID,
     clock: &Clock,
     registry: &mut EventRegistry,
     profile: &mut OrganizerProfile,
@@ -302,6 +302,10 @@ public fun create_event(
 - `min_completion_rate`: Minimum completion rate (percentage * 100)
 - `min_avg_rating`: Minimum average rating (rating * 100)
 - `metadata_uri`: Walrus storage URI for additional metadata
+- `sponsors`: Vector of sponsor names/identifiers
+- `assignee`: Person assigned to handle the event (use "self" for organizer)
+- `is_child`: Whether this is a child event of another event (automatically tracked in registry)
+- `parent_id`: ID of parent event (ignored if is_child is false, used for child event tracking)
 - `clock`: System clock reference
 - `registry`: Event registry object
 - `profile`: Organizer's profile object
@@ -326,6 +330,10 @@ const eventId = tx.moveCall({
         tx.pure.u64(8000), // 80% completion rate
         tx.pure.u64(400),  // 4.0/5.0 rating
         tx.pure.string("walrus://metadata-hash"),
+        tx.pure(["Mysten Labs", "Sui Foundation"]), // Sponsors
+        tx.pure.string("self"), // Assignee (organizer handles it)
+        tx.pure.bool(false), // Not a child event (set to true for child events)
+        tx.pure.id("0x0"), // Parent ID (ignored for non-child events, required for child events)
         tx.object(CLOCK_ID),
         tx.object(REGISTRY_ID),
         tx.object(PROFILE_ID),
@@ -510,8 +518,8 @@ public fun get_user_profile_id(profile_registry: &ProfileRegistry, user: address
 public fun get_organizer_stats(profile: &OrganizerProfile): (u64, u64, u64, u64)
 // Returns: (total_events, successful_events, total_attendees_served, avg_rating)
 
-public fun get_organizer_profile(profile: &OrganizerProfile): (address, String, String, u64, u64, u64, u64)
-// Returns: (address, name, bio, total_events, successful_events, total_attendees_served, avg_rating)
+public fun get_organizer_profile(profile: &OrganizerProfile): (address, u64, u64, u64, u64)
+// Returns: (address, total_events, successful_events, total_attendees_served, avg_rating)
 
 public fun get_organizer_event_ids(registry: &EventRegistry, organizer: address): vector<ID>
 ```
@@ -595,8 +603,6 @@ const createOrganizerTx = new Transaction();
 const [organizerCap] = createOrganizerTx.moveCall({
     target: `${PACKAGE_ID}::event_management::create_organizer_profile`,
     arguments: [
-        createOrganizerTx.pure.string(organizerName),
-        createOrganizerTx.pure.string(organizerBio),
         createOrganizerTx.object(CLOCK_ID),
     ],
 });
@@ -788,6 +794,134 @@ function EventFeeDisplay({ event }: { event: EventData }) {
 }
 ```
 
+#### `update_event_assignee`
+Updates the assignee for an event (only organizer can call).
+
+```move
+public fun update_event_assignee(
+    event: &mut Event,
+    assignee: String,
+    registry: &mut EventRegistry,
+    ctx: &mut TxContext
+)
+```
+
+**Parameters:**
+- `event`: The event to update
+- `assignee`: New assignee for the event
+- `registry`: Event registry object
+- `ctx`: Transaction context
+
+**Notes:**
+- Only the event organizer can call this function
+- The function automatically updates the registry to track events by assignee
+- Use "self" to indicate the organizer handles the event themselves
+
+#### `get_events_assigned_to_user`
+Returns all events assigned to a specific user (excluding events where they are the organizer).
+
+```move
+public fun get_events_assigned_to_user(
+    registry: &EventRegistry,
+    assignee: String
+): vector<ID>
+```
+
+**Parameters:**
+- `registry`: Event registry object
+- `assignee`: Username/identifier of the assignee
+
+**Returns:** `vector<ID>` - Vector of event IDs assigned to the user
+
+**Notes:**
+- Events assigned to "self" are not included in the results
+- Returns empty vector if no events are assigned to the user
+
+#### `get_child_events`
+Returns all child events for a particular parent event.
+
+```move
+public fun get_child_events(
+    registry: &EventRegistry,
+    parent_id: ID
+): vector<ID>
+```
+
+**Parameters:**
+- `registry`: Event registry object
+- `parent_id`: ID of the parent event
+
+**Returns:** `vector<ID>` - Vector of child event IDs
+
+**Notes:**
+- Returns empty vector if no child events exist for the parent
+- Useful for managing event hierarchies and sub-events
+- Child events are automatically tracked when created with `is_child = true`
+
+**Frontend Usage:**
+```typescript
+// Get all child events for a parent event
+const childEvents = await suiClient.getDynamicFields({
+    parentId: registryId,
+    name: parentEventId,
+});
+
+// Or use the getter function directly
+const tx = new Transaction();
+const childEventIds = tx.moveCall({
+    target: `${PACKAGE_ID}::event_management::get_child_events`,
+    arguments: [
+        tx.object(REGISTRY_ID),
+        tx.pure.id(parentEventId),
+    ],
+});
+```
+
+### Child Event Management
+
+The event management system supports hierarchical event structures through parent-child relationships. This is useful for organizing related events such as:
+
+- **Main Conference + Workshops**: A main conference event with multiple workshop sub-events
+- **Multi-day Events**: A festival with daily events
+- **Event Series**: A recurring event with individual instances
+
+#### Creating Child Events
+
+To create a child event, set `is_child = true` and provide the `parent_id`:
+
+```typescript
+const childEventId = tx.moveCall({
+    target: `${PACKAGE_ID}::event_management::create_event`,
+    arguments: [
+        tx.pure.string("Workshop A"),
+        tx.pure.string("Advanced workshop session"),
+        tx.pure.string("Conference Room 1"),
+        tx.pure.u64(startTime),
+        tx.pure.u64(endTime),
+        tx.pure.u64(50), // Capacity
+        tx.pure.u64(0), // Free workshop
+        tx.pure.u64(20), // Min attendees
+        tx.pure.u64(8000), // 80% completion rate
+        tx.pure.u64(400), // 4.0 rating
+        tx.pure.string("walrus://workshop-metadata"),
+        tx.pure(["Workshop Sponsor"]), // Sponsors
+        tx.pure.string("self"), // Assignee
+        tx.pure.bool(true), // This is a child event
+        tx.pure.id(mainConferenceId), // Parent event ID
+        tx.object(CLOCK_ID),
+        tx.object(REGISTRY_ID),
+        tx.object(ORGANIZER_PROFILE_ID),
+    ],
+});
+```
+
+#### Managing Child Events
+
+- **Automatic Tracking**: Child events are automatically tracked in the registry
+- **Efficient Lookup**: Use `get_child_events()` to retrieve all children of a parent
+- **Consistent Cleanup**: Child events are automatically removed from tracking when deleted
+- **Independent Management**: Each child event can have its own lifecycle, attendees, and completion status
+
 ## Important Notes
 
 1. **Time Handling**: All timestamps are in milliseconds (Unix timestamp * 1000)
@@ -798,6 +932,8 @@ function EventFeeDisplay({ event }: { event: EventData }) {
 6. **Capability Management**: Profile and organizer capabilities must be properly managed and stored by the frontend
 7. **Event Lifecycle**: Events must follow the state progression: Created → Active → Completed → Settled
 8. **Profile Requirements**: Users must have profiles before they can participate in events
+9. **Child Event Tracking**: Child events are automatically tracked in the registry when created with `is_child = true`
+10. **Event Hierarchies**: Use parent-child relationships to organize related events (e.g., main conference and workshops)
 
 ## Integration with Other Contracts
 

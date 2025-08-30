@@ -16,6 +16,10 @@ export interface Event {
   capacity: number;
   current_attendees: number;
   organizer: string;
+  sponsors: string[]; // New field: List of sponsor names
+  assignee: string; // New field: Person assigned to the event
+  is_child: boolean; // New field: Whether this is a child event
+  parent_id: string; // New field: Parent event ID if this is a child event
   state: number;
   created_at: number;
   sponsor_conditions: SponsorConditions;
@@ -43,9 +47,10 @@ export interface SponsorConditions {
 }
 
 export interface CustomBenchmark {
-  description: string;
+  metric_name: string; // Changed from 'description' to match Move struct
   target_value: number;
-  current_value: number;
+  comparison_type: number; // New field: 0: >=, 1: <=, 2: ==
+  // Removed 'current_value' as it's not in Move struct
 }
 
 export interface EventInfo {
@@ -87,24 +92,19 @@ export class EventManagementSDK {
   /**
    * Creates a new organizer profile
    */
-  createOrganizerProfile(
-    name: string,
-    bio: string,
-    recipient: string
-  ): Transaction {
+  createOrganizerProfile(recipient: string): Transaction {
     const tx = new Transaction();
 
     const [organizerCap] = tx.moveCall({
       target: `${this.packageId}::event_management::create_organizer_profile`,
       arguments: [
-        tx.pure.string(name),
-        tx.pure.string(bio),
         tx.object(CLOCK_ID),
       ],
     });
 
+    // Transfer the OrganizerCap to the user
     tx.transferObjects([organizerCap], tx.pure.address(recipient));
-    tx.setGasBudget(10000000);
+    tx.setGasBudget(50000000); // Increased to 50,000,000 MIST = 0.05 SUI
     return tx;
   }
 
@@ -123,6 +123,10 @@ export class EventManagementSDK {
     minCompletionRate: number,
     minAvgRating: number,
     metadataUri: string,
+    sponsors: string[],
+    assignee: string,
+    isChild: boolean,
+    parentId: string,
     eventRegistryId: string,
     organizerProfile: string
   ): Transaction {
@@ -142,12 +146,17 @@ export class EventManagementSDK {
         tx.pure.u64(minCompletionRate),
         tx.pure.u64(minAvgRating),
         tx.pure.string(metadataUri),
+        (tx.pure as any).vector("string", sponsors),
+        tx.pure.string(assignee),
+        tx.pure.bool(isChild),
+        tx.pure.id(parentId),
         tx.object(CLOCK_ID),
         tx.object(eventRegistryId),
         tx.object(organizerProfile),
       ],
     });
 
+    tx.setGasBudget(50000000); // 50,000,000 MIST = 0.05 SUI
     return tx;
   }
 
@@ -296,6 +305,10 @@ export class EventManagementSDK {
         capacity: string;
         current_attendees: string;
         organizer: string;
+        sponsors: string[];
+        assignee: string;
+        is_child: boolean;
+        parent_id: { id: string };
         state: string;
         created_at: string;
         sponsor_conditions: {
@@ -303,9 +316,9 @@ export class EventManagementSDK {
           min_completion_rate: number;
           min_avg_rating: number;
           custom_benchmarks: Array<{
-            description: string;
+            metric_name: string;
             target_value: number;
-            current_value: number;
+            comparison_type: number;
           }>;
         };
         metadata_uri: string;
@@ -321,6 +334,10 @@ export class EventManagementSDK {
         capacity: parseInt(fields.capacity),
         current_attendees: parseInt(fields.current_attendees),
         organizer: fields.organizer,
+        sponsors: fields.sponsors || [],
+        assignee: fields.assignee || "",
+        is_child: fields.is_child || false,
+        parent_id: fields.parent_id?.id || "",
         state: parseInt(fields.state),
         created_at: parseInt(fields.created_at),
         sponsor_conditions: fields.sponsor_conditions,
@@ -605,6 +622,7 @@ export class EventManagementSDK {
 
   async hasOrganizerProfile(address: string): Promise<boolean> {
     try {
+      console.log("🔍 Checking for OrganizerCap objects owned by:", address);
       const { data: objects } = await suiClient.getOwnedObjects({
         owner: address,
         filter: {
@@ -613,12 +631,15 @@ export class EventManagementSDK {
         options: { showContent: true },
       });
 
+      console.log("📦 Found OrganizerCap objects:", objects.length);
       if (objects.length === 0) return false;
 
       for (const obj of objects) {
+        console.log("🔍 Examining OrganizerCap object:", obj.data?.objectId);
         const fields = extractMoveObjectFields(obj);
 
         if (fields) {
+          console.log("📋 OrganizerCap fields:", fields);
           const profileId = fields.profile_id;
 
           const profileResponse = await suiClient.getObject({
@@ -627,8 +648,10 @@ export class EventManagementSDK {
           });
 
           const profileFields = extractMoveObjectFields(profileResponse);
+          console.log("📋 OrganizerProfile fields:", profileFields);
 
           if (profileFields && profileFields.address === address) {
+            console.log("✅ Found matching organizer profile!");
             return true;
           }
         }
@@ -738,7 +761,7 @@ export class EventManagementSDK {
 
     // Transfer the ProfileCap to the user
     tx.transferObjects([profileCap], tx.pure.address(recipient));
-    tx.setGasBudget(10000000);
+    tx.setGasBudget(50000000); // Increased to 50,000,000 MIST = 0.05 SUI
     return tx;
   }
 
@@ -935,5 +958,286 @@ export class EventManagementSDK {
       ],
     });
     return tx;
+  }
+
+  /**
+   * Get events assigned to a specific user
+   */
+  async getEventsAssignedToUser(
+    assignee: string,
+    eventRegistryId: string
+  ): Promise<EventInfo[]> {
+    try {
+      const { data } = await suiClient.getDynamicFields({
+        parentId: eventRegistryId,
+      });
+
+      const events: EventInfo[] = [];
+      
+      for (const field of data) {
+        // Since getDynamicFields doesn't return content, we need to fetch each object separately
+        try {
+          const objectResponse = await suiClient.getObject({
+            id: field.objectId,
+            options: { showContent: true },
+          });
+          
+          if (objectResponse.data?.content?.dataType === "moveObject") {
+            const fields = objectResponse.data.content.fields as any;
+            if (fields?.assignee === assignee) {
+              events.push({
+                id: field.objectId,
+                name: fields.name || "",
+                organizer: fields.organizer || "",
+                start_time: parseInt(fields.start_time) || 0,
+                state: parseInt(fields.state) || 0,
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching object:", error);
+        }
+      }
+
+      return events;
+    } catch (error) {
+      console.error("Error fetching events assigned to user:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get child events of a parent event
+   */
+  async getChildEvents(
+    parentEventId: string,
+    eventRegistryId: string
+  ): Promise<EventInfo[]> {
+    try {
+      const { data } = await suiClient.getDynamicFields({
+        parentId: eventRegistryId,
+      });
+
+      const childEvents: EventInfo[] = [];
+      
+      for (const field of data) {
+        // Since getDynamicFields doesn't return content, we need to fetch each object separately
+        try {
+          const objectResponse = await suiClient.getObject({
+            id: field.objectId,
+            options: { showContent: true },
+          });
+          
+          if (objectResponse.data?.content?.dataType === "moveObject") {
+            const fields = objectResponse.data.content.fields as any;
+            if (fields?.parent_id === parentEventId) {
+              childEvents.push({
+                id: field.objectId,
+                name: fields.name || "",
+                organizer: fields.organizer || "",
+                start_time: parseInt(fields.start_time) || 0,
+                state: parseInt(fields.state) || 0,
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching object:", error);
+        }
+      }
+
+      return childEvents;
+    } catch (error) {
+      console.error("Error fetching child events:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Check if X username exists in profile registry
+   */
+  async hasXUsername(
+    xUsername: string,
+    profileRegistryId: string
+  ): Promise<boolean> {
+    try {
+      const { data } = await suiClient.getDynamicFields({
+        parentId: profileRegistryId,
+      });
+
+      for (const field of data) {
+        try {
+          const objectResponse = await suiClient.getObject({
+            id: field.objectId,
+            options: { showContent: true },
+          });
+          
+          if (objectResponse.data?.content?.dataType === "moveObject") {
+            const fields = objectResponse.data.content.fields as any;
+            if (fields?.value === xUsername) {
+              return true;
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching object:", error);
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error("Error checking X username:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if Telegram username exists in profile registry
+   */
+  async hasTelegramUsername(
+    telegramUsername: string,
+    profileRegistryId: string
+  ): Promise<boolean> {
+    try {
+      const { data } = await suiClient.getDynamicFields({
+        parentId: profileRegistryId,
+      });
+
+      for (const field of data) {
+        try {
+          const objectResponse = await suiClient.getObject({
+            id: field.objectId,
+            options: { showContent: true },
+          });
+          
+          if (objectResponse.data?.content?.dataType === "moveObject") {
+            const fields = objectResponse.data.content.fields as any;
+            if (fields?.value === telegramUsername) {
+              return true;
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching object:", error);
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error("Error checking Telegram username:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Get address from X username
+   */
+  async getAddressFromX(
+    xUsername: string,
+    profileRegistryId: string
+  ): Promise<string | null> {
+    try {
+      const { data } = await suiClient.getDynamicFields({
+        parentId: profileRegistryId,
+      });
+
+      for (const field of data) {
+        try {
+          const objectResponse = await suiClient.getObject({
+            id: field.objectId,
+            options: { showContent: true },
+          });
+          
+          if (objectResponse.data?.content?.dataType === "moveObject") {
+            const fields = objectResponse.data.content.fields as any;
+            if (fields?.value === xUsername) {
+              // The field name should contain the address
+              return String(field.name.value);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching object:", error);
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error getting address from X username:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Get address from Telegram username
+   */
+  async getAddressFromTelegram(
+    telegramUsername: string,
+    profileRegistryId: string
+  ): Promise<string | null> {
+    try {
+      const { data } = await suiClient.getDynamicFields({
+        parentId: profileRegistryId,
+       
+      });
+
+      for (const field of data) {
+        try {
+          const objectResponse = await suiClient.getObject({
+            id: field.objectId,
+            options: { showContent: true },
+          });
+          
+          if (objectResponse.data?.content?.dataType === "moveObject") {
+            const fields = objectResponse.data.content.fields as any;
+            if (fields?.value === telegramUsername) {
+              // The field name should contain the address
+              return String(field.name.value);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching object:", error);
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error getting address from Telegram username:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Get custom benchmarks from sponsor conditions
+   */
+  async getCustomBenchmarks(
+    eventId: string
+  ): Promise<CustomBenchmark[]> {
+    try {
+      const event = await this.getEvent(eventId);
+      if (!event) return [];
+
+      return event.sponsor_conditions.custom_benchmarks || [];
+    } catch (error) {
+      console.error("Error fetching custom benchmarks:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get benchmark metric name
+   */
+  getBenchmarkMetricName(benchmark: CustomBenchmark): string {
+    return benchmark.metric_name;
+  }
+
+  /**
+   * Get benchmark target value
+   */
+  getBenchmarkTargetValue(benchmark: CustomBenchmark): number {
+    return benchmark.target_value;
+  }
+
+  /**
+   * Get benchmark comparison type
+   */
+  getBenchmarkComparisonType(benchmark: CustomBenchmark): number {
+    return benchmark.comparison_type;
   }
 }

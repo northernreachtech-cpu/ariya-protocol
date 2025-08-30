@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -14,6 +15,7 @@ import {
   useSignAndExecuteTransaction,
 } from "@mysten/dapp-kit";
 import { useAriyaSDK } from "../lib/sdk";
+import { useZkLogin } from "../contexts/ZkLoginContext";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import useScrollToTop from "../hooks/useScrollToTop";
@@ -26,9 +28,14 @@ const CreateEvent = () => {
   useScrollToTop();
   const navigate = useNavigate();
   const currentAccount = useCurrentAccount();
+  const { zkAddress, isZkAuthenticated } = useZkLogin();
   const sdk = useAriyaSDK();
   const { mutate: signAndExecute } = useSignAndExecuteTransaction();
   const eventRegistryId = useNetworkVariable("eventRegistryId");
+
+  // Get the active address (either wallet or zkLogin)
+  const activeAddress = currentAccount?.address || zkAddress;
+  const isAuthenticated = currentAccount || isZkAuthenticated;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -44,6 +51,7 @@ const CreateEvent = () => {
     minAttendees: "", // Add sponsor conditions
     minCompletionRate: "",
     minAvgRating: "",
+    sponsors: [] as string[], // Add sponsors array
     bannerImage: null as File | null,
     imageUrl: "", // Added for IPFS URL
     previewUrl: "", // Add this for local preview
@@ -51,25 +59,31 @@ const CreateEvent = () => {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [newSponsor, setNewSponsor] = useState(""); // For adding new sponsors
 
-  // Fetch profile ID on component mount
+  // Fetch organizer profile on component mount
   useEffect(() => {
-    const fetchProfileId = async () => {
-      if (!currentAccount) return;
+    const fetchOrganizerProfile = async () => {
+      if (!activeAddress) return;
 
       try {
         setLoading(true);
+        console.log("🔍 Fetching organizer profile for:", activeAddress);
+        
         // Get organizer's OrganizerCap objects
         const { data: objects } = await suiClient.getOwnedObjects({
-          owner: currentAccount.address,
+          owner: activeAddress,
           filter: {
             StructType: `${sdk.eventManagement.getPackageId()}::event_management::OrganizerCap`,
           },
           options: { showContent: true },
         });
 
+        console.log("📦 Found OrganizerCap objects:", objects.length);
+
         if (objects.length === 0) {
-          navigate("/create-organizer-profile");
+          console.log("❌ No OrganizerCap found, redirecting to dashboard");
+          navigate("/dashboard");
           return;
         }
 
@@ -79,28 +93,75 @@ const CreateEvent = () => {
           const fields = obj.data.content.fields as {
             profile_id: string;
           };
-          setProfileId(fields.profile_id);
+          const organizerProfileId = fields.profile_id;
+          console.log("📋 OrganizerProfile ID from OrganizerCap:", organizerProfileId);
+          
+          // Verify the OrganizerProfile exists
+          try {
+            const profileResponse = await suiClient.getObject({
+              id: organizerProfileId,
+              options: { showContent: true },
+            });
+            
+            if (profileResponse.data?.content?.dataType === "moveObject") {
+              console.log("✅ OrganizerProfile verified:", organizerProfileId);
+              setProfileId(organizerProfileId);
+            } else {
+              console.error("❌ OrganizerProfile not found or invalid");
+              setError("Organizer profile not found");
+            }
+          } catch (profileError) {
+            console.error("❌ Error fetching OrganizerProfile:", profileError);
+            setError("Failed to verify organizer profile");
+          }
         }
       } catch (error) {
-        console.error("Error fetching profile:", error);
+        console.error("Error fetching organizer profile:", error);
         setError("Failed to fetch organizer profile");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfileId();
-  }, [currentAccount, navigate, sdk]);
+    fetchOrganizerProfile();
+  }, [activeAddress, navigate, sdk]);
 
   const steps = [
     { id: 1, title: "Basic Info", icon: FileText },
     { id: 2, title: "Details", icon: MapPin },
-    { id: 3, title: "Media", icon: Image },
-    { id: 4, title: "Review", icon: Users },
+    { id: 3, title: "Sponsors", icon: Users },
+    { id: 4, title: "Media", icon: Image },
+    { id: 5, title: "Review", icon: Users },
   ];
+
+  // Sponsor management functions
+  const addSponsor = () => {
+    const trimmedSponsor = newSponsor.trim();
+    if (trimmedSponsor && !formData.sponsors.includes(trimmedSponsor)) {
+      setFormData(prev => ({
+        ...prev,
+        sponsors: [...prev.sponsors, trimmedSponsor]
+      }));
+      setNewSponsor("");
+    }
+  };
+
+  const removeSponsor = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      sponsors: prev.sponsors.filter((_, i) => i !== index)
+    }));
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSponsorKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addSponsor();
+    }
   };
 
   const nextStep = () => {
@@ -153,8 +214,8 @@ const CreateEvent = () => {
   };
 
   const handleSubmit = async () => {
-    if (!currentAccount) {
-      setError("Please connect your wallet");
+    if (!activeAddress || !isAuthenticated) {
+      setError("Please connect your wallet or sign in with Google");
       return;
     }
 
@@ -167,9 +228,16 @@ const CreateEvent = () => {
       setIsSubmitting(true);
       setError("");
 
+      console.log("🚀 Starting event creation...");
+      console.log("📋 Form data:", formData);
+      console.log("📋 Profile ID:", profileId);
+      console.log("📋 Event Registry ID:", eventRegistryId);
+
       // Convert date and time to timestamp (Move expects milliseconds)
       const startTime = new Date(`${formData.date}T${formData.time}`).getTime();
       const endTime = startTime + 3600 * 2 * 1000; // Default 2 hours duration in milliseconds
+      
+      console.log("⏰ Start time:", startTime, "End time:", endTime);
 
       // Create event transaction with actual profileId
       const tx = sdk.eventManagement.createEvent(
@@ -184,16 +252,24 @@ const CreateEvent = () => {
         parseInt(formData.minCompletionRate) || 0, // minCompletionRate
         parseInt(formData.minAvgRating) || 0, // minAvgRating
         formData.imageUrl || "", // metadataUri
+        formData.sponsors, // sponsors from form data
+        "self", // assignee - default to "self"
+        false, // isChild - all fresh events are parent events
+        "0x0000000000000000000000000000000000000000000000000000000000000000", // parentId - zero ID for fresh events
         eventRegistryId, // eventRegistryId
         profileId // organizerProfile
       );
 
+      console.log("📦 Transaction created, executing...");
+      
       // Execute transaction
-      signAndExecute(
-        { transaction: tx },
-        {
-          onSuccess: (result) => {
-            console.log("Event created successfully:", result);
+      if (currentAccount) {
+        // For regular wallet
+        signAndExecute(
+          { transaction: tx },
+          {
+            onSuccess: (result) => {
+              console.log("✅ Event created successfully:", result);
 
             // Extract event ID from the result
             const eventId =
@@ -203,17 +279,48 @@ const CreateEvent = () => {
               console.log("Event ID:", eventId);
               // You can now use this event ID to fetch event details or navigate to event page
               navigate(`/event/${eventId}`);
-            } else {
-              console.warn("Could not extract event ID from result");
-              navigate("/dashboard/organizer");
-            }
-          },
-          onError: (error) => {
-            console.error("Error creating event:", error);
-            setError("Failed to create event. Please try again.");
-          },
-        }
-      );
+                          } else {
+                console.warn("Could not extract event ID from result");
+                navigate("/dashboard/organizer");
+              }
+            },
+            onError: (error) => {
+              console.error("Error creating event:", error);
+              setError("Failed to create event. Please try again.");
+            },
+          }
+        );
+      } else {
+        // For zkLogin
+        const txWithSender = tx;
+        txWithSender.setSender(activeAddress);
+        
+        signAndExecute(
+          { transaction: txWithSender },
+          {
+            onSuccess: (result) => {
+              console.log("✅ Event created successfully:", result);
+
+              // Extract event ID from the result
+              const eventId =
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                sdk.eventManagement.extractEventIdFromResult(result as any);
+              if (eventId) {
+                console.log("Event ID:", eventId);
+                // You can now use this event ID to fetch event details or navigate to event page
+                navigate(`/event/${eventId}`);
+              } else {
+                console.warn("Could not extract event ID from result");
+                navigate("/dashboard/organizer");
+              }
+            },
+            onError: (error) => {
+              console.error("Error creating event:", error);
+              setError("Failed to create event. Please try again.");
+            },
+          }
+        );
+      }
     } catch (error) {
       console.error("Error:", error);
       setError("Failed to create event. Please try again.");
@@ -487,8 +594,71 @@ const CreateEvent = () => {
             </div>
           )}
 
-          {/* Step 3: Media */}
+          {/* Step 3: Sponsors */}
           {currentStep === 3 && (
+            <div className="space-y-4 sm:space-y-6">
+              <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-foreground">
+                Event Sponsors
+              </h3>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-foreground">
+                  Add Sponsors
+                </label>
+                <div className="flex gap-2 mb-4">
+                  <input
+                    type="text"
+                    value={newSponsor}
+                    onChange={(e) => setNewSponsor(e.target.value)}
+                    onKeyPress={handleSponsorKeyPress}
+                    placeholder="Enter sponsor name..."
+                    className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <Button
+                    onClick={addSponsor}
+                    disabled={!newSponsor.trim()}
+                    size="sm"
+                  >
+                    Add
+                  </Button>
+                </div>
+
+                {formData.sponsors.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-foreground">
+                      Current Sponsors
+                    </label>
+                    <div className="space-y-2">
+                      {formData.sponsors.map((sponsor, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-card border border-border rounded-lg"
+                        >
+                          <span className="text-foreground">{sponsor}</span>
+                          <Button
+                            onClick={() => removeSponsor(index)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {formData.sponsors.length === 0 && (
+                  <p className="text-sm text-foreground-muted">
+                    No sponsors added yet. You can add sponsors later or leave this empty.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Media */}
+          {currentStep === 4 && (
             <div className="space-y-4 sm:space-y-6">
               <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-foreground">
                 Event Media
@@ -551,8 +721,8 @@ const CreateEvent = () => {
             </div>
           )}
 
-          {/* Step 4: Review */}
-          {currentStep === 4 && (
+          {/* Step 5: Review */}
+          {currentStep === 5 && (
             <div className="space-y-4 sm:space-y-6">
               <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-foreground">
                 Review Your Event
@@ -647,6 +817,26 @@ const CreateEvent = () => {
                     <p className="text-sm sm:text-base text-foreground">
                       {formData.minAvgRating ? `${formData.minAvgRating}/5` : "No minimum"}
                     </p>
+                  </div>
+                </div>
+
+                <div className="border border-border rounded-lg p-3 sm:p-4 bg-card">
+                  <h4 className="font-semibold text-primary text-sm sm:text-base">
+                    Sponsors
+                  </h4>
+                  <div className="text-sm sm:text-base text-foreground">
+                    {formData.sponsors.length > 0 ? (
+                      <div className="space-y-1">
+                        {formData.sponsors.map((sponsor, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <span className="w-2 h-2 bg-primary rounded-full"></span>
+                            <span>{sponsor}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-foreground-muted">No sponsors added</span>
+                    )}
                   </div>
                 </div>
               </div>

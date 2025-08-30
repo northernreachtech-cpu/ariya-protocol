@@ -5,24 +5,32 @@ import Button from "../components/Button";
 import OrganizerCardSkeleton from "../components/OrganizerCardSkeleton";
 import { useNavigate } from "react-router-dom";
 import { useAriyaSDK } from "../lib/sdk";
+import { useNetworkVariable } from "../config/sui";
 import useScrollToTop from "../hooks/useScrollToTop";
 
 interface OrganizerProfile {
   id: string;
   address: string;
-  name: string;
-  bio: string;
   total_events: number;
   successful_events: number;
   total_attendees_served: number;
   avg_rating: number;
   created_at: number;
+  // User profile data (fetched separately)
+  userProfile?: {
+    name: string;
+    bio: string;
+    photo_url: string;
+    telegram_username: string;
+    x_username: string;
+  };
 }
 
 const ConvenerMarketplace = () => {
   useScrollToTop();
   const navigate = useNavigate();
   const sdk = useAriyaSDK();
+  const profileRegistryId = useNetworkVariable("profileRegistryId");
 
   const [organizers, setOrganizers] = useState<OrganizerProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +41,36 @@ const ConvenerMarketplace = () => {
       try {
         setLoading(true);
         const fetchedOrganizers = await sdk.eventManagement.getAllOrganizers();
-        setOrganizers(fetchedOrganizers);
+        
+        // Fetch user profiles for each organizer
+        const organizersWithProfiles = await Promise.all(
+          fetchedOrganizers.map(async (organizer) => {
+            try {
+              if (profileRegistryId) {
+                const userProfile = await sdk.eventManagement.getUserProfileByAddress(
+                  organizer.address,
+                  profileRegistryId
+                );
+                return {
+                  ...organizer,
+                  userProfile: userProfile ? {
+                    name: userProfile.name,
+                    bio: userProfile.bio,
+                    photo_url: userProfile.photo_url,
+                    telegram_username: userProfile.telegram_username,
+                    x_username: userProfile.x_username,
+                  } : undefined,
+                };
+              }
+              return organizer;
+            } catch (error) {
+              console.error(`Error fetching profile for organizer ${organizer.address}:`, error);
+              return organizer;
+            }
+          })
+        );
+        
+        setOrganizers(organizersWithProfiles);
       } catch (error) {
         console.error("Error loading organizers:", error);
       } finally {
@@ -42,12 +79,12 @@ const ConvenerMarketplace = () => {
     };
 
     loadOrganizers();
-  }, [sdk]);
+  }, [sdk, profileRegistryId]);
 
   const filteredOrganizers = organizers.filter(
     (organizer) =>
-      organizer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      organizer.bio.toLowerCase().includes(searchTerm.toLowerCase())
+      (organizer.userProfile?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (organizer.userProfile?.bio?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
   const formatDate = (timestamp: number) => {
@@ -170,11 +207,11 @@ const ConvenerMarketplace = () => {
                   <div className="flex items-start justify-between mb-6">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white font-bold text-lg">
-                        {organizer.name.charAt(0).toUpperCase()}
+                        {organizer.userProfile?.name?.charAt(0)?.toUpperCase() || '?'}
                       </div>
                       <div className="flex flex-col">
                         <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
-                          {organizer.name}
+                          {organizer.userProfile?.name || 'Unknown Organizer'}
                         </h3>
                         <div className="flex items-center gap-2 text-foreground-secondary">
                           <span className="text-sm">
@@ -226,7 +263,7 @@ const ConvenerMarketplace = () => {
 
                   {/* Description */}
                   <p className="text-foreground-secondary text-sm leading-relaxed mb-4 sm:mb-6">
-                    {organizer.bio}
+                    {organizer.userProfile?.bio || 'No bio available'}
                   </p>
 
                   {/* Stats */}

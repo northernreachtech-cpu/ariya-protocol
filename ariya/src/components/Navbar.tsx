@@ -115,11 +115,6 @@ const Navbar = () => {
           exclusive: true,
         },
         { name: "Organizers", href: "/organizers", icon: <Users size={16} /> },
-        {
-          name: "Create Profile",
-          href: "/create-organizer-profile",
-          icon: <Settings size={16} />,
-        },
       ],
     },
   ];

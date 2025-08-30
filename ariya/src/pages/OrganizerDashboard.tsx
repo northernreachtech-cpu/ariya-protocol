@@ -22,6 +22,7 @@ import {
   XCircle,
   Send,
   Download,
+  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -50,18 +51,324 @@ import {
 
 interface Event {
   id: string;
-  title: string;
-  date: string;
-  status: "upcoming" | "active" | "completed";
-  checkedIn: number;
-  totalCapacity: number;
-  escrowStatus: "pending" | "released" | "locked";
-  rating: number;
-  revenue: number;
-  state: number; // Add state for activation logic
-  metadata_uri?: string;
-  location?: string;
+  name: string;
+  description: string;
+  location: string;
+  start_time: number;
+  end_time: number;
+  capacity: number;
+  current_attendees: number;
+  organizer: string;
+  sponsors: string[];
+  assignee: string;
+  is_child: boolean;
+  parent_id: string;
+  state: number;
+  created_at: number;
+  sponsor_conditions: {
+    min_attendees: number;
+    min_completion_rate: number;
+    min_avg_rating: number;
+    custom_benchmarks: Array<{
+      metric_name: string;
+      target_value: number;
+      comparison_type: number;
+    }>;
+  };
+  metadata_uri: string;
+  fee_amount: number;
+  // UI-specific fields
+  status?: "upcoming" | "active" | "completed";
+  checkedIn?: number;
+  escrowStatus?: "pending" | "released" | "locked";
+  rating?: number;
+  revenue?: number;
 }
+
+// Event Details Modal component
+const EventDetailsModal = ({
+  isOpen,
+  event,
+  onClose,
+}: {
+  isOpen: boolean;
+  event: Event | null;
+  onClose: () => void;
+}) => {
+  if (!isOpen || !event) return null;
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString();
+  };
+
+  const formatDuration = (startTime: number, endTime: number) => {
+    const duration = endTime - startTime;
+    const hours = Math.floor(duration / (1000 * 60 * 60));
+    const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  };
+
+  const getStateText = (state: number) => {
+    switch (state) {
+      case 0: return "Created";
+      case 1: return "Active";
+      case 2: return "Completed";
+      case 3: return "Settled";
+      default: return "Unknown";
+    }
+  };
+
+  const getStateColor = (state: number) => {
+    switch (state) {
+      case 0: return "text-yellow-600 bg-yellow-100";
+      case 1: return "text-green-600 bg-green-100";
+      case 2: return "text-blue-600 bg-blue-100";
+      case 3: return "text-purple-600 bg-purple-100";
+      default: return "text-gray-600 bg-gray-100";
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-card border border-border rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-border">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">{event.name}</h2>
+            <p className="text-foreground-secondary mt-1">Event Details</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Basic Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-3">Basic Information</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-foreground-secondary">Description</label>
+                    <p className="text-foreground mt-1">{event.description || "No description"}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground-secondary">Location</label>
+                    <p className="text-foreground mt-1">{event.location}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground-secondary">Status</label>
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${getStateColor(event.state)}`}>
+                      {getStateText(event.state)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-3">Timing</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-foreground-secondary">Start Time</label>
+                    <p className="text-foreground mt-1">{formatDate(event.start_time)}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground-secondary">End Time</label>
+                    <p className="text-foreground mt-1">{formatDate(event.end_time)}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground-secondary">Duration</label>
+                    <p className="text-foreground mt-1">{formatDuration(event.start_time, event.end_time)}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground-secondary">Created</label>
+                    <p className="text-foreground mt-1">{formatDate(event.created_at)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Capacity and Attendance */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-3">Capacity & Attendance</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-foreground-secondary">Capacity:</span>
+                  <span className="text-foreground font-medium">{(event.capacity || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-foreground-secondary">Current Attendees:</span>
+                  <span className="text-foreground font-medium">{(event.current_attendees || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-foreground-secondary">Attendance Rate:</span>
+                  <span className="text-foreground font-medium">
+                    {(event.capacity || 0) > 0 ? (((event.current_attendees || 0) / (event.capacity || 1)) * 100).toFixed(1) : 0}%
+                  </span>
+                </div>
+                <div className="w-full bg-border rounded-full h-2 mt-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${(event.capacity || 0) > 0 ? ((event.current_attendees || 0) / (event.capacity || 1)) * 100 : 0}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-3">Financial</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-foreground-secondary">Fee Amount:</span>
+                  <span className="text-foreground font-medium">
+                    {((event.fee_amount || 0) / 1000000000).toFixed(2)} SUI
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-foreground-secondary">Total Revenue:</span>
+                  <span className="text-foreground font-medium">
+                    {(((event.fee_amount || 0) * (event.current_attendees || 0)) / 1000000000).toFixed(2)} SUI
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sponsors */}
+          {event.sponsors.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-3">Sponsors</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {event.sponsors.map((sponsor, index) => (
+                  <div key={index} className="bg-card-secondary p-3 rounded-lg border border-border">
+                    <span className="text-foreground">{sponsor}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sponsor Conditions */}
+          <div>
+            <h3 className="text-lg font-semibold text-foreground mb-3">Sponsor Conditions</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-card-secondary p-4 rounded-lg border border-border">
+                <label className="text-sm font-medium text-foreground-secondary">Min Attendees</label>
+                <p className="text-foreground font-medium mt-1">
+                  {(event.sponsor_conditions?.min_attendees || 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-card-secondary p-4 rounded-lg border border-border">
+                <label className="text-sm font-medium text-foreground-secondary">Min Completion Rate</label>
+                <p className="text-foreground font-medium mt-1">
+                  {((event.sponsor_conditions?.min_completion_rate || 0) / 100).toFixed(1)}%
+                </p>
+              </div>
+              <div className="bg-card-secondary p-4 rounded-lg border border-border">
+                <label className="text-sm font-medium text-foreground-secondary">Min Avg Rating</label>
+                <p className="text-foreground font-medium mt-1">
+                  {((event.sponsor_conditions?.min_avg_rating || 0) / 100).toFixed(1)}/5
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Custom Benchmarks */}
+          {event.sponsor_conditions?.custom_benchmarks?.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-3">Custom Benchmarks</h3>
+              <div className="space-y-3">
+                {event.sponsor_conditions.custom_benchmarks.map((benchmark, index) => (
+                  <div key={index} className="bg-card-secondary p-4 rounded-lg border border-border">
+                    <div className="flex justify-between items-center">
+                      <span className="text-foreground font-medium">{benchmark.metric_name}</span>
+                      <span className="text-foreground-secondary">
+                        Target: {benchmark.target_value}
+                      </span>
+                    </div>
+                    <div className="text-sm text-foreground-secondary mt-1">
+                      Comparison: {benchmark.comparison_type === 0 ? ">=" : benchmark.comparison_type === 1 ? "<=" : "=="}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Additional Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-3">Event Details</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-foreground-secondary">Assignee</label>
+                  <p className="text-foreground mt-1">{event.assignee}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground-secondary">Is Child Event</label>
+                  <p className="text-foreground mt-1">{event.is_child ? "Yes" : "No"}</p>
+                </div>
+                {event.is_child && (
+                  <div>
+                    <label className="text-sm font-medium text-foreground-secondary">Parent Event ID</label>
+                    <p className="text-foreground mt-1 font-mono text-sm">{event.parent_id}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-foreground-secondary">Event ID</label>
+                  <p className="text-foreground mt-1 font-mono text-sm">{event.id}</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-3">Metadata</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-foreground-secondary">Metadata URI</label>
+                  <p className="text-foreground mt-1 break-all text-sm">
+                    {event.metadata_uri || "No metadata"}
+                  </p>
+                </div>
+                {event.metadata_uri && (
+                  <div>
+                    <label className="text-sm font-medium text-foreground-secondary">Banner Image</label>
+                    <div className="mt-1">
+                      <img 
+                        src={event.metadata_uri} 
+                        alt="Event banner" 
+                        className="w-full h-32 object-cover rounded-lg"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 p-6 border-t border-border">
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+          <Button onClick={() => window.open(`/event/${event.id}`, '_blank')}>
+            View Public Page
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Simple SuccessModal component
 const SuccessModal = ({
@@ -154,7 +461,7 @@ const EventDocFlowInterface = ({ event }: { event: Event }) => {
   // Mock data for this specific event
   const mockEventDocFlow = {
     eventId: event.id,
-    eventName: event.title,
+    eventName: event.name,
     organizer: "0x1234...5678",
     approvalChain: [
       { address: "0x1111...", name: "Finance Manager", level: 1, role: "Budget Review" },
@@ -590,6 +897,10 @@ const OrganizerDashboard = () => {
   const [showDocFlowModal, setShowDocFlowModal] = useState(false);
   const [selectedEventForDocFlow, setSelectedEventForDocFlow] = useState<Event | null>(null);
 
+  // Event Details Modal state
+  const [showEventDetailsModal, setShowEventDetailsModal] = useState(false);
+  const [selectedEventForDetails, setSelectedEventForDetails] = useState<Event | null>(null);
+
   // Airdrop validation state
   const [eventEligibleRecipients, setEventEligibleRecipients] = useState<{
     [eventId: string]: {
@@ -832,7 +1143,7 @@ const OrganizerDashboard = () => {
         target: `${sdk.attendanceVerification.getPackageId()}::nft_minting::set_event_metadata`,
         arguments: [
           tx.pure.id(event.id),
-          tx.pure.string(event.title),
+          tx.pure.string(event.name),
           tx.pure.string(event.metadata_uri || ""),
           tx.pure.string(event.location || ""),
           tx.pure.address(currentAccount.address),
@@ -872,7 +1183,7 @@ const OrganizerDashboard = () => {
       return;
     }
 
-    if (event.checkedIn > 0) {
+    if ((event.checkedIn || 0) > 0) {
       setErrorMessage("Cannot delete events that have attendees registered.");
       setErrorDetails(new Error("Event has attendees"));
       setShowErrorModal(true);
@@ -1030,9 +1341,9 @@ const OrganizerDashboard = () => {
     }
 
     setCommunityEvent(event);
-    setCommunityName(`${event.title} Community`);
+    setCommunityName(`${event.name} Community`);
     setCommunityDescription(
-      `Join the live community for ${event.title} attendees`
+      `Join the live community for ${event.name} attendees`
     );
     setShowCommunityModal(true);
   };
@@ -1252,7 +1563,7 @@ const OrganizerDashboard = () => {
         currentAccount.address
       );
       if (!hasProfile) {
-        navigate("/create-organizer-profile");
+        navigate("/dashboard");
         return;
       }
 
@@ -1262,31 +1573,75 @@ const OrganizerDashboard = () => {
         eventRegistryId
       );
 
-      // Transform events to match interface
+      // Transform events to match interface with full details
       const transformedEvents = await Promise.all(
         organizerEvents.map(async (event) => {
+          // Get full event details
+          const fullEventDetails = await sdk.eventManagement.getEvent(event.id);
+          
           // Get real attendee count
           const attendeeCount = await sdk.eventManagement.getEventAttendeeCount(
             event.id,
             eventRegistryId
           );
 
-          return {
-            id: event.id,
-            title: event.name,
-            date: new Date(event.start_time * 1000).toISOString().split("T")[0],
-            status: (event.state === 0
-              ? "upcoming"
-              : event.state === 1
-              ? "active"
-              : "completed") as "upcoming" | "active" | "completed",
-            checkedIn: attendeeCount, // Use real attendee count
-            totalCapacity: 100, // TODO: Get from event data
-            escrowStatus: "pending" as "pending" | "released" | "locked",
-            rating: 0, // TODO: Get from event data
-            revenue: 0, // TODO: Get from event data
-            state: event.state, // Add state for activation logic
-          };
+          if (fullEventDetails) {
+            return {
+              ...fullEventDetails,
+              title: fullEventDetails.name, // Keep title for backward compatibility
+              date: new Date(fullEventDetails.start_time).toISOString().split("T")[0],
+              status: (fullEventDetails.state === 0
+                ? "upcoming"
+                : fullEventDetails.state === 1
+                ? "active"
+                : "completed") as "upcoming" | "active" | "completed",
+              checkedIn: attendeeCount, // Use real attendee count
+              totalCapacity: fullEventDetails.capacity,
+              escrowStatus: "pending" as "pending" | "released" | "locked",
+              rating: 0, // TODO: Get from event data
+              revenue: (fullEventDetails.fee_amount * attendeeCount) / 1000000000, // Calculate revenue
+              state: fullEventDetails.state,
+            };
+          } else {
+            // Fallback to basic event info if full details not available
+            return {
+              id: event.id,
+              name: event.name,
+              description: "",
+              location: "",
+              start_time: event.start_time * 1000,
+              end_time: event.start_time * 1000 + 7200000, // Default 2 hours
+              capacity: 100,
+              current_attendees: attendeeCount,
+              organizer: currentAccount.address,
+              sponsors: [],
+              assignee: "self",
+              is_child: false,
+              parent_id: "0x0000000000000000000000000000000000000000000000000000000000000000",
+              state: event.state,
+              created_at: event.start_time * 1000,
+              sponsor_conditions: {
+                min_attendees: 0,
+                min_completion_rate: 0,
+                min_avg_rating: 0,
+                custom_benchmarks: [],
+              },
+              metadata_uri: "",
+              fee_amount: 0,
+              title: event.name,
+              date: new Date(event.start_time * 1000).toISOString().split("T")[0],
+              status: (event.state === 0
+                ? "upcoming"
+                : event.state === 1
+                ? "active"
+                : "completed") as "upcoming" | "active" | "completed",
+              checkedIn: attendeeCount,
+              totalCapacity: 100,
+              escrowStatus: "pending" as "pending" | "released" | "locked",
+              rating: 0,
+              revenue: 0,
+            };
+          }
         })
       );
 
@@ -1330,6 +1685,12 @@ const OrganizerDashboard = () => {
       if (!hasGeneralProfile) {
         // Redirect to home or show profile creation modal
         navigate("/");
+        return;
+      }
+
+      if (!hasOrganizerProfile) {
+        // Redirect to user dashboard if user is not an organizer
+        navigate("/dashboard");
         return;
       }
 
@@ -1387,15 +1748,15 @@ const OrganizerDashboard = () => {
 
   const totalEvents = events.length;
   const totalAttendees = events.reduce(
-    (sum, event) => sum + event.checkedIn,
+    (sum, event) => sum + (event.checkedIn || 0),
     0
   );
-  const totalRevenue = events.reduce((sum, event) => sum + event.revenue, 0);
+  const totalRevenue = events.reduce((sum, event) => sum + (event.revenue || 0), 0);
   const avgRating =
     events
-      .filter((e) => e.rating > 0)
-      .reduce((sum, event) => sum + event.rating, 0) /
-    events.filter((e) => e.rating > 0).length;
+      .filter((e) => (e.rating || 0) > 0)
+      .reduce((sum, event) => sum + (event.rating || 0), 0) /
+    events.filter((e) => (e.rating || 0) > 0).length;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -1614,10 +1975,10 @@ const OrganizerDashboard = () => {
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
                               <div>
                                 <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-1 sm:mb-2">
-                                  {event.title}
+                                  {event.name}
                                 </h3>
                                 <p className="text-foreground-secondary text-sm">
-                                  {new Date(event.date).toLocaleDateString(
+                                  {new Date(event.start_time).toLocaleDateString(
                                     "en-US",
                                     {
                                       weekday: "long",
@@ -1632,11 +1993,11 @@ const OrganizerDashboard = () => {
                               <div className="flex items-center gap-2">
                                 <span
                                   className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                                    event.status
+                                    event.status || "upcoming"
                                   )}`}
                                 >
-                                  {event.status.charAt(0).toUpperCase() +
-                                    event.status.slice(1)}
+                                  {(event.status || "upcoming").charAt(0).toUpperCase() +
+                                    (event.status || "upcoming").slice(1)}
                                 </span>
                               </div>
                             </div>
@@ -1648,7 +2009,7 @@ const OrganizerDashboard = () => {
                                   Check-ins
                                 </span>
                                 <span className="text-sm text-foreground">
-                                  {event.checkedIn} / {event.totalCapacity}
+                                  {event.checkedIn || 0} / {event.capacity || 0}
                                 </span>
                               </div>
                               <div className="w-full bg-border rounded-full h-2">
@@ -1656,7 +2017,7 @@ const OrganizerDashboard = () => {
                                   className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-500"
                                   style={{
                                     width: `${Math.min(
-                                      (event.checkedIn / event.totalCapacity) *
+                                      ((event.checkedIn || 0) / (event.capacity || 1)) *
                                         100,
                                       100
                                     )}%`,
@@ -1665,7 +2026,7 @@ const OrganizerDashboard = () => {
                               </div>
                               <p className="text-xs text-foreground-muted mt-1">
                                 {Math.round(
-                                  (event.checkedIn / event.totalCapacity) * 100
+                                  ((event.checkedIn || 0) / (event.capacity || 1)) * 100
                                 )}
                                 % capacity
                               </p>
@@ -1682,11 +2043,11 @@ const OrganizerDashboard = () => {
                                 </div>
                                 <div
                                   className={`text-sm font-medium ${getEscrowStatusColor(
-                                    event.escrowStatus
+                                    event.escrowStatus || "pending"
                                   )}`}
                                 >
-                                  {event.escrowStatus.charAt(0).toUpperCase() +
-                                    event.escrowStatus.slice(1)}
+                                  {(event.escrowStatus || "pending").charAt(0).toUpperCase() +
+                                    (event.escrowStatus || "pending").slice(1)}
                                 </div>
                               </div>
                               {/* Revenue */}
@@ -1695,18 +2056,18 @@ const OrganizerDashboard = () => {
                                   Revenue
                                 </div>
                                 <div className="text-sm font-medium text-foreground">
-                                  ${event.revenue.toLocaleString()}
+                                  ${(event.revenue || 0).toLocaleString()}
                                 </div>
                               </div>
                             </div>
                             {/* Rating */}
-                            {event.rating > 0 && (
+                            {(event.rating || 0) > 0 && (
                               <div className="text-center p-2 rounded bg-foreground-muted mt-2">
                                 <div className="text-xs text-foreground-muted mb-2">
                                   Rating
                                 </div>
                                 <RatingStars
-                                  rating={event.rating}
+                                  rating={event.rating || 0}
                                   size="sm"
                                   showLabel
                                 />
@@ -1918,6 +2279,18 @@ const OrganizerDashboard = () => {
                               <Eye className="mr-1 h-3 w-3" />
                               View
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 min-w-[100px]"
+                              onClick={() => {
+                                setSelectedEventForDetails(event);
+                                setShowEventDetailsModal(true);
+                              }}
+                            >
+                              <FileText className="mr-1 h-3 w-3" />
+                              Details
+                            </Button>
                             {event.state === 0 && event.checkedIn === 0 && (
                               <Button
                                 variant="outline"
@@ -2011,6 +2384,15 @@ const OrganizerDashboard = () => {
           message={successMessage}
           onClose={() => setShowSuccessModal(false)}
         />
+        {/* Event Details Modal */}
+        <EventDetailsModal
+          isOpen={showEventDetailsModal}
+          event={selectedEventForDetails}
+          onClose={() => {
+            setShowEventDetailsModal(false);
+            setSelectedEventForDetails(null);
+          }}
+        />
         {/* Error Modal */}
         <ErrorModal
           isOpen={showErrorModal}
@@ -2034,7 +2416,7 @@ const OrganizerDashboard = () => {
               </h3>
               <p className="text-foreground mb-6">
                 Are you sure you want to mark{" "}
-                <span className="font-bold">{eventToComplete.title}</span> as
+                                                <span className="font-bold">{eventToComplete.name}</span> as
                 completed? This action cannot be undone and will allow attendees
                 to rate your event.
               </p>
@@ -2069,7 +2451,7 @@ const OrganizerDashboard = () => {
               </h3>
               <p className="text-foreground mb-6">
                 Are you sure you want to delete{" "}
-                <span className="font-bold">{eventToDelete.title}</span>? This action cannot be undone and will permanently remove the event.
+                <span className="font-bold">{eventToDelete.name}</span>? This action cannot be undone and will permanently remove the event.
               </p>
               <div className="flex gap-2 mt-2">
                 <Button
@@ -2199,7 +2581,7 @@ const OrganizerDashboard = () => {
               setCreatingAirdrop(false);
             }}
             onSubmit={handleAirdropSubmit}
-            eventName={selectedEventForAirdrop.title}
+            eventName={selectedEventForAirdrop.name}
             loading={creatingAirdrop}
           />
         )}
@@ -2214,7 +2596,7 @@ const OrganizerDashboard = () => {
                     Document Flow Management
                   </h3>
                   <p className="text-foreground-secondary text-sm">
-                    {selectedEventForDocFlow.title} • Approval Workflow
+                    {selectedEventForDocFlow.name} • Approval Workflow
                   </p>
                 </div>
                 <Button

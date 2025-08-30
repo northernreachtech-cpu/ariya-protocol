@@ -283,6 +283,7 @@ const submissionId = tx.moveCall({
     target: `${PACKAGE_ID}::document_flow::submit_document`,
     arguments: [
         tx.object(FLOW_ID),
+        tx.object(EVENT_ID), // Add Event object parameter
         tx.pure.string("Event Budget Proposal"),
         tx.pure.string("Detailed budget breakdown for Tech Conference 2024"),
         tx.pure.string(documentUri),
@@ -390,12 +391,13 @@ console.log('Document rejected:', result);
 
 ### Funding
 
-#### `fund_organizer_directly`
-Releases funds directly to the organizer after full approval.
+#### `fund_directly`
+Releases funds directly to a specified receiver after full approval.
 
 ```move
-public fun fund_organizer_directly(
+public fun fund_directly(
     submission: &mut DocumentSubmission,
+    receiver: address,
     flow: &DocumentFlow,
     payment: Coin<SUI>,
     clock: &Clock,
@@ -405,6 +407,7 @@ public fun fund_organizer_directly(
 
 **Parameters:**
 - `submission`: Mutable reference to document submission
+- `receiver`: Address to receive the funding
 - `flow`: Reference to document flow
 - `payment`: SUI coin for funding
 - `clock`: System clock reference
@@ -423,9 +426,10 @@ const tx = new Transaction();
 const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(fundingAmount)]);
 
 tx.moveCall({
-    target: `${PACKAGE_ID}::document_flow::fund_organizer_directly`,
+    target: `${PACKAGE_ID}::document_flow::fund_directly`,
     arguments: [
         tx.object(SUBMISSION_ID),
+        tx.pure.address("0x1234"),
         tx.object(FLOW_ID),
         coin,
         tx.object(CLOCK_ID),
@@ -771,7 +775,7 @@ class DocumentFlowManager {
 
 ```typescript
 // Document submission component
-function DocumentSubmissionForm({ flowId, onSubmit }) {
+function DocumentSubmissionForm({ flowId, eventId, onSubmit }) {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -789,6 +793,8 @@ function DocumentSubmissionForm({ flowId, onSubmit }) {
             
             // Submit document
             await onSubmit({
+                flowId,
+                eventId, // Add eventId
                 title: formData.title,
                 description: formData.description,
                 documentUri,
@@ -988,6 +994,19 @@ function setupEventListeners(client: SuiClient, packageId: string) {
 7. **Registry Updates**: All submissions are automatically tracked in the registry for discoverability
 
 8. **Event Integration**: Document flows are tightly coupled with events from the event_management module
+
+9. **Dependencies**: This module depends on several functions from `event_management`:
+    - `get_event_organizer()`: Gets the organizer address from an event
+    - `get_event_assignee()`: Gets the assignee string from an event
+    - `get_address_from_x()`: Converts X username to wallet address
+    - `get_event_id()`: Retrieves event information from the registry
+
+10. **Authorization Logic**: The system properly handles both organizer and assignee authorization:
+    - If assignee is "self", the organizer address is used
+    - If assignee is a username, it's converted to an address using `get_address_from_x()`
+    - Both organizer and assignee can create document flows and submit documents
+
+11. **Function Parameters**: The `submit_document` function now requires both `DocumentFlow` and `Event` objects to properly access assignee information and maintain authorization consistency.
 
 
 The document flow system provides a robust foundation for managing approval workflows in decentralized event management systems.

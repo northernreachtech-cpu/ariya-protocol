@@ -20,8 +20,8 @@ const EAttendeeLimitExceeded: u64 = 5;
 const EInsufficientPayment: u64 = 6;
 const EPlatformFeeRequired: u64 = 7;
 
-// Pass validity duration (24 hours in milliseconds)
-const PASS_VALIDITY_DURATION: u64 = 86400000;
+// Pass validity duration (3 Weeks in milliseconds)
+const PASS_VALIDITY_DURATION: u64 = 1814400000;
 
 // Platform fee percentages
 const FREE_PLATFORM_FEE_BPS: u64 = 500;   // 5% for free subscription

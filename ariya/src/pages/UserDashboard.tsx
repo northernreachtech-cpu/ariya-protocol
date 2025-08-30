@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, User, Edit, Calendar, Plus, Crown } from "lucide-react";
-import { useCurrentAccount } from "@mysten/dapp-kit";
+import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { useAriyaSDK } from "../lib/sdk";
-import { useNetworkVariable } from "../config/sui";
+import { useNetworkVariable, suiClient } from "../config/sui";
 import type { UserSubscription } from "../lib/sdk";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import ProfilePicture from "../components/ProfilePicture";
 import useScrollToTop from "../hooks/useScrollToTop";
+import { useZkLogin } from "../contexts/ZkLoginContext";
 
 interface UserProfile {
   id: string;
@@ -23,32 +24,42 @@ const UserDashboard = () => {
   useScrollToTop();
   const navigate = useNavigate();
   const currentAccount = useCurrentAccount();
+  const { zkAddress, isZkAuthenticated } = useZkLogin();
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const sdk = useAriyaSDK();
   const profileRegistryId = useNetworkVariable("profileRegistryId");
   const subscriptionRegistryId = useNetworkVariable("subscriptionRegistryId");
+  // const platformTreasuryId = useNetworkVariable("platformTreasuryId");
+
+  // Get the active address (either wallet or zkLogin)
+  const activeAddress = currentAccount?.address || zkAddress;
+  const isAuthenticated = currentAccount || isZkAuthenticated;
 
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [isCreatingOrganizer, setIsCreatingOrganizer] = useState(false);
 
   const loadUserData = async () => {
-    if (!currentAccount) return;
+    if (!activeAddress) return;
 
     try {
       setLoading(true);
 
       // Check if user is organizer
+      console.log("🔍 Checking organizer profile for address:", activeAddress);
       const hasOrganizerProfile = await sdk.eventManagement.hasOrganizerProfile(
-        currentAccount.address
+        activeAddress
       );
+      console.log("📋 Has organizer profile:", hasOrganizerProfile);
       setIsOrganizer(hasOrganizerProfile);
 
       // Load user profile
       if (profileRegistryId) {
         try {
           const profile = await sdk.eventManagement.getUserProfileByAddress(
-            currentAccount.address,
+            activeAddress,
             profileRegistryId
           );
           if (profile) {
@@ -66,16 +77,67 @@ const UserDashboard = () => {
         }
       }
 
-      // Load subscription data
+      // Load or create subscription data
       if (subscriptionRegistryId) {
         try {
+          console.log("🔍 Checking subscription for address:", activeAddress);
           const subscriptionId = await sdk.subscription.getUserSubscriptionId(
             subscriptionRegistryId,
-            currentAccount.address
+            activeAddress
           );
+          
           if (subscriptionId) {
+            console.log("📋 Found existing subscription ID:", subscriptionId);
             const subscriptionData = await sdk.subscription.getUserSubscription(subscriptionId);
-            setSubscription(subscriptionData);
+            if (subscriptionData) {
+              console.log("✅ Loaded subscription data:", subscriptionData);
+              setSubscription(subscriptionData);
+            } else {
+              console.warn("⚠️ Found subscription ID but failed to load subscription data");
+            }
+          } else {
+            console.log("📋 No subscription found, creating free subscription...");
+            // Create free subscription for user
+            try {
+              const tx = sdk.subscription.createFreeSubscription(activeAddress, subscriptionRegistryId);
+              
+              if (currentAccount) {
+                // For regular wallet
+                await signAndExecute(
+                  { transaction: tx },
+                  {
+                    onSuccess: async (result) => {
+                      console.log("✅ Free subscription created successfully:", result);
+                      // Reload subscription data
+                      await loadUserData();
+                    },
+                    onError: (error) => {
+                      console.error("❌ Error creating free subscription:", error);
+                    },
+                  }
+                );
+              } else {
+                // For zkLogin
+                const txWithSender = tx;
+                txWithSender.setSender(activeAddress);
+                
+                await signAndExecute(
+                  { transaction: txWithSender },
+                  {
+                    onSuccess: async (result) => {
+                      console.log("✅ Free subscription created successfully:", result);
+                      // Reload subscription data
+                      await loadUserData();
+                    },
+                    onError: (error) => {
+                      console.error("❌ Error creating free subscription:", error);
+                    },
+                  }
+                );
+              }
+            } catch (createError) {
+              console.error("❌ Error creating free subscription transaction:", createError);
+            }
           }
         } catch (error) {
           console.error("Error loading subscription:", error);
@@ -90,7 +152,93 @@ const UserDashboard = () => {
 
   useEffect(() => {
     loadUserData();
-  }, [currentAccount, sdk]);
+  }, [activeAddress, sdk]);
+
+  const handleBecomeOrganizer = async () => {
+    if (!activeAddress || !isAuthenticated) return;
+
+    setIsCreatingOrganizer(true);
+    try {
+      console.log("🚀 Creating organizer profile transaction...");
+      const tx = sdk.eventManagement.createOrganizerProfile(activeAddress);
+      console.log("📦 Organizer transaction created:", tx);
+      
+      if (currentAccount) {
+        // For regular wallet
+        await signAndExecute(
+          { transaction: tx },
+          {
+            onSuccess: async (result) => {
+              console.log("✅ Organizer profile created successfully:", result);
+              
+              // Debug transaction effects
+              try {
+                const fullTx = await suiClient.getTransactionBlock({
+                  digest: result.digest,
+                  options: {
+                    showObjectChanges: true,
+                  },
+                });
+                console.log("🔍 Organizer transaction effects:", fullTx);
+                if (fullTx.objectChanges) {
+                  const createdObjects = fullTx.objectChanges.filter(
+                    (change) => change.type === "created"
+                  );
+                  console.log(`📦 Found ${createdObjects.length} created objects in organizer transaction`);
+                  createdObjects.forEach((change, index) => {
+                    console.log(`[Object ${index + 1}]`);
+                    console.log(`  ID: ${change.objectId}`);
+                    console.log(`  Owner: ${JSON.stringify(change.owner)}`);
+                    console.log(`  Type: ${change.objectType}`);
+                  });
+                }
+              } catch (txError) {
+                console.error("Failed to fetch organizer transaction details:", txError);
+              }
+              
+              // Wait a moment for the transaction to be indexed
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+              // Reload user data to check if organizer profile was created
+              await loadUserData();
+              setIsCreatingOrganizer(false);
+            },
+            onError: (error) => {
+              console.error("❌ Error creating organizer profile:", error);
+              setIsCreatingOrganizer(false);
+            },
+          }
+        );
+      } else {
+        // For zkLogin
+        const txWithSender = tx;
+        txWithSender.setSender(activeAddress);
+        
+        await signAndExecute(
+          { transaction: txWithSender },
+          {
+            onSuccess: async (result) => {
+              console.log("✅ Organizer profile created successfully:", result);
+              
+              // Wait a moment for the transaction to be indexed
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+              // Reload user data to check if organizer profile was created
+              await loadUserData();
+              setIsCreatingOrganizer(false);
+            },
+            onError: (error) => {
+              console.error("❌ Error creating organizer profile:", error);
+              setIsCreatingOrganizer(false);
+            },
+          }
+        );
+      }
+    } catch (error) {
+      console.error("❌ Error creating organizer profile:", error);
+      setIsCreatingOrganizer(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -148,7 +296,7 @@ const UserDashboard = () => {
         </Card>
 
         {/* Subscription Status */}
-        {subscription && (
+        {subscription ? (
           <Card className="mb-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
@@ -166,6 +314,28 @@ const UserDashboard = () => {
               </div>
               <Button variant="outline" size="sm" onClick={() => navigate("/subscription")}>
                 Manage Subscription
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          /* Fallback: Show subscription status when not loaded */
+          <Card className="mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <Crown className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Free Plan
+                  </h3>
+                  <p className="text-sm text-foreground-secondary">
+                    Setting up your subscription...
+                  </p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" disabled>
+                Loading...
               </Button>
             </div>
           </Card>
@@ -206,9 +376,10 @@ const UserDashboard = () => {
               <Button onClick={() => navigate("/events")}>Browse Events</Button>
               <Button
                 variant="outline"
-                onClick={() => navigate("/create-organizer-profile")}
+                onClick={handleBecomeOrganizer}
+                disabled={isCreatingOrganizer}
               >
-                Become Organizer
+                {isCreatingOrganizer ? "Creating..." : "Become Organizer"}
               </Button>
             </div>
           </div>

@@ -8,7 +8,7 @@ use sui::test_scenario::{Self, next_tx, ctx, Scenario};
 use sui::clock::{Self, Clock};
 
 use ariya::airdrop_distribution::{Self, AirdropRegistry};
-use ariya::event_management::{Self, Event, EventRegistry, OrganizerProfile};
+use ariya::event_management::{Self, Event, ProfileRegistry, EventRegistry, OrganizerProfile};
 use ariya::attendance_verification::{Self, AttendanceRegistry};
 use ariya::nft_minting::{Self, NFTRegistry};
 use ariya::rating_reputation::{Self, RatingRegistry};
@@ -61,8 +61,6 @@ fun create_test_organizer_profile(scenario: &mut Scenario, organizer: address) {
         let clock = test_scenario::take_shared<Clock>(scenario);
         
         let cap = event_management::create_organizer_profile(
-            string::utf8(b"Test Organizer"),
-            string::utf8(b"Test Bio"),
             &clock,
             ctx(scenario)
         );
@@ -105,11 +103,15 @@ fun create_and_activate_test_event(scenario: &mut Scenario, organizer: address, 
             clock::timestamp_ms(&clock) + HOUR_IN_MS,
             clock::timestamp_ms(&clock) + HOUR_IN_MS + duration,
             capacity,
-            0,
+            0, // fee_amount
             10, // min_attendees
             8000, // min_completion_rate (80%)
             400, // min_avg_rating (4.0/5.0)
-            string::utf8(b""), // metadata_uri
+            string::utf8(b"https://walrus.example/metadata"), // metadata_uri
+            vector[string::utf8(b"Test Sponsor")], // sponsors
+            string::utf8(b"self"), // assignee
+            false, // is_child
+            object::id_from_address(@0x0), // parent_id
             &clock,
             &mut registry,
             &mut organizer_profile,
@@ -273,6 +275,7 @@ fun create_test_airdrop(
     {
         let event = test_scenario::take_shared_by_id<Event>(scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(scenario);
         let clock = test_scenario::take_shared<Clock>(scenario);
         let payment = coin::mint_for_testing<SUI>(amount, ctx(scenario));
@@ -293,12 +296,14 @@ fun create_test_airdrop(
             validity_days,
             &mut registry,
             &attendance_registry,
+            &profile_registry,
             &clock,
             ctx(scenario)
         );
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(clock);
         
@@ -376,6 +381,7 @@ fun test_eligibility_verification() {
     {
         let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
         let payment = coin::mint_for_testing<SUI>(AIRDROP_POOL_AMOUNT, ctx(&mut scenario));
@@ -393,6 +399,7 @@ fun test_eligibility_verification() {
             7,
             &mut registry,
             &attendance_registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
@@ -414,6 +421,7 @@ fun test_eligibility_verification() {
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(clock);
         test_scenario::return_shared(nft_registry);
@@ -537,6 +545,7 @@ fun test_create_airdrop_not_organizer() {
     {
         let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
         let payment = coin::mint_for_testing<SUI>(AIRDROP_POOL_AMOUNT, ctx(&mut scenario));
@@ -555,12 +564,14 @@ fun test_create_airdrop_not_organizer() {
             7,
             &mut registry,
             &attendance_registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(clock);
     };
@@ -582,6 +593,7 @@ fun test_create_airdrop_zero_amount() {
     {
         let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
         let payment = coin::mint_for_testing<SUI>(0, ctx(&mut scenario)); // Zero amount
@@ -600,12 +612,14 @@ fun test_create_airdrop_zero_amount() {
             7,
             &mut registry,
             &attendance_registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(clock);
     };
@@ -662,6 +676,7 @@ fun test_claim_airdrop_not_eligible() {
     {
         let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
         let payment = coin::mint_for_testing<SUI>(AIRDROP_POOL_AMOUNT, ctx(&mut scenario));
@@ -679,6 +694,7 @@ fun test_claim_airdrop_not_eligible() {
             7,
             &mut registry,
             &attendance_registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
@@ -699,6 +715,7 @@ fun test_claim_airdrop_not_eligible() {
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(clock);
         test_scenario::return_shared(nft_registry);
@@ -731,27 +748,33 @@ fun test_batch_distribute_empty_recipients() {
     // Test batch distribute with empty recipients
     next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
         
         airdrop_distribution::batch_distribute(
             airdrop_id,
+            &event,
             vector::empty<address>(),
             &mut registry,
             &attendance_registry,
             &nft_registry,
             &rating_registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(nft_registry);
         test_scenario::return_shared(rating_registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -780,18 +803,24 @@ fun test_batch_distribute_not_organizer() {
     // Try batch distribute as non-organizer
     next_tx(&mut scenario, USER1);
     {
+        let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
         
         // This should fail
         airdrop_distribution::withdraw_unclaimed(
             airdrop_id,
+            &event,
             &mut registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -932,11 +961,15 @@ fun test_airdrop_with_zero_capacity_event() {
             clock::timestamp_ms(&clock) + HOUR_IN_MS,
             clock::timestamp_ms(&clock) + HOUR_IN_MS + HOUR_IN_MS,
             0, // Zero capacity - should fail here
-            0,
+            0, // fee_amount
             10, // min_attendees
             8000, // min_completion_rate
             400, // min_avg_rating
-            string::utf8(b""), // metadata_uri
+            string::utf8(b"https://walrus.example/metadata"), // metadata_uri
+            vector[string::utf8(b"Test Sponsor")], // sponsors
+            string::utf8(b"self"), // assignee
+            false, // is_child
+            object::id_from_address(@0x0), // parent_id
             &clock,
             &mut registry,
             &mut organizer_profile,
@@ -1004,6 +1037,7 @@ fun test_airdrop_name_edge_cases() {
     {
         let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
         let payment = coin::mint_for_testing<SUI>(AIRDROP_POOL_AMOUNT, ctx(&mut scenario));
@@ -1021,12 +1055,14 @@ fun test_airdrop_name_edge_cases() {
             7,
             &mut registry,
             &attendance_registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(clock);
     };
@@ -1036,6 +1072,7 @@ fun test_airdrop_name_edge_cases() {
     {
         let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
         let payment = coin::mint_for_testing<SUI>(AIRDROP_POOL_AMOUNT, ctx(&mut scenario));
@@ -1055,12 +1092,14 @@ fun test_airdrop_name_edge_cases() {
             7,
             &mut registry,
             &attendance_registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(clock);
     };
@@ -1139,7 +1178,9 @@ fun test_large_recipient_list() {
     // Test batch distribute with many recipients
     next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
@@ -1147,19 +1188,23 @@ fun test_large_recipient_list() {
         
         airdrop_distribution::batch_distribute(
             airdrop_id,
+            &event,
             recipients,
             &mut registry,
             &attendance_registry,
             &nft_registry,
             &rating_registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(nft_registry);
         test_scenario::return_shared(rating_registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -1283,18 +1328,24 @@ fun test_withdraw_unclaimed_before_expiry() {
     // Try to withdraw before expiry (should fail)
     next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
         
         // This should fail because airdrop hasn't expired yet
         airdrop_distribution::withdraw_unclaimed(
             airdrop_id,
+            &event,
             &mut registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -1322,7 +1373,9 @@ fun test_withdraw_unclaimed_after_expiry_success() {
     // Advance time past expiry
     next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let mut clock = test_scenario::take_shared<Clock>(&scenario);
         
         // Get expiry time and advance past it
@@ -1333,7 +1386,9 @@ fun test_withdraw_unclaimed_after_expiry_success() {
         // Now withdrawal should succeed
         airdrop_distribution::withdraw_unclaimed(
             airdrop_id,
+            &event,
             &mut registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
@@ -1344,7 +1399,9 @@ fun test_withdraw_unclaimed_after_expiry_success() {
         assert!(!active, 100);
         assert!(remaining_balance == 0, 101);
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -1429,7 +1486,9 @@ fun test_withdraw_after_expiry() {
     // Advance time past expiry and withdraw
     next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let mut clock = test_scenario::take_shared<Clock>(&scenario);
         
         let (_, _, _, _, expires_at, _) = 
@@ -1441,12 +1500,16 @@ fun test_withdraw_after_expiry() {
         // Now withdrawal should work
         airdrop_distribution::withdraw_unclaimed(
             airdrop_id,
+            &event,
             &mut registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -1478,6 +1541,7 @@ fun test_equal_distribution_calculation() {
     {
         let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
         let payment = coin::mint_for_testing<SUI>(pool_amount, ctx(&mut scenario));
@@ -1495,12 +1559,14 @@ fun test_equal_distribution_calculation() {
             7,
             &mut registry,
             &attendance_registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(clock);
     };
@@ -1530,6 +1596,7 @@ fun test_weighted_distribution_calculation() {
     {
         let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
         let payment = coin::mint_for_testing<SUI>(AIRDROP_POOL_AMOUNT, ctx(&mut scenario));
@@ -1547,12 +1614,14 @@ fun test_weighted_distribution_calculation() {
             7,
             &mut registry,
             &attendance_registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(clock);
     };
@@ -1598,6 +1667,7 @@ fun test_completion_bonus_calculation() {
     {
         let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
         let payment = coin::mint_for_testing<SUI>(AIRDROP_POOL_AMOUNT, ctx(&mut scenario));
@@ -1615,12 +1685,14 @@ fun test_completion_bonus_calculation() {
             7,
             &mut registry,
             &attendance_registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(clock);
     };
@@ -1790,6 +1862,7 @@ fun test_airdrop_with_rating_requirement() {
     {
         let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
         let payment = coin::mint_for_testing<SUI>(AIRDROP_POOL_AMOUNT, ctx(&mut scenario));
@@ -1807,6 +1880,7 @@ fun test_airdrop_with_rating_requirement() {
             7,
             &mut registry,
             &attendance_registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
@@ -1828,6 +1902,7 @@ fun test_airdrop_with_rating_requirement() {
         
         test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(clock);
         test_scenario::return_shared(nft_registry);
@@ -2000,7 +2075,9 @@ fun test_complete_airdrop_system_integration() {
     // === Phase 5: Test Batch Operations ===
     next_tx(&mut scenario, ORGANIZER);
     {
+        let event = test_scenario::take_shared_by_id<Event>(&scenario, event_id);
         let mut registry = test_scenario::take_shared<AirdropRegistry>(&scenario);
+        let profile_registry = test_scenario::take_shared<ProfileRegistry>(&scenario);
         let attendance_registry = test_scenario::take_shared<AttendanceRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
@@ -2009,19 +2086,23 @@ fun test_complete_airdrop_system_integration() {
         // Try batch distribution (will skip ineligible users)
         airdrop_distribution::batch_distribute(
             equal_airdrop,
+            &event,
             vector[USER1, USER2, USER3],
             &mut registry,
             &attendance_registry,
             &nft_registry,
             &rating_registry,
+            &profile_registry,
             &clock,
             ctx(&mut scenario)
         );
         
+        test_scenario::return_shared(event);
         test_scenario::return_shared(registry);
         test_scenario::return_shared(attendance_registry);
         test_scenario::return_shared(nft_registry);
         test_scenario::return_shared(rating_registry);
+        test_scenario::return_shared(profile_registry);
         test_scenario::return_shared(clock);
     };
     

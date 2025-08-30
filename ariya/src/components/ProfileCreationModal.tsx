@@ -9,6 +9,7 @@ import { useAriyaSDK } from "../lib/sdk";
 import Button from "./Button";
 import Card from "./Card";
 import ProfilePictureUpload from "./ProfilePictureUpload";
+import { OrganizerChoiceModal } from "./OrganizerChoiceModal";
 
 interface ProfileCreationModalProps {
   isOpen: boolean;
@@ -43,6 +44,8 @@ const ProfileCreationModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>("");
+  const [showOrganizerChoice, setShowOrganizerChoice] = useState(false);
+  const [isCreatingOrganizer, setIsCreatingOrganizer] = useState(false);
 
   const handleProfilePictureUpload = (_blobId: string, imageUrl: string) => {
     setUploadedImageUrl(imageUrl);
@@ -62,10 +65,22 @@ const ProfileCreationModal = ({
         digest: result.digest,
         options: {
           showObjectChanges: true,
+          showEffects: true,
         },
       });
 
       console.log("--- Inspecting Transaction Effects ---", fullTx);
+      console.log("📋 Transaction status:", fullTx.effects?.status);
+      console.log("📋 All object changes:", fullTx.objectChanges);
+      
+      // Check if transaction actually succeeded
+      if (fullTx.effects?.status?.status === 'failure') {
+        console.error("❌ Transaction failed:", fullTx.effects?.status?.error);
+        setError(`Transaction failed: ${fullTx.effects?.status?.error}`);
+        setLoading(false);
+        return;
+      }
+      
       if (fullTx.objectChanges) {
         const createdObjects = fullTx.objectChanges.filter(
           (change) => change.type === "created"
@@ -102,8 +117,8 @@ const ProfileCreationModal = ({
     console.log("------------------------------------");
     // --- End Debugging ---
 
-    onSuccess();
-    onClose();
+    // Show organizer choice modal after successful profile creation
+    setShowOrganizerChoice(true);
     setLoading(false);
   };
 
@@ -116,6 +131,14 @@ const ProfileCreationModal = ({
     console.log("👤 Active address:", activeAddress);
     console.log("🔐 Authentication type:", currentAccount ? "Wallet" : "zkLogin");
     console.log("🏛️ Profile registry ID:", profileRegistryId);
+    
+    // Check if user already has a profile
+    try {
+      const hasProfile = await sdk.eventManagement.hasProfile(activeAddress, profileRegistryId);
+      console.log("🔍 User already has profile:", hasProfile);
+    } catch (error) {
+      console.log("🔍 Error checking existing profile:", error);
+    }
 
     setLoading(true);
     setError("");
@@ -181,6 +204,7 @@ const ProfileCreationModal = ({
             },
             onError: (error) => {
               console.error("❌ Error creating profile:", error);
+              console.error("❌ Error details:", JSON.stringify(error, null, 2));
               setError("Failed to create profile. Please try again.");
               setLoading(false);
             },
@@ -319,6 +343,67 @@ const ProfileCreationModal = ({
           </form>
         </div>
       </Card>
+
+      {/* Organizer Choice Modal */}
+      <OrganizerChoiceModal
+        isOpen={showOrganizerChoice}
+        onClose={() => {
+          setShowOrganizerChoice(false);
+          onSuccess();
+          onClose();
+        }}
+        onBecomeOrganizer={async () => {
+          setIsCreatingOrganizer(true);
+          try {
+            const tx = sdk.eventManagement.createOrganizerProfile(activeAddress);
+            
+            if (currentAccount) {
+              // For regular wallet
+              await signAndExecute(
+                { transaction: tx },
+                {
+                  onSuccess: () => {
+                    console.log("✅ Organizer profile created successfully");
+                    setShowOrganizerChoice(false);
+                    onSuccess();
+                    onClose();
+                  },
+                  onError: (error) => {
+                    console.error("❌ Error creating organizer profile:", error);
+                    setError("Failed to create organizer profile. You can try again later from your dashboard.");
+                  },
+                }
+              );
+            } else {
+              // For zkLogin
+              const txWithSender = tx;
+              txWithSender.setSender(activeAddress);
+              
+              await signAndExecute(
+                { transaction: txWithSender },
+                {
+                  onSuccess: () => {
+                    console.log("✅ Organizer profile created successfully");
+                    setShowOrganizerChoice(false);
+                    onSuccess();
+                    onClose();
+                  },
+                  onError: (error) => {
+                    console.error("❌ Error creating organizer profile:", error);
+                    setError("Failed to create organizer profile. You can try again later from your dashboard.");
+                  },
+                }
+              );
+            }
+          } catch (error) {
+            console.error("❌ Error creating organizer profile:", error);
+            setError("Failed to create organizer profile. You can try again later from your dashboard.");
+          } finally {
+            setIsCreatingOrganizer(false);
+          }
+        }}
+        isLoading={isCreatingOrganizer}
+      />
     </div>
   );
 };
