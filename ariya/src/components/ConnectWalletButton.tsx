@@ -11,9 +11,9 @@ import {
 } from "lucide-react";
 import {
   useCurrentAccount,
-  // useConnectWallet, // COMMENTED OUT: Regular wallet connections disabled
+  useConnectWallet,
   useDisconnectWallet,
-  // useWallets, // COMMENTED OUT: Regular wallet connections disabled
+  useWallets,
   useSuiClient,
 } from "@mysten/dapp-kit";
 import Button from "./Button";
@@ -47,13 +47,13 @@ const ConnectWalletButton = () => {
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [balance, setBalance] = useState<string | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
-  // const [isConnecting, setIsConnecting] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
-  // const { mutate: connect } = useConnectWallet(); // COMMENTED OUT: Regular wallet connections disabled
+  const { mutate: connect } = useConnectWallet();
   const { mutate: disconnect } = useDisconnectWallet();
-  // const wallets = useWallets(); // COMMENTED OUT: Regular wallet connections disabled
+  const wallets = useWallets();
   
   // zkLogin context
   const { 
@@ -140,8 +140,6 @@ const ConnectWalletButton = () => {
     };
   }, [isMobile]);
 
-  // COMMENTED OUT: Regular wallet connection
-  /*
   const handleConnect = (walletName: string) => {
     console.log("🔗 Attempting to connect wallet:", walletName);
     setIsConnecting(true);
@@ -170,7 +168,6 @@ const ConnectWalletButton = () => {
       setIsConnecting(false);
     }
   };
-  */
 
   const handleDisconnect = () => {
     console.log("🔌 Disconnecting wallet...");
@@ -181,8 +178,6 @@ const ConnectWalletButton = () => {
     }, 300);
   };
 
-  // COMMENTED OUT: Regular wallet display info - not needed when only zkLogin is enabled
-  /*
   const getWalletDisplayInfo = (walletName: string) => {
     switch (walletName) {
       case "Sui Wallet":
@@ -197,7 +192,6 @@ const ConnectWalletButton = () => {
         return { icon: "💳", description: "Sui Wallet" };
     }
   };
-  */
 
   // Check if user is authenticated via any method
   const isAuthenticated = currentAccount || isZkAuthenticated;
@@ -267,7 +261,6 @@ const ConnectWalletButton = () => {
                           e.stopPropagation();
                         }}
                       >
-                        {/* COMMENTED OUT: Regular wallet connections
                         {wallets.map((wallet) => {
                           const displayInfo = getWalletDisplayInfo(wallet.name);
                           return (
@@ -305,11 +298,8 @@ const ConnectWalletButton = () => {
                             </button>
                           );
                         })}
-                        */}
                         
-                        {/* COMMENTED OUT: Divider - no regular wallets to separate
                         <div className="my-3 border-t border-border" />
-                        */}
                         
                         {/* zkLogin Button */}
                         <button
@@ -366,7 +356,6 @@ const ConnectWalletButton = () => {
                     </button>
                   </div>
                   <div className="space-y-2">
-                    {/* COMMENTED OUT: Regular wallet connections
                     {wallets.map((wallet) => {
                       const displayInfo = getWalletDisplayInfo(wallet.name);
                       return (
@@ -400,11 +389,8 @@ const ConnectWalletButton = () => {
                         </button>
                       );
                     })}
-                    */}
                     
-                    {/* COMMENTED OUT: Divider - no regular wallets to separate
                     <div className="my-3 border-t border-border" />
-                    */}
                     
                     {/* zkLogin Button */}
                     <button

@@ -61,16 +61,93 @@ export class IdentityAccessSDK {
         );
       }
 
+      // Note: Enoki wallet handles zkLogin authentication automatically
+      // No need to manually set sender or gas payment
+
       // 2. Execute the registration transaction
-      await signAndExecute({ transaction: registerTx });
+      console.log("🔨 Executing registration transaction...");
+      console.log("👤 User address for transaction:", userAddress);
+      console.log("🔍 Transaction details:", {
+        eventId,
+        registrationRegistryId,
+        organizerSubscriptionId,
+        organizerProfileId,
+        treasuryId,
+        eventFeeAmount,
+        paymentCoinId
+      });
+      
+      try {
+        // Debug: Check wallet balance before transaction
+        try {
+          const balance = await suiClient.getBalance({
+            owner: userAddress,
+            coinType: "0x2::sui::SUI"
+          });
+          console.log("💰 Wallet balance before transaction:", {
+            totalBalance: balance.totalBalance,
+            totalBalanceInSui: Number(balance.totalBalance) / 1000000000,
+            coinObjectCount: balance.coinObjectCount
+          });
+          
+          // Get individual coins
+          const { data: coins } = await suiClient.getCoins({
+            owner: userAddress,
+            coinType: "0x2::sui::SUI",
+          });
+          console.log("🪙 Individual coins:", coins.map(c => ({
+            coinObjectId: c.coinObjectId,
+            balance: c.balance,
+            balanceInSui: Number(c.balance) / 1000000000
+          })));
+        } catch (balanceError) {
+          console.error("❌ Error checking wallet balance:", balanceError);
+        }
+        
+        console.log("🚀 Executing transaction with signAndExecute...");
+        console.log("🔍 Transaction details:", {
+          userAddress,
+          transactionType: "registration"
+        });
+        
+        // Execute the transaction - let the wallet handle gas automatically
+        console.log("🔍 Final transaction check:", {
+          transactionType: typeof registerTx,
+          userAddress
+        });
+        
+                // Execute the transaction - let the Move contract handle everything
+        console.log("🚀 Executing transaction with signAndExecute...");
+        console.log("🔍 Transaction details:", {
+          userAddress,
+          transactionType: "registration",
+          eventFeeAmount,
+          paymentCoinId
+        });
+        
+        // Execute the transaction - let Enoki handle gas automatically
+        console.log("🚀 Executing transaction with Enoki...");
+        const result = await signAndExecute({ transaction: registerTx });
+        console.log("✅ Transaction executed successfully:", result);
+      } catch (txError) {
+        console.error("❌ Transaction execution failed:", txError);
+        console.error("❌ Error details:", {
+          message: txError instanceof Error ? txError.message : String(txError),
+          stack: txError instanceof Error ? txError.stack : undefined,
+          fullError: txError
+        });
+        throw txError; // Re-throw to be caught by the caller
+      }
 
       // 3. Extract pass_id from the PassGenerated event
       let pass_id: number | null = null;
 
       // Wait a moment for the transaction to be processed
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.log("⏳ Waiting for transaction to be indexed...");
+      await new Promise((resolve) => setTimeout(resolve, 3000));
 
       // Query recent transactions to find the PassGenerated event
+      console.log("🔍 Querying for PassGenerated events...");
       const { data: transactions } = await suiClient.queryTransactionBlocks({
         filter: {
           MoveFunction: {
@@ -84,14 +161,21 @@ export class IdentityAccessSDK {
           showEvents: true,
           showObjectChanges: true,
         },
-        limit: 10, // Get recent transactions
+        limit: 20, // Increased limit
       });
 
+      console.log("📋 Found transactions:", transactions.length);
+
       // Find the PassGenerated event for this specific user and event
+      console.log("🔍 Searching for PassGenerated events...");
       for (const txn of transactions) {
+        console.log("📋 Transaction:", txn.digest);
         if (txn.events) {
+          console.log("📋 Events in transaction:", txn.events.length);
           for (const event of txn.events) {
+            console.log("📋 Event type:", event.type);
             if (event.type?.includes("PassGenerated")) {
+              console.log("🎯 Found PassGenerated event:", event.parsedJson);
               const eventData = event.parsedJson as {
                 event_id: string;
                 wallet: string;
@@ -104,6 +188,7 @@ export class IdentityAccessSDK {
                 eventData.event_id === eventId &&
                 eventData.wallet === userAddress
               ) {
+                console.log("✅ Found matching PassGenerated event for user:", userAddress);
                 pass_id = eventData.pass_id;
                 break;
               }
@@ -113,7 +198,54 @@ export class IdentityAccessSDK {
       }
 
       if (!pass_id) {
-        return null;
+        console.error("❌ No PassGenerated event found for user:", userAddress, "and event:", eventId);
+        
+        // Fallback: Try to get pass_id from the transaction result directly
+        console.log("🔄 Trying fallback approach...");
+        try {
+          // Query all recent transactions for this user
+          const { data: userTransactions } = await suiClient.queryTransactionBlocks({
+            filter: {
+              FromAddress: userAddress,
+            },
+            options: {
+              showEffects: true,
+              showEvents: true,
+              showObjectChanges: true,
+            },
+            limit: 5,
+          });
+
+          console.log("📋 User transactions found:", userTransactions.length);
+          
+          for (const txn of userTransactions) {
+            if (txn.events) {
+              for (const event of txn.events) {
+                if (event.type?.includes("PassGenerated")) {
+                  const eventData = event.parsedJson as {
+                    event_id: string;
+                    wallet: string;
+                    pass_id: number;
+                    expires_at: number;
+                  };
+
+                  if (eventData && eventData.event_id === eventId) {
+                    console.log("✅ Found PassGenerated event in user transactions:", eventData);
+                    pass_id = eventData.pass_id;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        } catch (fallbackError) {
+          console.error("❌ Fallback approach also failed:", fallbackError);
+        }
+        
+        if (!pass_id) {
+          console.error("❌ Still no PassGenerated event found after fallback");
+          return null;
+        }
       }
 
       // 4. Generate the pass hash using the real pass_id
@@ -123,7 +255,7 @@ export class IdentityAccessSDK {
         userAddress
       );
 
-      // 5. Generate QR code data with short reference ID
+      // 5. Generate QR code data with short reference ID (restore original format)
       const qrData = {
         ref: `${eventId.slice(0, 8)}${pass_id}${userAddress.slice(0, 8)}`, // Short reference
         e: eventId,
@@ -131,6 +263,9 @@ export class IdentityAccessSDK {
         u: userAddress,
         t: Date.now(),
       };
+
+      console.log("🔐 Generated QR data (restored original format):", qrData);
+      console.log("📏 QR data size:", JSON.stringify(qrData).length, "bytes");
 
       return { qrData, passHash };
     } catch {
@@ -179,6 +314,7 @@ export class IdentityAccessSDK {
     paymentCoinId: string
   ): Transaction {
     const tx = new Transaction();
+    
     tx.moveCall({
       target: `${this.packageId}::identity_access::register_for_event`,
       arguments: [
@@ -187,10 +323,14 @@ export class IdentityAccessSDK {
         tx.object(organizerSubscriptionId), // organizer_subscription: &UserSubscription
         tx.object(organizerProfileId), // organizer_profile: &OrganizerProfile
         tx.object(treasuryId), // treasury: &mut PlatformTreasury
-        tx.object(paymentCoinId), // payment: Coin<SUI>
+        tx.object(paymentCoinId), // payment: Coin<SUI> - Move contract handles splitting
         tx.object(CLOCK_ID), // clock: &Clock
       ],
     });
+    
+    // Set gas budget for zkLogin compatibility
+    tx.setGasBudget(50000000); // 50,000,000 MIST = 0.05 SUI
+    
     return tx;
   }
 
@@ -214,6 +354,10 @@ export class IdentityAccessSDK {
         tx.object(CLOCK_ID), // clock: &Clock
       ],
     });
+    
+    // Set gas budget for zkLogin compatibility
+    tx.setGasBudget(50000000); // 50,000,000 MIST = 0.05 SUI
+    
     return tx;
   }
 
@@ -310,21 +454,73 @@ export class IdentityAccessSDK {
   }
 
   /**
-   * Check if user is registered for an event
+   * Check if user is registered for an event (using Move contract function)
    */
   async isRegistered(
     eventId: string,
     userAddress: string,
-    _registrationRegistryId: string
+    registrationRegistryId: string
   ): Promise<boolean> {
     try {
+      console.log("🔍 Checking registration via Move contract...", {
+        eventId,
+        userAddress,
+        registrationRegistryId,
+        packageId: this.packageId
+      });
+      
+      // Use the Move contract's is_registered function
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${this.packageId}::identity_access::is_registered`,
+        arguments: [
+          tx.pure.address(userAddress),
+          tx.pure.id(eventId),
+          tx.object(registrationRegistryId),
+        ],
+      });
+
+      const result = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: userAddress,
+      });
+
+      console.log("🔍 Contract call result:", {
+        hasResult: !!result,
+        hasResults: !!(result?.results),
+        resultsLength: result?.results?.length || 0,
+        firstResult: result?.results?.[0],
+        returnValues: result?.results?.[0]?.returnValues
+      });
+
+      if (result && result.results && result.results.length > 0) {
+        const returnVals = result.results[0].returnValues;
+        if (Array.isArray(returnVals) && returnVals.length > 0) {
+          const rawValue = returnVals[0];
+          const isRegistered = Array.isArray(rawValue) ? rawValue[0] : rawValue;
+          
+          console.log("📋 Contract registration check details:", {
+            rawReturnValue: rawValue,
+            parsedValue: isRegistered,
+            booleanResult: Boolean(isRegistered),
+            type: typeof isRegistered
+          });
+          
+          return Boolean(isRegistered);
+        }
+      }
+
+      console.log("❌ Contract check failed, falling back to event query...");
+      
+      // Fallback to event query method
       const registration = await this.getRegistrationStatus(
         eventId,
         userAddress,
-        _registrationRegistryId
+        registrationRegistryId
       );
       return registration !== null;
-    } catch {
+    } catch (error) {
+      console.error("❌ Registration check failed:", error);
       return false;
     }
   }

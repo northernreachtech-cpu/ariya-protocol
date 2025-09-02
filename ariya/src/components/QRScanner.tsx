@@ -83,7 +83,12 @@ const QRScanner = ({ isOpen, onClose, onScan, eventId }: QRScannerProps) => {
 
           try {
             const qrData = JSON.parse(decodedText);
-            console.log("Parsed QR data:", qrData);
+            console.log("📱 Parsed QR data:", {
+              ...qrData,
+              // Show original short format if present
+              format: qrData.e && qrData.p && qrData.u ? "original_short" : "other"
+            });
+            console.log("📏 Decoded QR data size:", decodedText.length, "bytes");
             handleScanResult(qrData);
           } catch (err) {
             console.error("QR parsing error:", err);

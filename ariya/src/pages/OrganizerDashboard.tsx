@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+
 import {
   Calendar,
   Users,
@@ -19,9 +19,7 @@ import {
   FileText,
   Upload,
   Clock,
-  XCircle,
-  Send,
-  Download,
+  
   X,
  
 } from "lucide-react";
@@ -40,6 +38,9 @@ import AirdropCreationModal from "../components/AirdropCreationModal";
 import AssigneeSelector from "../components/AssigneeSelector";
 // import AirdropManagement from "../components/AirdropManagement";
 import ErrorModal from "../components/ErrorModal";
+import DocumentFlowCard from "../components/DocumentFlowCard";
+import CreateDocumentFlowModal from "../components/CreateDocumentFlowModal";
+import SubmitDocumentModal from "../components/SubmitDocumentModal";
 
 import RatingStars from "../components/RatingStars";
 import QRScanner from "../components/QRScanner";
@@ -162,7 +163,6 @@ const EventDetailsModal = ({
           });
         }
       } catch (error) {
-        console.error('Error fetching assignee profile:', error);
         setAssigneeProfile({
           name: event.assignee.startsWith('0x') ? `User (${formatAddress(event.assignee)})` : event.assignee,
           x_username: '',
@@ -221,7 +221,7 @@ const EventDetailsModal = ({
       <div className="bg-card border border-border rounded-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
         {/* Header */}
         <div className="sticky top-0 bg-card border-b border-border p-6 z-10">
-          <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between">
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-foreground">{event.name}</h2>
               <div className="flex items-center gap-4 mt-2">
@@ -238,21 +238,21 @@ const EventDetailsModal = ({
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="h-5 w-5" />
-            </Button>
-          </div>
+          </Button>
         </div>
+      </div>
 
         {/* Content */}
         <div className="p-6 space-y-8">
           {/* Basic Information */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Event Details */}
             <div className="lg:col-span-2">
               <div className="bg-card-secondary rounded-lg p-6 border border-border">
                 <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                   <FileText className="h-5 w-5" />
                   Event Information
-                </h3>
+            </h3>
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-foreground-secondary">Description</label>
@@ -274,12 +274,12 @@ const EventDetailsModal = ({
                       </span>
                       <span className="text-foreground-secondary text-sm">
                         {event.is_child ? "Sub-Event" : "Main Event"}
-                      </span>
-                    </div>
+                    </span>
                   </div>
+            </div>
                 </div>
               </div>
-            </div>
+        </div>
 
             {/* Timing Information */}
             <div>
@@ -287,20 +287,20 @@ const EventDetailsModal = ({
                 <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                   <Clock className="h-5 w-5" />
                   Timing
-                </h3>
-                <div className="space-y-4">
-                  <div>
+            </h3>
+            <div className="space-y-4">
+                      <div>
                     <label className="text-sm font-medium text-foreground-secondary">Start Time</label>
                     <p className="text-foreground mt-1 bg-card p-2 rounded border border-border text-sm">
                       {formatDate(event.start_time)}
                     </p>
-                  </div>
+                      </div>
                   <div>
                     <label className="text-sm font-medium text-foreground-secondary">End Time</label>
                     <p className="text-foreground mt-1 bg-card p-2 rounded border border-border text-sm">
                       {formatDate(event.end_time)}
                     </p>
-                  </div>
+                    </div>
                   <div>
                     <label className="text-sm font-medium text-foreground-secondary">Duration</label>
                     <p className="text-foreground mt-1 bg-card p-2 rounded border border-border text-sm font-medium">
@@ -309,9 +309,9 @@ const EventDetailsModal = ({
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-
+                    </div>
+                  </div>
+                  
           {/* Capacity, Attendance & Financial */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Capacity & Attendance */}
@@ -350,7 +350,7 @@ const EventDetailsModal = ({
                   </div>
                 </div>
               </div>
-            </div>
+                  </div>
 
             {/* Financial Information */}
             <div className="bg-card-secondary rounded-lg p-6 border border-border">
@@ -365,13 +365,13 @@ const EventDetailsModal = ({
                       {((event.fee_amount || 0) / 1000000000).toFixed(2)}
                     </div>
                     <div className="text-sm text-foreground-secondary">Fee (SUI)</div>
-                  </div>
+                    </div>
                   <div className="bg-card p-4 rounded-lg border border-border text-center">
                     <div className="text-2xl font-bold text-green-600">
                       {(((event.fee_amount || 0) * (event.current_attendees || 0)) / 1000000000).toFixed(2)}
-                    </div>
-                    <div className="text-sm text-foreground-secondary">Revenue (SUI)</div>
                   </div>
+                    <div className="text-sm text-foreground-secondary">Revenue (SUI)</div>
+            </div>
                 </div>
                 <div className="bg-card p-3 rounded-lg border border-border">
                   <div className="text-sm text-foreground-secondary mb-1">Revenue Calculation</div>
@@ -380,8 +380,8 @@ const EventDetailsModal = ({
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+        </div>
+      </div>
 
           {/* Sponsors */}
           {event.sponsors.length > 0 && (
@@ -395,9 +395,9 @@ const EventDetailsModal = ({
                   <div key={index} className="bg-card p-4 rounded-lg border border-border text-center hover:bg-card-secondary transition-colors">
                     <div className="text-lg font-semibold text-foreground">{sponsor}</div>
                     <div className="text-xs text-foreground-muted mt-1">Sponsor #{index + 1}</div>
-                  </div>
-                ))}
               </div>
+                ))}
+            </div>
             </div>
           )}
 
@@ -411,17 +411,17 @@ const EventDetailsModal = ({
               <div className="bg-card p-4 rounded-lg border border-border text-center">
                 <div className="text-2xl font-bold text-blue-600">
                   {(event.sponsor_conditions?.min_attendees || 0).toLocaleString()}
-                </div>
+                  </div>
                 <div className="text-sm text-foreground-secondary">Min Attendees</div>
                 <div className="text-xs text-foreground-muted mt-1">Required for payout</div>
-              </div>
+                  </div>
               <div className="bg-card p-4 rounded-lg border border-border text-center">
                 <div className="text-2xl font-bold text-green-600">
                   {((event.sponsor_conditions?.min_completion_rate || 0) / 100).toFixed(1)}%
-                </div>
+                  </div>
                 <div className="text-sm text-foreground-secondary">Min Completion Rate</div>
                 <div className="text-xs text-foreground-muted mt-1">Event success threshold</div>
-              </div>
+                    </div>
               <div className="bg-card p-4 rounded-lg border border-border text-center">
                 <div className="text-2xl font-bold text-yellow-600">
                   {((event.sponsor_conditions?.min_avg_rating || 0) / 100).toFixed(1)}/5
@@ -429,8 +429,8 @@ const EventDetailsModal = ({
                 <div className="text-sm text-foreground-secondary">Min Avg Rating</div>
                 <div className="text-xs text-foreground-muted mt-1">Quality benchmark</div>
               </div>
-            </div>
-          </div>
+                </div>
+              </div>
 
           {/* Custom Benchmarks */}
           {event.sponsor_conditions?.custom_benchmarks?.length > 0 && (
@@ -459,8 +459,8 @@ const EventDetailsModal = ({
                         {benchmark.comparison_type === 0 ? "≥ (Greater than or equal)" : 
                          benchmark.comparison_type === 1 ? "≤ (Less than or equal)" : 
                          "== (Equal to)"}
-                      </span>
-                    </div>
+                          </span>
+                        </div>
                   </div>
                 ))}
               </div>
@@ -484,12 +484,12 @@ const EventDetailsModal = ({
                         <div className="flex items-center gap-2">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           <span className="text-foreground-muted">Loading assignee info...</span>
-                        </div>
+                      </div>
                       ) : assigneeProfile ? (
                         <div className="space-y-1">
                           <div className="font-medium text-foreground">
                             {event.assignee === "self" ? "You (Event Organizer)" : assigneeProfile.name}
-                          </div>
+                    </div>
                           <div className="text-sm text-foreground-secondary">
                             {event.assignee === "self" ? (
                               "Managing this event yourself"
@@ -498,7 +498,7 @@ const EventDetailsModal = ({
                                 {event.assignee.startsWith('0x') && (
                                   <div className="font-mono text-xs text-foreground-muted">
                                     {formatAddress(event.assignee)}
-                                  </div>
+                </div>
                                 )}
                                 <div className="flex items-center gap-2">
                                   {assigneeProfile.x_username && (
@@ -507,20 +507,20 @@ const EventDetailsModal = ({
                                   {assigneeProfile.telegram_username && (
                                     <span className="text-blue-500 text-xs">t.me/{assigneeProfile.telegram_username.replace('t.me/', '')}</span>
                                   )}
-                                </div>
-                              </div>
+              </div>
+            </div>
                             )}
-                          </div>
-                        </div>
+              </div>
+              </div>
                       ) : (
                         <div className="space-y-1">
                           <div className="font-medium text-foreground">
                             {event.assignee === "self" ? "You (Event Organizer)" : event.assignee}
-                          </div>
+              </div>
                           {event.assignee !== "self" && (
                             <div className="text-sm text-foreground-secondary font-mono">
                               {formatAddress(event.assignee)}
-                            </div>
+            </div>
                           )}
                         </div>
                       )}
@@ -532,8 +532,8 @@ const EventDetailsModal = ({
                       className="ml-2 flex-shrink-0"
                     >
                       Edit
-                    </Button>
-                  </div>
+              </Button>
+            </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-foreground-secondary">Event Type</label>
@@ -551,8 +551,8 @@ const EventDetailsModal = ({
                     <p className="text-foreground mt-1 font-mono text-xs bg-card p-2 rounded border border-border break-all">
                       {event.parent_id}
                     </p>
-                  </div>
-                )}
+        </div>
+      )}
                 <div>
                   <label className="text-sm font-medium text-foreground-secondary">Event ID</label>
                   <p className="text-foreground mt-1 font-mono text-xs bg-card p-2 rounded border border-border break-all">
@@ -568,8 +568,8 @@ const EventDetailsModal = ({
                 <Upload className="h-5 w-5" />
                 Media & Metadata
               </h3>
-              <div className="space-y-4">
-                <div>
+            <div className="space-y-4">
+              <div>
                   <label className="text-sm font-medium text-foreground-secondary">Metadata URI</label>
                   <div className="mt-1">
                     {event.metadata_uri ? (
@@ -577,14 +577,14 @@ const EventDetailsModal = ({
                         <p className="text-foreground text-xs break-all">
                           {event.metadata_uri}
                         </p>
-                      </div>
+              </div>
                     ) : (
                       <p className="text-foreground-muted text-sm">No metadata provided</p>
                     )}
-                  </div>
+              </div>
                 </div>
                 {event.metadata_uri && (
-                  <div>
+              <div>
                     <label className="text-sm font-medium text-foreground-secondary">Banner Image</label>
                     <div className="mt-2">
                       <img 
@@ -594,9 +594,9 @@ const EventDetailsModal = ({
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
                         }}
-                      />
-                    </div>
-                  </div>
+                />
+              </div>
+                </div>
                 )}
               </div>
             </div>
@@ -607,12 +607,12 @@ const EventDetailsModal = ({
         <div className="flex justify-end gap-3 p-6 border-t border-border">
           <Button variant="outline" onClick={onClose}>
             Close
-          </Button>
+              </Button>
           <Button onClick={() => window.open(`/event/${event.id}`, '_blank')}>
             View Public Page
-          </Button>
+              </Button>
+            </div>
         </div>
-      </div>
     </div>
   );
 };
@@ -699,384 +699,7 @@ const OrganizerEventSkeleton = () => (
   </Card>
 );
 
-// Event-specific Document Flow Interface Component
-const EventDocFlowInterface = ({ event }: { event: Event }) => {
-  const [selectedDocument, setSelectedDocument] = useState<any>(null);
-  const [showSetupModal, setShowSetupModal] = useState(false);
-  const [showSubmitModal, setShowSubmitModal] = useState(false);
 
-  // Mock data for this specific event
-  const mockEventDocFlow = {
-    eventId: event.id,
-    eventName: event.name,
-    organizer: "0x1234...5678",
-    approvalChain: [
-      { address: "0x1111...", name: "Finance Manager", level: 1, role: "Budget Review" },
-      { address: "0x2222...", name: "Department Head", level: 2, role: "Strategic Approval" },
-      { address: "0x3333...", name: "CEO", level: 3, role: "Final Approval" },
-    ],
-    documents: [
-      {
-        id: "doc_1",
-        title: "Event Budget Proposal",
-        description: "Detailed budget breakdown for venue, catering, and marketing",
-        type: "pdf",
-        status: "approved",
-        currentLevel: 3,
-        submittedAt: "2024-01-15",
-        approvedAt: "2024-01-18",
-                    fundingAmount: "50,000 Sui",
-        approvalHistory: [
-          { reviewer: "Finance Manager", action: "approved", comments: "Budget looks reasonable", timestamp: "2024-01-16" },
-          { reviewer: "Department Head", action: "approved", comments: "Strategic alignment confirmed", timestamp: "2024-01-17" },
-          { reviewer: "CEO", action: "approved", comments: "Final approval granted", timestamp: "2024-01-18" },
-        ]
-      },
-      {
-        id: "doc_2",
-        title: "Marketing Strategy Document",
-        description: "Comprehensive marketing plan and budget allocation",
-        type: "docx",
-        status: "in_review",
-        currentLevel: 2,
-        submittedAt: "2024-01-20",
-                    fundingAmount: "25,000 Sui",
-        approvalHistory: [
-          { reviewer: "Finance Manager", action: "approved", comments: "Marketing budget approved", timestamp: "2024-01-21" },
-          { reviewer: "Department Head", action: "pending", comments: "", timestamp: "" },
-        ]
-      },
-      {
-        id: "doc_3",
-        title: "Venue Contract",
-        description: "Venue booking agreement and payment terms",
-        type: "pdf",
-        status: "pending",
-        currentLevel: 1,
-        submittedAt: "2024-01-22",
-                    fundingAmount: "30,000 Sui",
-        approvalHistory: [
-          { reviewer: "Finance Manager", action: "pending", comments: "", timestamp: "" },
-        ]
-      }
-    ]
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "approved": return "bg-green-100 border-green-300 text-green-700";
-      case "in_review": return "bg-blue-100 border-blue-300 text-blue-700";
-      case "pending": return "bg-yellow-100 border-yellow-300 text-yellow-700";
-      case "rejected": return "bg-red-100 border-red-300 text-red-700";
-      default: return "bg-gray-100 border-gray-300 text-gray-700";
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "approved": return <CheckCircle className="h-4 w-4" />;
-      case "in_review": return <Clock className="h-4 w-4" />;
-      case "pending": return <Clock className="h-4 w-4" />;
-      case "rejected": return <XCircle className="h-4 w-4" />;
-      default: return <Clock className="h-4 w-4" />;
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Header Actions */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => setShowSetupModal(true)}>
-            <Users className="h-4 w-4 mr-2" />
-            Setup Approval Chain
-          </Button>
-          <Button onClick={() => setShowSubmitModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Submit Document
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Approval Chain */}
-        <div className="lg:col-span-1">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
-              <Users className="h-5 w-5 mr-2" />
-              Approval Chain
-            </h3>
-            <div className="space-y-3">
-              {mockEventDocFlow.approvalChain.map((participant, index) => (
-                <motion.div
-                  key={participant.address}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-center justify-between p-3 bg-card-secondary rounded-lg border border-border"
-                >
-                  <div>
-                    <p className="font-medium text-foreground">{participant.name}</p>
-                    <p className="text-sm text-foreground-secondary">{participant.role}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
-                      Level {participant.level}
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        {/* Documents List */}
-        <div className="lg:col-span-2">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
-              <FileText className="h-5 w-5 mr-2" />
-              Submitted Documents
-            </h3>
-            <div className="space-y-4">
-              {mockEventDocFlow.documents.map((doc, index) => (
-                <motion.div
-                  key={doc.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
-                    selectedDocument?.id === doc.id 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-border bg-card-secondary'
-                  }`}
-                  onClick={() => setSelectedDocument(doc)}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="text-2xl">📄</div>
-                      <div>
-                        <h4 className="font-semibold text-foreground">{doc.title}</h4>
-                        <p className="text-sm text-foreground-secondary">{doc.description}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(doc.status)}`}>
-                        {getStatusIcon(doc.status)}
-                        <span className="ml-1 capitalize">{doc.status.replace('_', ' ')}</span>
-                      </span>
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 border-green-300 text-green-700">
-                        <DollarSign className="h-3 w-3 mr-1" />
-                        {doc.fundingAmount}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm text-foreground-secondary">
-                    <span>Submitted: {doc.submittedAt}</span>
-                    <span>Level {doc.currentLevel} of {mockEventDocFlow.approvalChain.length}</span>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between text-xs text-foreground-secondary mb-1">
-                      <span>Approval Progress</span>
-                      <span>{Math.round((doc.currentLevel / mockEventDocFlow.approvalChain.length) * 100)}%</span>
-                    </div>
-                    <div className="w-full bg-border rounded-full h-2">
-                      <motion.div
-                        className="h-full bg-gradient-to-r from-primary to-secondary rounded-full"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(doc.currentLevel / mockEventDocFlow.approvalChain.length) * 100}%` }}
-                        transition={{ delay: 0.5, duration: 1 }}
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* Document Details */}
-      {selectedDocument && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-6"
-        >
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-foreground">
-                {selectedDocument.title}
-              </h3>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm">
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Document
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Document Info */}
-              <div>
-                <h4 className="font-semibold text-foreground mb-3">Document Information</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-foreground-secondary">Status:</span>
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(selectedDocument.status)}`}>
-                      {getStatusIcon(selectedDocument.status)}
-                      <span className="ml-1 capitalize">{selectedDocument.status.replace('_', ' ')}</span>
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-foreground-secondary">Funding Amount:</span>
-                    <span className="font-medium text-foreground">{selectedDocument.fundingAmount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-foreground-secondary">Submitted:</span>
-                    <span className="text-foreground">{selectedDocument.submittedAt}</span>
-                  </div>
-                  {selectedDocument.approvedAt && (
-                    <div className="flex justify-between">
-                      <span className="text-foreground-secondary">Approved:</span>
-                      <span className="text-foreground">{selectedDocument.approvedAt}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Approval History */}
-              <div>
-                <h4 className="font-semibold text-foreground mb-3">Approval History</h4>
-                <div className="space-y-3">
-                  {selectedDocument.approvalHistory.map((record: { reviewer: string; action: string; comments?: string; timestamp?: string }, index: number) => (
-                    <div key={index} className="flex items-start gap-3 p-3 bg-card-secondary rounded-lg">
-                      <div className={`w-2 h-2 rounded-full mt-2 ${
-                        record.action === 'approved' ? 'bg-green-500' : 
-                        record.action === 'rejected' ? 'bg-red-500' : 'bg-yellow-500'
-                      }`} />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-foreground">{record.reviewer}</span>
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            record.action === 'approved' ? 'bg-green-100 text-green-700' :
-                            record.action === 'rejected' ? 'bg-red-100 text-red-700' :
-                            'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {record.action}
-                          </span>
-                        </div>
-                        {record.comments && (
-                          <p className="text-sm text-foreground-secondary">{record.comments}</p>
-                        )}
-                        {record.timestamp && (
-                          <p className="text-xs text-foreground-muted mt-1">{record.timestamp}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* Setup Modal */}
-      {showSetupModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Setup Approval Chain</h3>
-            <p className="text-foreground-secondary mb-4">
-              Configure the approval hierarchy for this event's documents.
-            </p>
-            <div className="space-y-3">
-              <div className="p-3 bg-card-secondary rounded-lg">
-                <p className="font-medium">Finance Manager</p>
-                <p className="text-sm text-foreground-secondary">Level 1 - Budget Review</p>
-              </div>
-              <div className="p-3 bg-card-secondary rounded-lg">
-                <p className="font-medium">Department Head</p>
-                <p className="text-sm text-foreground-secondary">Level 2 - Strategic Approval</p>
-              </div>
-              <div className="p-3 bg-card-secondary rounded-lg">
-                <p className="font-medium">CEO</p>
-                <p className="text-sm text-foreground-secondary">Level 3 - Final Approval</p>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <Button variant="outline" onClick={() => setShowSetupModal(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => setShowSetupModal(false)}>
-                <Send className="h-4 w-4 mr-2" />
-                Deploy Chain
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Submit Modal */}
-      {showSubmitModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Submit Document</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Document Title</label>
-                <input
-                  type="text"
-                  placeholder="Enter document title"
-                  className="w-full px-3 py-2 bg-card border border-border rounded-lg text-foreground"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Description</label>
-                <textarea
-                  placeholder="Describe the document"
-                  rows={3}
-                  className="w-full px-3 py-2 bg-card border border-border rounded-lg text-foreground"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Funding Amount (Sui)</label>
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  className="w-full px-3 py-2 bg-card border border-border rounded-lg text-foreground"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Upload Document</label>
-                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                  <Upload className="h-8 w-8 mx-auto text-foreground-muted mb-2" />
-                  <p className="text-foreground-secondary">Click to upload or drag and drop</p>
-                  <p className="text-xs text-foreground-muted">PDF, DOCX, XLSX up to 10MB</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <Button variant="outline" onClick={() => setShowSubmitModal(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => setShowSubmitModal(false)}>
-                <Upload className="h-4 w-4 mr-2" />
-                Submit Document
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const OrganizerDashboard = () => {
   useScrollToTop();
@@ -1092,6 +715,7 @@ const OrganizerDashboard = () => {
   const airdropRegistryId = useNetworkVariable("airdropRegistryId");
   // const ratingRegistryId = useNetworkVariable("ratingRegistryId");
   const profileRegistryId = useNetworkVariable("profileRegistryId");
+  const documentFlowRegistryId = useNetworkVariable("documentFlowRegistryId");
 
   const [loading, setLoading] = useState(true);
   const [activatingEvent, setActivatingEvent] = useState<string | null>(null);
@@ -1131,6 +755,7 @@ const OrganizerDashboard = () => {
   const [checkingCommunities, setCheckingCommunities] = useState<{
     [eventId: string]: boolean;
   }>({});
+  const [checkingInUser, setCheckingInUser] = useState(false);
   const [eventsWithNFTEnabled, setEventsWithNFTEnabled] = useState<{
     [eventId: string]: boolean;
   }>({});
@@ -1143,6 +768,17 @@ const OrganizerDashboard = () => {
   // Document Flow state
   const [showDocFlowModal, setShowDocFlowModal] = useState(false);
   const [selectedEventForDocFlow, setSelectedEventForDocFlow] = useState<Event | null>(null);
+  const [showCreateFlowModal, setShowCreateFlowModal] = useState(false);
+  const [showSubmitDocumentModal, setShowSubmitDocumentModal] = useState(false);
+  const [creatingDocumentFlow, setCreatingDocumentFlow] = useState(false);
+  const [documentFlowData, setDocumentFlowData] = useState<{
+    [eventId: string]: {
+      flow: any;
+      submissions: any[];
+      isLoading: boolean;
+    };
+  }>({});
+  const [documentFlowStatus, setDocumentFlowStatus] = useState<{ [eventId: string]: boolean }>({});
 
   // Event Details Modal state
   const [showEventDetailsModal, setShowEventDetailsModal] = useState(false);
@@ -1254,30 +890,90 @@ const OrganizerDashboard = () => {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleQRScan = async (qrData: any) => {
+    console.log("🔍 Starting check-in process...", {
+      qrData,
+      qrDataKeys: Object.keys(qrData),
+      selectedEventId,
+      currentAccount: currentAccount?.address,
+      attendanceRegistryId,
+      registrationRegistryId
+    });
+    
+    setCheckingInUser(true);
+    
     try {
       let userAddress = "";
 
-      // Check if this is the new QR format with pass_id
-      if (qrData.pass_id && qrData.pass_hash === null && qrData.user_address) {
-        userAddress = qrData.user_address;
+      // Check if this is the original short format (e, p, u) or new format
+      if (qrData.p && qrData.u) {
+        console.log("🔍 QR Code analysis (original short format):");
+        console.log("  - e (event_id):", qrData.e);
+        console.log("  - p (pass_id):", qrData.p);
+        console.log("  - u (user_address):", qrData.u);
+        console.log("  - ref:", qrData.ref);
+        
+        userAddress = qrData.u;
+        
+        // First, verify the user is registered for this event
+        console.log("🔍 Checking if user is registered...");
+        const isRegistered = await sdk.identityAccess.isRegistered(
+          selectedEventId!,
+          qrData.u, // Use u (user_address) from short format
+          registrationRegistryId
+        );
+        console.log("📋 Registration status:", isRegistered);
+        
+        if (!isRegistered) {
+          console.log("❌ User not registered for event");
+          alert("User is not registered for this event. Please register first.");
+          return;
+        }
 
-        // Use the new check-in method that generates pass hash from pass_id
+        // Get the registration details to see the stored pass hash
+        console.log("🔍 Getting registration details...");
+        try {
+          const registration = await sdk.identityAccess.getRegistrationStatus(
+            selectedEventId!,
+            qrData.u, // Use u (user_address) from short format
+            registrationRegistryId
+          );
+          console.log("📋 Registration details:", registration);
+        } catch (error) {
+          console.log("⚠️ Could not get registration details:", error);
+        }
+
+        // Use pass_id from the original short format to generate pass hash
+        console.log("📱 Using pass_id from original short format");
         const tx = sdk.attendanceVerification.checkInAttendeeWithPassId(
           selectedEventId!,
-          qrData.user_address,
-          parseInt(qrData.pass_id),
+          qrData.u, // Use u (user_address)
+          parseInt(qrData.p), // Use p (pass_id)
           attendanceRegistryId,
           registrationRegistryId
         );
 
-        await signAndExecute({
+        console.log("🚀 Executing check-in transaction...");
+        console.log("👤 Current account:", currentAccount?.address);
+        console.log("👤 QR User address:", qrData.u);
+        console.log("🔐 Transaction gas budget:", tx.getData().gasData);
+        console.log("🔍 Transaction details:", {
+          eventId: selectedEventId,
+          userAddress: qrData.u,
+          passId: qrData.p,
+          attendanceRegistryId,
+          registrationRegistryId
+        });
+        
+        const result = await signAndExecute({
           transaction: tx,
         });
+        console.log("✅ Check-in transaction successful:", result);
 
         alert(
-          `Successfully checked in ${qrData.user_address}. PoA capability transferred.`
+          `Successfully checked in ${qrData.u}. PoA capability transferred.`
         );
       } else {
+        console.log("📱 Using legacy QR format, validating...");
         // Fallback to old method for backward compatibility
         // Validate QR code
         
@@ -1287,7 +983,10 @@ const OrganizerDashboard = () => {
           selectedEventId!
         );
 
+        console.log("🔍 QR validation result:", validation);
+
         if (!validation.success) {
+          console.log("❌ QR validation failed:", validation.message);
           alert(validation.message);
           return;
         }
@@ -1304,9 +1003,14 @@ const OrganizerDashboard = () => {
           qrData as any
         );
 
-        await signAndExecute({
+        console.log("🚀 Executing check-in transaction (legacy)...");
+        console.log("👤 Current account:", currentAccount?.address);
+        console.log("🔐 Transaction gas budget:", tx.getData().gasData);
+        
+        const result = await signAndExecute({
           transaction: tx,
         });
+        console.log("✅ Check-in transaction successful:", result);
 
         alert(
           `Successfully checked in ${validation.attendeeAddress}. PoA capability transferred.`
@@ -1316,10 +1020,7 @@ const OrganizerDashboard = () => {
       // Verify capability transfer after successful check-in
       setTimeout(async () => {
         try {
-          console.log("=== VERIFYING CAPABILITY TRANSFER ===");
-          console.log("User address:", userAddress);
-          console.log("Event ID:", selectedEventId);
-
+          console.log("🔍 Verifying capability transfer...");
           const { data: objects } = await suiClient.getOwnedObjects({
             owner: userAddress,
             filter: {
@@ -1328,10 +1029,7 @@ const OrganizerDashboard = () => {
             options: { showContent: true },
           });
 
-          console.log(
-            "Found MintPoACapability objects for user:",
-            objects.length
-          );
+          console.log("📦 Found capability objects:", objects.length);
 
           for (const obj of objects) {
             const content = obj.data?.content;
@@ -1341,25 +1039,30 @@ const OrganizerDashboard = () => {
               "fields" in content
             ) {
               const fields = (content as { fields: { event_id?: string } }).fields;
-              console.log("Capability object:", fields);
               if (fields && fields.event_id === selectedEventId) {
-                console.log(
-                  "✅ SUCCESS: User has MintPoACapability for this event!"
-                );
+                console.log("✅ Capability transfer verified for event:", selectedEventId);
                 break;
               }
             }
           }
-          console.log("=== CAPABILITY VERIFICATION END ===");
         } catch (error) {
-          console.error("Error verifying capability:", error);
+          console.log("⚠️ Error verifying capability transfer:", error);
         }
       }, 3000);
 
       // Reload events to update attendee count
+      console.log("🔄 Reloading organizer data...");
       await loadOrganizerData();
-    } catch {
+    } catch (error) {
+      console.error("❌ Check-in failed:", error);
+      console.error("❌ Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        fullError: error
+      });
       alert("Failed to check in attendee. Please try again.");
+    } finally {
+      setCheckingInUser(false);
     }
   };
 
@@ -1419,13 +1122,6 @@ const OrganizerDashboard = () => {
   };
 
   const handleCompleteEvent = (event: Event) => {
-    // Log all relevant IDs and event object for confirmation
-    console.log("Selected event for completion:", {
-      eventId: event.id,
-      eventRegistryId,
-      organizerProfileId,
-      eventObject: event,
-    });
     setEventToComplete(event);
     setShowCompleteModal(true);
   };
@@ -1459,11 +1155,6 @@ const OrganizerDashboard = () => {
         eventRegistryId,
         organizerProfileId
       );
-      console.log("Completing event with:", {
-        eventId: eventToComplete.id,
-        eventRegistryId,
-        organizerProfileId,
-      });
       await signAndExecute({ transaction: tx });
       setSuccessMessage("Event marked as completed!");
       setShowSuccessModal(true);
@@ -1503,10 +1194,6 @@ const OrganizerDashboard = () => {
         eventToDelete.id,
         eventRegistryId
       );
-      console.log("Deleting event:", {
-        eventId: eventToDelete.id,
-        eventRegistryId,
-      });
       await signAndExecute({ transaction: tx });
       setSuccessMessage("Event deleted successfully!");
       setShowSuccessModal(true);
@@ -1553,11 +1240,6 @@ const OrganizerDashboard = () => {
         newAssignee.trim(),
         eventRegistryId
       );
-      console.log("Updating assignee:", {
-        eventId: eventToUpdateAssignee.id,
-        newAssignee: newAssignee.trim(),
-        eventRegistryId,
-      });
       await signAndExecute({ transaction: tx });
       setSuccessMessage("Event assignee updated successfully!");
       setShowSuccessModal(true);
@@ -1599,7 +1281,6 @@ const OrganizerDashboard = () => {
         [eventId]: communities.length > 0 ? communities[0] : null,
       }));
     } catch (e) {
-      console.error("Error checking event community:", e);
       setEventCommunities((prev) => ({ ...prev, [eventId]: null }));
     } finally {
       setCheckingCommunities((prev) => ({ ...prev, [eventId]: false }));
@@ -1636,7 +1317,6 @@ const OrganizerDashboard = () => {
         setSubEvents(prev => ({ ...prev, [parentEventId]: [] }));
       }
     } catch (error) {
-      console.error("Error loading sub-events:", error);
       setSubEvents(prev => ({ ...prev, [parentEventId]: [] }));
     } finally {
       setLoadingSubEvents(prev => ({ ...prev, [parentEventId]: false }));
@@ -1773,9 +1453,269 @@ const OrganizerDashboard = () => {
     setShowAirdropModal(true);
   };
 
+  const loadDocumentFlowData = async (eventId: string) => {
+    console.log("🔄 Loading document flow data for event:", eventId);
+    
+    if (!documentFlowRegistryId) {
+      console.error("❌ No document flow registry ID available");
+      return;
+    }
+
+    console.log("🏛️ Document flow registry ID:", documentFlowRegistryId);
+
+    setDocumentFlowData(prev => ({
+      ...prev,
+      [eventId]: { ...prev[eventId], isLoading: true }
+    }));
+
+    try {
+      console.log("📡 Fetching document flow and submissions...");
+      const [flow, submissions] = await Promise.all([
+        sdk.documentFlow.getDocumentFlow(eventId),
+        sdk.documentFlow.getDocumentSubmissions(eventId)
+      ]);
+
+      console.log("📋 Document flow result:", {
+        flow: flow ? "Found" : "Not found",
+        flowId: flow?.id,
+        submissionsCount: submissions?.length || 0
+      });
+
+      setDocumentFlowData(prev => ({
+        ...prev,
+        [eventId]: {
+          flow,
+          submissions: submissions || [],
+          isLoading: false
+        }
+      }));
+
+      // Update document flow status
+      const hasFlow = flow !== null;
+      console.log("✅ Document flow status updated:", { eventId, hasFlow });
+      setDocumentFlowStatus(prev => ({
+        ...prev,
+        [eventId]: hasFlow
+      }));
+    } catch (error) {
+      console.error("❌ Error loading document flow data:", error);
+      setDocumentFlowData(prev => ({
+        ...prev,
+        [eventId]: {
+          flow: null,
+          submissions: [],
+          isLoading: false
+        }
+      }));
+      
+      // Update document flow status
+      setDocumentFlowStatus(prev => ({
+        ...prev,
+        [eventId]: false
+      }));
+    }
+  };
+
+  const checkDocumentFlowStatus = async (eventIds: string[]) => {
+    console.log("🔍 Checking document flow status for events:", eventIds);
+    
+    if (!documentFlowRegistryId) {
+      console.error("❌ No document flow registry ID available for status check");
+      return;
+    }
+
+    try {
+      console.log("📡 Fetching document flow status...");
+      const status = await sdk.documentFlow.getDocumentFlowStatus(eventIds);
+      console.log("📋 Document flow status results:", status);
+      setDocumentFlowStatus(prev => ({ ...prev, ...status }));
+    } catch (error) {
+      console.error("❌ Error checking document flow status:", error);
+    }
+  };
+
   const handleOpenDocFlow = (event: Event) => {
+    console.log("🚀 Opening document flow for event:", {
+      eventId: event.id,
+      eventName: event.name,
+      hasExistingData: !!documentFlowData[event.id]
+    });
+    
     setSelectedEventForDocFlow(event);
     setShowDocFlowModal(true);
+    
+    // Load document flow data if not already loaded
+    if (!documentFlowData[event.id]) {
+      console.log("📡 Loading document flow data for event:", event.id);
+      loadDocumentFlowData(event.id);
+    } else {
+      console.log("✅ Using existing document flow data for event:", event.id);
+    }
+  };
+
+  const handleCreateDocumentFlow = async (participants: any[]) => {
+    if (!selectedEventForDocFlow || !documentFlowRegistryId || !currentAccount) {
+      console.error("❌ Missing required data for document flow creation:", {
+        selectedEventForDocFlow: !!selectedEventForDocFlow,
+        documentFlowRegistryId: !!documentFlowRegistryId,
+        currentAccount: !!currentAccount,
+        eventId: selectedEventForDocFlow?.id,
+        registryId: documentFlowRegistryId,
+        userAddress: currentAccount?.address
+      });
+      return;
+    }
+
+    console.log("🚀 Starting document flow creation process...");
+    console.log("📋 Event details:", {
+      eventId: selectedEventForDocFlow.id,
+      eventName: selectedEventForDocFlow.name,
+      organizer: selectedEventForDocFlow.organizer,
+      assignee: selectedEventForDocFlow.assignee
+    });
+    console.log("🔍 Authorization check:", {
+      userAddress: currentAccount.address,
+      eventOrganizer: selectedEventForDocFlow.organizer,
+      eventAssignee: selectedEventForDocFlow.assignee,
+      isOrganizer: currentAccount.address === selectedEventForDocFlow.organizer,
+      isAssignee: currentAccount.address === selectedEventForDocFlow.assignee || selectedEventForDocFlow.assignee === "self"
+    });
+    console.log("👥 Participants:", participants);
+    console.log("🏛️ Registry ID:", documentFlowRegistryId);
+    console.log("👤 User address:", currentAccount.address);
+
+    setCreatingDocumentFlow(true);
+    try {
+      console.log("📦 Creating transaction...");
+      const tx = sdk.documentFlow.createDocumentFlow(
+        selectedEventForDocFlow.id,
+        participants,
+        "0x6", // CLOCK_ID
+        documentFlowRegistryId,
+        profileRegistryId
+      );
+
+      console.log("✅ Transaction created successfully");
+      console.log("🔍 Transaction details:", {
+        packageId: sdk.documentFlow.getPackageId(),
+        target: `${sdk.documentFlow.getPackageId()}::document_flow::create_document_flow`,
+        arguments: [
+          selectedEventForDocFlow.id,
+          participants.length,
+          "0x6",
+          documentFlowRegistryId,
+          profileRegistryId
+        ]
+      });
+
+      console.log("⏳ Executing transaction...");
+      const result = await signAndExecute({ transaction: tx });
+      
+      console.log("✅ Transaction executed successfully:", {
+        digest: result.digest,
+        effects: result.effects
+      });
+
+      console.log("📋 Full transaction result:", result);
+      
+      // Check if there are any events in the transaction
+      console.log("📋 Transaction result keys:", Object.keys(result));
+      
+      // Try to access events and object changes if they exist
+      const events = (result as any).events;
+      const objectChanges = (result as any).objectChanges;
+      
+      if (events) {
+        console.log("📋 Transaction events:", events.length);
+        events.forEach((event: any, index: number) => {
+          console.log(`📋 Event ${index + 1}:`, {
+            type: event.type,
+            parsedJson: event.parsedJson
+          });
+        });
+      } else {
+        console.log("❌ No events found in transaction result");
+      }
+      
+      // Check object changes
+      if (objectChanges) {
+        console.log("📋 Object changes:", objectChanges.length);
+        objectChanges.forEach((change: any, index: number) => {
+          console.log(`📋 Change ${index + 1}:`, {
+            type: change.type,
+            objectType: change.objectType,
+            objectId: change.objectId
+          });
+        });
+      } else {
+        console.log("❌ No object changes found in transaction result");
+      }
+      
+      // Small delay to ensure blockchain state is updated
+      console.log("⏳ Waiting 5 seconds for blockchain state update...");
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      console.log("🔄 Reloading document flow data...");
+      await loadDocumentFlowData(selectedEventForDocFlow.id);
+      
+      console.log("✅ Updating document flow status...");
+      setDocumentFlowStatus(prev => ({
+        ...prev,
+        [selectedEventForDocFlow.id]: true
+      }));
+      
+      console.log("🎉 Document flow creation completed successfully!");
+      setShowCreateFlowModal(false);
+    } catch (error) {
+      console.error("❌ Document flow creation failed:", error);
+      console.error("❌ Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        fullError: error
+      });
+      alert("Failed to create document flow. Please try again.");
+    } finally {
+      console.log("🏁 Document flow creation process finished");
+      setCreatingDocumentFlow(false);
+    }
+  };
+
+  const handleSubmitDocument = async (documentData: {
+    title: string;
+    description: string;
+    documentUri: string;
+    documentType: string;
+  }) => {
+    if (!selectedEventForDocFlow || !documentFlowRegistryId || !currentAccount) return;
+
+    // Get the flow ID from the document flow data
+    const flowData = documentFlowData[selectedEventForDocFlow.id];
+    if (!flowData?.flow?.id) {
+      alert("Please create a document flow first before submitting documents.");
+      return;
+    }
+
+    try {
+      const tx = sdk.documentFlow.submitDocument(
+        flowData.flow.id, // flowId
+        selectedEventForDocFlow.id, // eventId
+        documentData.title,
+        documentData.description,
+        documentData.documentUri,
+        documentData.documentType,
+        "0x6", // CLOCK_ID
+        documentFlowRegistryId,
+        profileRegistryId
+      );
+
+      await signAndExecute({ transaction: tx });
+      
+      // Reload document flow data
+      await loadDocumentFlowData(selectedEventForDocFlow.id);
+      setShowSubmitDocumentModal(false);
+    } catch (error) {
+      alert("Failed to submit document. Please try again.");
+    }
   };
 
   const handleCreateSubEvent = (parentEvent: Event) => {
@@ -1839,7 +1779,6 @@ const OrganizerDashboard = () => {
         }
       }
     } catch (error) {
-      console.error("Error checking eligible recipients:", error);
       // Set default values if query fails
       setEventEligibleRecipients((prev) => ({
         ...prev,
@@ -1904,7 +1843,6 @@ const OrganizerDashboard = () => {
       await loadOrganizerData();
     } catch (error: unknown) {
       const err = error as { message?: string };
-      console.error("Failed to create airdrop:", error);
       setErrorMessage(err.message || "Failed to create airdrop");
       setErrorDetails(error as Error);
       setErrorRetryAction(() => () => handleAirdropSubmit(config, amount));
@@ -2010,40 +1948,21 @@ const OrganizerDashboard = () => {
       const parentEvents: Event[] = [];
       const childEventsMap: { [parentId: string]: Event[] } = {};
 
-      console.log("🔍 === SUB-EVENTS DEBUGGING ===");
-      console.log("📋 Total events loaded:", transformedEvents.length);
-
       // First, separate parent and child events
       transformedEvents.forEach(event => {
-        console.log(`📋 Event: ${event.name} (ID: ${event.id})`);
-        console.log(`   - is_child: ${event.is_child}`);
-        console.log(`   - parent_id: "${event.parent_id}" (length: ${event.parent_id.length})`);
-        console.log(`   - parent_id type: ${typeof event.parent_id}`);
-        
         if (event.is_child) {
           // This is a child event, group it by parent_id
           const parentId = event.parent_id;
-          console.log(`   ✅ This is a CHILD event, parent_id: ${parentId}`);
           
           if (!childEventsMap[parentId]) {
             childEventsMap[parentId] = [];
           }
           childEventsMap[parentId].push(event);
-          console.log(`   📦 Added to childEventsMap[${parentId}], now has ${childEventsMap[parentId].length} children`);
         } else {
           // This is a parent event
-          console.log(`   🏠 This is a PARENT event`);
           parentEvents.push(event);
         }
       });
-
-      console.log("📊 Final grouping results:");
-      console.log(`   - Parent events: ${parentEvents.length}`);
-      console.log(`   - Child events map keys: ${Object.keys(childEventsMap)}`);
-      Object.keys(childEventsMap).forEach(parentId => {
-        console.log(`   - Parent ${parentId} has ${childEventsMap[parentId].length} children`);
-      });
-      console.log("🔍 === END SUB-EVENTS DEBUGGING ===");
 
       // Set the parent events as the main events list
       setEvents(parentEvents);
@@ -2062,6 +1981,10 @@ const OrganizerDashboard = () => {
       for (const event of transformedEvents) {
         await checkNFTMintingStatus(event.id);
       }
+
+      // Check document flow status for all events
+      const eventIds = transformedEvents.map(event => event.id);
+      await checkDocumentFlowStatus(eventIds);
 
 
     } catch {
@@ -2405,6 +2328,12 @@ const OrganizerDashboard = () => {
                                   {(event.status || "upcoming").charAt(0).toUpperCase() +
                                     (event.status || "upcoming").slice(1)}
                                 </span>
+                                {documentFlowStatus[event.id] && (
+                                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-400/20 dark:text-green-400">
+                                    <FileText className="inline h-3 w-3 mr-1" />
+                                    Doc Flow
+                                  </span>
+                                )}
                               </div>
                             </div>
 
@@ -2509,9 +2438,10 @@ const OrganizerDashboard = () => {
                                   size="sm"
                                   className="flex-1 min-w-[120px]"
                                   onClick={() => handleCheckIn(event.id)}
+                                  disabled={checkingInUser}
                                 >
                                   <QrCode className="mr-1 h-3 w-3" />
-                                  Check-in
+                                  {checkingInUser ? "Processing..." : "Check-in"}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -2652,11 +2582,15 @@ const OrganizerDashboard = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="flex-1 min-w-[140px]"
+                              className={`flex-1 min-w-[140px] ${
+                                documentFlowStatus[event.id] 
+                                  ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-400/20 dark:text-green-400 dark:border-green-400/30' 
+                                  : ''
+                              }`}
                               onClick={() => handleOpenDocFlow(event)}
                             >
                               <FileText className="mr-1 h-3 w-3" />
-                              Document Flow
+                              {documentFlowStatus[event.id] ? 'Document Flow ✓' : 'Document Flow'}
                             </Button>
                           </div>
 
@@ -3151,8 +3085,8 @@ const OrganizerDashboard = () => {
 
         {/* Document Flow Modal */}
         {showDocFlowModal && selectedEventForDocFlow && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
-            <div className="bg-card border border-border rounded-lg max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm p-4">
+            <div className="bg-card border border-border rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
               <div className="flex items-center justify-between p-6 border-b border-border">
                 <div>
                   <h3 className="text-xl font-semibold text-foreground">
@@ -3171,10 +3105,45 @@ const OrganizerDashboard = () => {
                 </Button>
               </div>
               <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-                <EventDocFlowInterface event={selectedEventForDocFlow} />
+                <DocumentFlowCard
+                  flow={documentFlowData[selectedEventForDocFlow.id]?.flow}
+                  submissions={documentFlowData[selectedEventForDocFlow.id]?.submissions || []}
+                  eventName={selectedEventForDocFlow.name}
+                  isLoading={documentFlowData[selectedEventForDocFlow.id]?.isLoading || false}
+                  onCreateFlow={() => setShowCreateFlowModal(true)}
+                  onSubmitDocument={() => setShowSubmitDocumentModal(true)}
+                  onViewFlow={() => {
+                    // Could navigate to a detailed view or expand the card
+                  }}
+                  onViewSubmissions={() => {
+                    // Could show a modal with all submissions
+                  }}
+                />
               </div>
             </div>
           </div>
+        )}
+
+        {/* Create Document Flow Modal */}
+        {showCreateFlowModal && selectedEventForDocFlow && (
+          <CreateDocumentFlowModal
+            isOpen={showCreateFlowModal}
+            onClose={() => setShowCreateFlowModal(false)}
+            onSubmit={handleCreateDocumentFlow}
+            isLoading={creatingDocumentFlow}
+            eventName={selectedEventForDocFlow.name}
+          />
+        )}
+
+        {/* Submit Document Modal */}
+        {showSubmitDocumentModal && selectedEventForDocFlow && currentAccount && (
+          <SubmitDocumentModal
+            isOpen={showSubmitDocumentModal}
+            onClose={() => setShowSubmitDocumentModal(false)}
+            onSubmit={handleSubmitDocument}
+            eventName={selectedEventForDocFlow.name}
+            userAddress={currentAccount.address}
+          />
         )}
       </div>
     </div>

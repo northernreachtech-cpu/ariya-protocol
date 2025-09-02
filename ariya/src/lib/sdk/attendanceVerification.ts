@@ -411,16 +411,31 @@ export class AttendanceVerificationSDK {
     eventId: string,
     wallet: string
   ): Uint8Array {
+    console.log("🔐 Generating pass hash with:", { passId, eventId, wallet });
+    
+    // Use the EXACT same logic as IdentityAccessSDK.generatePassHash()
     const passIdBytes = bcs.U64.serialize(BigInt(passId)).toBytes();
     const eventIdBytes = bcs.Address.serialize(eventId).toBytes();
     const walletBytes = bcs.Address.serialize(wallet).toBytes();
+    
+    console.log("🔐 Serialized bytes:", {
+      passIdBytes: Array.from(passIdBytes),
+      eventIdBytes: Array.from(eventIdBytes),
+      walletBytes: Array.from(walletBytes)
+    });
+    
     const combined = new Uint8Array(
       passIdBytes.length + eventIdBytes.length + walletBytes.length
     );
     combined.set(passIdBytes, 0);
     combined.set(eventIdBytes, passIdBytes.length);
     combined.set(walletBytes, passIdBytes.length + eventIdBytes.length);
-    return keccak_256(combined);
+    
+    const hash = keccak_256(combined);
+    const hashHex = Array.from(hash).map(b => b.toString(16).padStart(2, '0')).join('');
+    console.log("🔐 Generated pass hash:", hashHex);
+    
+    return hash;
   }
 
   /**

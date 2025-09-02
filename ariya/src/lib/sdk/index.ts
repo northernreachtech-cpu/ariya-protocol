@@ -5,6 +5,7 @@ import { AttendanceVerificationSDK } from "./attendanceVerification";
 import { CommunityAccessSDK } from "./communityAccess";
 import { AirdropDistributionSDK } from "./airdropDistribution";
 import { SubscriptionSDK } from "./subscription";
+import { DocumentFlowSDK } from "./documentFlow";
 import { useNetworkVariable } from "../../config/sui";
 
 // Main SDK class that combines all modules
@@ -15,6 +16,7 @@ export class AriyaSDK {
   public communityAccess: CommunityAccessSDK;
   public airdropDistribution: AirdropDistributionSDK;
   public subscription: SubscriptionSDK;
+  public documentFlow: DocumentFlowSDK;
 
   constructor(packageId: string) {
     this.eventManagement = new EventManagementSDK(packageId);
@@ -23,6 +25,7 @@ export class AriyaSDK {
     this.communityAccess = new CommunityAccessSDK(packageId);
     this.airdropDistribution = new AirdropDistributionSDK(packageId);
     this.subscription = new SubscriptionSDK(packageId);
+    this.documentFlow = new DocumentFlowSDK(packageId);
   }
 }
 
@@ -81,6 +84,18 @@ export {
   type SubscriptionRegistry,
   type SubscriptionPricing
 } from "./subscription";
+
+// Add export for DocumentFlowSDK
+export {
+  DocumentFlowSDK,
+  DOCUMENT_STATES,
+  type ChainParticipant,
+  type ApprovalRecord,
+  type DocumentFlow,
+  type DocumentSubmission,
+  type DocumentFlowRegistry,
+  type FlowManagerCap,
+} from "./documentFlow";
 
 // Re-export ERROR_CODES with explicit naming to avoid conflicts
 export { ERROR_CODES as EVENT_MANAGEMENT_ERROR_CODES } from "./eventManagement";

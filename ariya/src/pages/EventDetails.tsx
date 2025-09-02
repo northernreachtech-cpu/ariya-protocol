@@ -14,18 +14,23 @@ import {
   DollarSign,
   CheckCircle,
   Eye,
+  FileText,
 } from "lucide-react";
 import {
   useCurrentAccount,
   useSignAndExecuteTransaction,
 } from "@mysten/dapp-kit";
+import { useZkLogin } from "../contexts/ZkLoginContext";
 import { useAriyaSDK } from "../lib/sdk";
-import type { Event as EventData } from "../lib/sdk";
+import type { Event as EventData, DocumentFlow, DocumentSubmission, ChainParticipant } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import QRDisplay from "../components/QRDisplay";
 import useScrollToTop from "../hooks/useScrollToTop";
+import DocumentFlowCard from "../components/DocumentFlowCard";
+import CreateDocumentFlowModal from "../components/CreateDocumentFlowModal";
+import SubmitDocumentModal from "../components/SubmitDocumentModal";
 // import { useMemo } from "react";
 import { Transaction } from "@mysten/sui/transactions";
 import { suiClient } from "../config/sui";
@@ -141,7 +146,12 @@ const EventDetails = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const currentAccount = useCurrentAccount();
+  const { zkAddress, isZkAuthenticated } = useZkLogin();
   const sdk = useAriyaSDK();
+
+  // Get the active address (either wallet or zkLogin)
+  const activeAddress = currentAccount?.address || zkAddress;
+  const isAuthenticated = currentAccount || isZkAuthenticated;
   const registrationRegistryId = useNetworkVariable("registrationRegistryId");
   const attendanceRegistryId = useNetworkVariable("attendanceRegistryId");
   const nftRegistryId = useNetworkVariable("nftRegistryId");
@@ -149,6 +159,7 @@ const EventDetails = () => {
   const profileRegistryId = useNetworkVariable("profileRegistryId");
   const platformTreasuryId = useNetworkVariable("platformTreasuryId");
   const subscriptionRegistryId = useNetworkVariable("subscriptionRegistryId");
+  const documentFlowRegistryId = useNetworkVariable("documentFlowRegistryId");
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
 
   // Attendance state from navigation (if available)
@@ -201,6 +212,16 @@ const EventDetails = () => {
   const [subEvents, setSubEvents] = useState<EventData[]>([]);
   const [subEventsLoading, setSubEventsLoading] = useState(false);
 
+  // Document flow state
+  const [showDocFlowModal, setShowDocFlowModal] = useState(false);
+  const [documentFlowData, setDocumentFlowData] = useState<{
+    flow: DocumentFlow | null;
+    submissions: DocumentSubmission[];
+  }>({ flow: null, submissions: [] });
+  const [documentFlowLoading, setDocumentFlowLoading] = useState(false);
+  const [showCreateFlowModal, setShowCreateFlowModal] = useState(false);
+  const [showSubmitDocumentModal, setShowSubmitDocumentModal] = useState(false);
+
   useEffect(() => {
     setEscrowSDK(new EscrowSettlementSDK(sdk.eventManagement.getPackageId()));
   }, [sdk]);
@@ -251,7 +272,7 @@ const EventDetails = () => {
   }, [event, sdk]);
 
   const checkCommunityMembership = useCallback(async () => {
-    if (!currentAccount || !event || !communityRegistryId || !nftRegistryId) {
+    if (!activeAddress || !isAuthenticated || !event || !communityRegistryId || !nftRegistryId) {
       return;
     }
 
@@ -275,7 +296,7 @@ const EventDetails = () => {
       // Check if user is already an active member
       const membershipCheck = await sdk.communityAccess.isActiveCommunityMember(
         community.id,
-        currentAccount.address,
+        activeAddress,
         communityRegistryId,
         nftRegistryId
       );
@@ -285,16 +306,16 @@ const EventDetails = () => {
       setIsCommunityMember(false);
       setCommunityId(null);
     }
-  }, [currentAccount, event, communityRegistryId, nftRegistryId, sdk]);
+  }, [activeAddress, isAuthenticated, event, communityRegistryId, nftRegistryId, sdk]);
 
   const checkPoACapability = useCallback(async () => {
-    if (!currentAccount || !event) {
+    if (!activeAddress || !isAuthenticated || !event) {
       return;
     }
 
     try {
       const { data: objects } = await suiClient.getOwnedObjects({
-        owner: currentAccount.address,
+        owner: activeAddress,
         filter: {
           StructType: `${sdk.attendanceVerification.getPackageId()}::attendance_verification::MintPoACapability`,
         },
@@ -325,10 +346,10 @@ const EventDetails = () => {
     } catch (error) {
       setHasPoACapability(false);
     }
-  }, [currentAccount, event, sdk]);
+  }, [activeAddress, isAuthenticated, event, sdk]);
 
   const refreshEventData = useCallback(async () => {
-    if (currentAccount && event) {
+    if (activeAddress && isAuthenticated && event) {
       // Reset states
       setHasPoACapability(false);
       setIsCommunityMember(false);
@@ -347,14 +368,14 @@ const EventDetails = () => {
         await loadSubEvents(event.id);
       }
     }
-  }, [currentAccount, event, checkPoACapability, checkCommunityMembership, loadSubEvents]);
+  }, [activeAddress, isAuthenticated, event, checkPoACapability, checkCommunityMembership, loadSubEvents]);
 
   const handleMintPoA = async () => {
-    if (!currentAccount || !nftRegistryId || !event) return;
+    if (!activeAddress || !isAuthenticated || !nftRegistryId || !event) return;
     setMintingPoA(true);
     try {
       await sdk.attendanceVerification.mintPoANFT(
-        currentAccount.address,
+        activeAddress,
         event.id,
         nftRegistryId,
         signAndExecute
@@ -377,20 +398,20 @@ const EventDetails = () => {
   };
 
   const handleJoinCommunity = async () => {
-    if (!currentAccount || !event || !communityRegistryId || !nftRegistryId)
+    if (!activeAddress || !isAuthenticated || !event || !communityRegistryId || !nftRegistryId)
       return;
     setJoiningCommunity(true);
     try {
       // First check if user has PoA NFT for this event
       const hasPoA = await sdk.attendanceVerification.hasPoANFT(
-        currentAccount.address,
+        activeAddress,
         event.id,
         nftRegistryId
       );
 
       // Check for both PoA and Completion NFTs
       const hasCompletion = await sdk.attendanceVerification.hasCompletionNFT(
-        currentAccount.address,
+        activeAddress,
         event.id,
         nftRegistryId
       );
@@ -425,7 +446,7 @@ const EventDetails = () => {
       // Check if user is already an active member
       const membershipCheck = await sdk.communityAccess.isActiveCommunityMember(
         communityId,
-        currentAccount.address,
+        activeAddress,
         communityRegistryId,
         nftRegistryId
       );
@@ -446,7 +467,7 @@ const EventDetails = () => {
       // User needs to join or rejoin the community
       const tx = sdk.communityAccess.requestCommunityAccess(
         communityId,
-        currentAccount.address,
+        activeAddress,
         nftRegistryId,
         communityRegistryId
       );
@@ -493,6 +514,90 @@ const EventDetails = () => {
     }
   };
 
+  // Document flow functions
+  const loadDocumentFlowData = useCallback(async (eventId: string) => {
+    if (!eventId) return;
+    
+    setDocumentFlowLoading(true);
+    try {
+      const [flow, submissions] = await Promise.all([
+        sdk.documentFlow.getDocumentFlow(eventId),
+        sdk.documentFlow.getDocumentSubmissions(eventId)
+      ]);
+      
+      setDocumentFlowData({ flow, submissions });
+    } catch (error) {
+      setDocumentFlowData({ flow: null, submissions: [] });
+    } finally {
+      setDocumentFlowLoading(false);
+    }
+  }, [sdk]);
+
+  const handleOpenDocFlow = useCallback(() => {
+    if (!event) return;
+    
+    setShowDocFlowModal(true);
+    if (!documentFlowData.flow) {
+      loadDocumentFlowData(event.id);
+    }
+  }, [event, documentFlowData.flow, loadDocumentFlowData]);
+
+  const handleCreateDocumentFlow = async (participants: ChainParticipant[]) => {
+    if (!event || !activeAddress || !isAuthenticated || !documentFlowRegistryId || !profileRegistryId) return;
+    
+    setDocumentFlowLoading(true);
+    try {
+      const tx = sdk.documentFlow.createDocumentFlow(
+        event.id,
+        participants,
+        clockId,
+        documentFlowRegistryId,
+        profileRegistryId
+      );
+      
+      await signAndExecute({ transaction: tx });
+      
+      // Reload document flow data
+      await loadDocumentFlowData(event.id);
+      setShowCreateFlowModal(false);
+    } catch (error) {
+      console.error('Failed to create document flow:', error);
+    } finally {
+      setDocumentFlowLoading(false);
+    }
+  };
+
+  const handleSubmitDocument = async (documentData: {
+    title: string;
+    description: string;
+    documentUri: string;
+    documentType: string;
+  }) => {
+    if (!event || !activeAddress || !isAuthenticated || !documentFlowData.flow || !documentFlowRegistryId || !profileRegistryId) return;
+    
+    try {
+      const tx = sdk.documentFlow.submitDocument(
+        documentFlowData.flow.id,
+        event.id,
+        documentData.title,
+        documentData.description,
+        documentData.documentUri,
+        documentData.documentType,
+        clockId,
+        documentFlowRegistryId,
+        profileRegistryId
+      );
+      
+      await signAndExecute({ transaction: tx });
+      
+      // Reload document flow data
+      await loadDocumentFlowData(event.id);
+      setShowSubmitDocumentModal(false);
+    } catch (error) {
+      console.error('Failed to submit document:', error);
+    }
+  };
+
   useEffect(() => {
     const loadEvent = async () => {
       if (!id) {
@@ -513,18 +618,38 @@ const EventDetails = () => {
         }
 
         // Check if user is registered and if user is organizer
-        if (currentAccount && eventData) {
-          const [registration, organizerCheck] = await Promise.all([
-            sdk.identityAccess.getRegistrationStatus(
+        if (activeAddress && eventData && isAuthenticated) {
+          console.log("🔍 EventDetails: Checking registration status...", {
+            eventId: id,
+            activeAddress,
+            registrationRegistryId,
+            isAuthenticated
+          });
+
+          const [isUserRegistered, organizerCheck] = await Promise.all([
+            // Use contract-based registration check instead of transaction history
+            sdk.identityAccess.isRegistered(
               id,
-              currentAccount.address,
+              activeAddress,
               registrationRegistryId
             ),
-            sdk.identityAccess.isEventOrganizer(id, currentAccount.address),
+            sdk.identityAccess.isEventOrganizer(id, activeAddress),
           ]);
 
-          setIsRegistered(!!registration);
+          console.log("📋 EventDetails: Registration check results:", {
+            isRegistered: isUserRegistered,
+            isOrganizer: organizerCheck,
+            method: "contract-based"
+          });
+
+          setIsRegistered(isUserRegistered);
           setIsOrganizer(organizerCheck);
+        } else {
+          console.log("⚠️ EventDetails: Skipping registration check:", {
+            hasActiveAddress: !!activeAddress,
+            hasEventData: !!eventData,
+            isAuthenticated
+          });
         }
 
         // Load sub-events if this is a parent event
@@ -534,7 +659,8 @@ const EventDetails = () => {
 
         // Only fetch attendance state if not passed via navigation
         if (
-          currentAccount &&
+          activeAddress &&
+          isAuthenticated &&
           (navAttendanceState === null || navAttendanceState === undefined)
         ) {
           try {
@@ -542,14 +668,14 @@ const EventDetails = () => {
             tx.moveCall({
               target: `${sdk.attendanceVerification.getPackageId()}::attendance_verification::get_attendance_status`,
               arguments: [
-                tx.pure.address(currentAccount.address),
+                tx.pure.address(activeAddress),
                 tx.pure.id(id),
                 tx.object(attendanceRegistryId),
               ],
             });
             const result = await suiClient.devInspectTransactionBlock({
               transactionBlock: tx,
-              sender: currentAccount.address,
+              sender: activeAddress,
             });
             if (result && result.results && result.results.length > 0) {
               const returnVals = result.results[0].returnValues;
@@ -628,7 +754,8 @@ const EventDetails = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     id,
-    currentAccount,
+    activeAddress,
+    isAuthenticated,
     sdk,
     registrationRegistryId,
     attendanceRegistryId,
@@ -644,7 +771,7 @@ const EventDetails = () => {
 
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
-  }, [currentAccount, event, refreshEventData]);
+  }, [activeAddress, isAuthenticated, event, refreshEventData]);
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -694,7 +821,7 @@ const EventDetails = () => {
   };
 
   const handleRegister = async () => {
-    if (!currentAccount || !event) return;
+    if (!activeAddress || !event || !isAuthenticated) return;
 
     try {
       setRegistering(true);
@@ -710,11 +837,28 @@ const EventDetails = () => {
           event.organizer
         );
 
-        // Get organizer profile ID
-        organizerProfileId = await sdk.eventManagement.getUserProfileId(
-          event.organizer,
-          profileRegistryId
-        );
+        // Get organizer profile ID by querying OrganizerCap objects
+        const { data: objects } = await suiClient.getOwnedObjects({
+          owner: event.organizer,
+          filter: {
+            StructType: `${sdk.eventManagement.getPackageId()}::event_management::OrganizerCap`,
+          },
+          options: { showContent: true },
+        });
+        
+        for (const obj of objects) {
+          if (obj.data?.content?.dataType === "moveObject") {
+            const fields = obj.data.content.fields;
+            const fieldsTyped = fields as { profile_id?: string };
+            const profileId = typeof fieldsTyped.profile_id === "string"
+              ? fieldsTyped.profile_id
+              : undefined;
+            if (profileId) {
+              organizerProfileId = profileId;
+              break;
+            }
+          }
+        }
       } catch (error) {
         // If we can't fetch organizer data, we'll use fallback values
         organizerSubscriptionId = null;
@@ -728,23 +872,67 @@ const EventDetails = () => {
       if (eventFeeAmount > 0) {
         // For paid events, get user's SUI coins
         const { data: coins } = await suiClient.getCoins({
-          owner: currentAccount.address,
+          owner: activeAddress,
           coinType: "0x2::sui::SUI",
         });
 
-        // Find a coin with sufficient balance (convert fee to MIST)
-        const feeInMist = Math.floor(eventFeeAmount * 1000000000);
-        const coinWithBalance = coins.find(
-          (coin: { balance: string }) => parseInt(coin.balance) >= feeInMist
-        );
+        // Debug logging
+        console.log("🔍 Event registration fee check:", {
+          eventFeeAmount,
+          feeInMist: eventFeeAmount,
+          availableCoins: coins.map(c => ({
+            balance: c.balance,
+            balanceInSui: Number(c.balance) / 1000000000
+          }))
+        });
+
+        // Find a coin with sufficient balance (eventFeeAmount is already in MIST)
+        const feeInMist = eventFeeAmount;
+        const coinWithBalance = coins.find((coin: { balance: string }) => {
+          const coinBalance = BigInt(coin.balance);
+          const requiredFee = BigInt(feeInMist);
+          return coinBalance >= requiredFee;
+        });
 
         if (!coinWithBalance) {
-          alert("Insufficient SUI balance for event registration");
+          const totalBalance = coins.reduce((sum, coin) => sum + BigInt(coin.balance), BigInt(0));
+          const totalBalanceInSui = Number(totalBalance) / 1000000000;
+          const feeInSui = eventFeeAmount / 1000000000;
+          
+          console.error("❌ Insufficient balance for event registration:", {
+            requiredFee: feeInSui,
+            totalBalance: totalBalanceInSui,
+            availableCoins: coins.length
+          });
+          
+          alert(`Insufficient SUI balance for event registration.\nRequired: ${feeInSui.toFixed(6)} SUI\nAvailable: ${totalBalanceInSui.toFixed(6)} SUI`);
           return;
         }
 
         paymentCoinId = coinWithBalance.coinObjectId;
       }
+
+      console.log("🚀 Starting event registration with params:", {
+        eventId: event.id,
+        registrationRegistryId,
+        organizerSubscriptionId: organizerSubscriptionId || "0x0",
+        organizerProfileId: organizerProfileId || "0x0", 
+        platformTreasuryId,
+        userAddress: activeAddress,
+        eventFeeAmount,
+        paymentCoinId,
+        organizerAddress: event.organizer
+      });
+      
+      // Debug: Check authentication status
+      console.log("🔐 Authentication debug:", {
+        currentAccount: currentAccount?.address,
+        zkAddress,
+        activeAddress,
+        isAuthenticated,
+        hasCurrentAccount: !!currentAccount,
+        hasZkAddress: !!zkAddress
+      });
 
       // Use the new contract-compliant registration function
       const result = await sdk.identityAccess.registerForEventAndGenerateQR(
@@ -753,11 +941,13 @@ const EventDetails = () => {
         organizerSubscriptionId || "0x0", // Use fallback if not found
         organizerProfileId || "0x0", // Use fallback if not found
         platformTreasuryId,
-        currentAccount.address,
+        activeAddress,
         signAndExecute,
         eventFeeAmount,
         paymentCoinId
       );
+
+      console.log("📋 Registration result:", result);
 
       if (result) {
         // Generate QR code string for display
@@ -769,6 +959,13 @@ const EventDetails = () => {
         alert("Registration failed. Please try again.");
       }
     } catch (error: unknown) {
+      // Log the full error for debugging
+      console.error("❌ Registration error details:", {
+        error,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+
       // Show user-friendly error message
       let errorMessage = "Registration failed";
       const errorObj = error as { message?: string };
@@ -793,46 +990,67 @@ const EventDetails = () => {
   };
 
   const handleShowQR = async () => {
-    if (!currentAccount || !event) return;
+    if (!activeAddress || !event || !isAuthenticated) return;
 
     try {
+      console.log("🔍 EventDetails: Generating QR code for registered user...");
+      
+      // First verify user is registered using contract-based check
+      const isUserRegistered = await sdk.identityAccess.isRegistered(
+        event.id,
+        activeAddress,
+        registrationRegistryId
+      );
+
+      if (!isUserRegistered) {
+        console.log("❌ User not registered, cannot show QR");
+        alert("You must be registered for this event to show QR code.");
+        return;
+      }
+
+      // Try to get registration details (fallback to transaction history for pass_hash)
       const registration = await sdk.identityAccess.getRegistrationStatus(
         event.id,
-        currentAccount.address,
+        activeAddress,
         registrationRegistryId
       );
 
       if (registration) {
+        console.log("✅ Found registration data, generating QR...");
         const qrDataString = sdk.identityAccess.generateQRCodeData(
           event.id,
-          currentAccount.address,
+          activeAddress,
           registration
         );
         setQrData(qrDataString);
         setShowQR(true);
+      } else {
+        console.log("⚠️ Registration confirmed but details not found - this may indicate transaction indexing delay");
+        alert("You are registered but QR code details are not available yet. Please try again in a moment.");
       }
     } catch (error) {
-      // Error generating QR code
+      console.error("❌ Error generating QR code:", error);
+      alert("Error generating QR code. Please try again.");
     }
   };
 
   // Helper to check if user already has completion NFT for this event
   const checkHasCompletionNFT = async () => {
-    if (!currentAccount || !event || !nftRegistryId) return false;
+    if (!activeAddress || !isAuthenticated || !event || !nftRegistryId) return false;
     try {
       // Call the Move view to check NFT ownership
       const tx = new Transaction();
       tx.moveCall({
         target: `${sdk.attendanceVerification.getPackageId()}::nft_minting::has_completion_nft`,
         arguments: [
-          tx.pure.address(currentAccount.address),
+          tx.pure.address(activeAddress),
           tx.pure.id(event.id),
           tx.object(nftRegistryId),
         ],
       });
       const result = await suiClient.devInspectTransactionBlock({
         transactionBlock: tx,
-        sender: currentAccount.address,
+        sender: activeAddress,
       });
       if (result && result.results && result.results.length > 0) {
         const returnVals = result.results[0].returnValues;
@@ -858,7 +1076,7 @@ const EventDetails = () => {
   };
 
   const handleMintCompletionNFT = async () => {
-    if (!currentAccount || !event || !nftRegistryId) return;
+    if (!activeAddress || !isAuthenticated || !event || !nftRegistryId) return;
     setMinting(true);
     setMintResult(null);
     try {
@@ -873,7 +1091,7 @@ const EventDetails = () => {
         return;
       }
       await sdk.attendanceVerification.mintCompletionNFT(
-        currentAccount.address,
+        activeAddress,
         event.id,
         nftRegistryId,
         signAndExecute
@@ -1184,7 +1402,7 @@ const EventDetails = () => {
               </div>
 
               <div className="space-y-3 mb-6">
-                {!currentAccount ? (
+                {!isAuthenticated ? (
                   <Button size="lg" className="w-full" disabled>
                     <Users className="mr-2 h-5 w-5" />
                     Connect Wallet to Register
@@ -1302,6 +1520,19 @@ const EventDetails = () => {
                     onClick={() => setShowSponsorModal(true)}
                   >
                     Sponsor this Event
+                  </Button>
+                )}
+
+                {/* Document Flow Button - Only for organizers and assignees */}
+                {(isOrganizer || (event.assignee && event.assignee === activeAddress)) && (
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full"
+                    onClick={handleOpenDocFlow}
+                  >
+                    <FileText className="mr-2 h-5 w-5" />
+                    Document Flow
                   </Button>
                 )}
 
@@ -1577,7 +1808,8 @@ const EventDetails = () => {
                     setSponsorSuccess("");
                     try {
                       if (
-                        !currentAccount ||
+                        !activeAddress ||
+                        !isAuthenticated ||
                         !escrowSDK ||
                         !escrowRegistryId ||
                         !event
@@ -1587,7 +1819,7 @@ const EventDetails = () => {
                         throw new Error("Enter a valid amount");
                       // Find a SUI coin object in the user's wallet with enough balance
                       const { data: coins } = await suiClient.getCoins({
-                        owner: currentAccount.address,
+                        owner: activeAddress,
                         coinType: "0x2::sui::SUI",
                       });
                       const coin = coins.find(
@@ -1601,7 +1833,7 @@ const EventDetails = () => {
                       // Build and execute the transaction
                       const tx = escrowSDK.fundEvent(
                         event.id,
-                        currentAccount.address,
+                        activeAddress,
                         coin.coinObjectId,
                         escrowRegistryId,
                         clockId
@@ -1635,6 +1867,71 @@ const EventDetails = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Document Flow Modal */}
+      {showDocFlowModal && event && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm p-4">
+          <div className="bg-card border border-border rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div>
+                <h3 className="text-xl font-semibold text-foreground">
+                  Document Flow Management
+                </h3>
+                <p className="text-foreground-secondary text-sm">
+                  {event.name} • Approval Workflow
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDocFlowModal(false)}
+              >
+                Close
+              </Button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              <DocumentFlowCard
+                flow={documentFlowData.flow || undefined}
+                submissions={documentFlowData.submissions}
+                eventName={event.name}
+                isLoading={documentFlowLoading}
+                onCreateFlow={() => setShowCreateFlowModal(true)}
+                onSubmitDocument={() => setShowSubmitDocumentModal(true)}
+                onViewFlow={() => {
+                  // Could navigate to a detailed view or expand the card
+                  console.log("View flow details");
+                }}
+                onViewSubmissions={() => {
+                  // Could show a modal with all submissions
+                  console.log("View all submissions");
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Document Flow Modal */}
+      {showCreateFlowModal && event && (
+        <CreateDocumentFlowModal
+          isOpen={showCreateFlowModal}
+          onClose={() => setShowCreateFlowModal(false)}
+          onSubmit={handleCreateDocumentFlow}
+          isLoading={documentFlowLoading}
+          eventName={event.name}
+        />
+      )}
+
+      {/* Submit Document Modal */}
+      {showSubmitDocumentModal && event && activeAddress && isAuthenticated && (
+        <SubmitDocumentModal
+          isOpen={showSubmitDocumentModal}
+          onClose={() => setShowSubmitDocumentModal(false)}
+          onSubmit={handleSubmitDocument}
+          eventName={event.name}
+          userAddress={activeAddress}
+        />
       )}
     </div>
   );
