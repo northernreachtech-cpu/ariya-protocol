@@ -637,18 +637,13 @@ const EventDetails = () => {
           await loadSubEvents(eventData.id);
         }
 
-        // Only fetch attendance state if user is registered AND not passed via navigation
+        // Fetch attendance state for all users with wallets (not just registered users)
         if (
           activeAddress &&
           isAuthenticated &&
-          isRegistered && // ONLY check attendance for registered users
           (navAttendanceState === null || navAttendanceState === undefined)
         ) {
-          console.log("🔍 Attendance Debug - Fetching attendance state for registered user:", {
-            eventId: id,
-            userAddress: activeAddress,
-            attendanceRegistryId
-          });
+
           
           try {
             const tx = new Transaction();
@@ -665,11 +660,8 @@ const EventDetails = () => {
               sender: activeAddress,
             });
             
-            console.log("🔍 Attendance Debug - Raw result from contract:", result);
-            
             if (result && result.results && result.results.length > 0) {
               const returnVals = result.results[0].returnValues;
-              console.log("🔍 Attendance Debug - Return values:", returnVals);
               
               if (Array.isArray(returnVals) && returnVals.length >= 4) {
                 const hasRecord = Array.isArray(returnVals[0])
@@ -688,17 +680,18 @@ const EventDetails = () => {
                   ? returnVals[3][0]
                   : parseInt(returnVals[3]) || 0;
                 
-                console.log("🔍 Attendance Debug - Parsed values:", {
-                  hasRecord,
-                  attendanceState,
-                  checkInTime,
-                  checkOutTime
-                });
-                
                 setHasRecord(hasRecord);
                 setAttendanceState(attendanceState);
                 setCheckInTime(checkInTime);
                 setCheckOutTime(checkOutTime);
+                
+                console.log("🔍 Attendance State - Set from blockchain:", {
+                  hasRecord,
+                  attendanceState,
+                  checkInTime,
+                  checkOutTime,
+                  attendanceStateText: getAttendanceStatusText(attendanceState)
+                });
               }
             }
           } catch {
@@ -727,17 +720,14 @@ const EventDetails = () => {
             checkPoACapability();
           }
         } else {
-          console.log("🔍 Attendance Debug - Not fetching attendance state because:", {
-            hasActiveAddress: !!activeAddress,
-            isAuthenticated,
-            isRegistered,
-            hasNavAttendance: navAttendanceState !== null && navAttendanceState !== undefined
-          });
-          
           // Set attendance state from navigation
           if (Array.isArray(navAttendanceState)) {
-            console.log("🔍 Attendance Debug - Using navigation attendance state:", navAttendanceState);
             setAttendanceState(navAttendanceState[0]);
+            
+            console.log("🔍 Attendance State - Set from navigation:", {
+              attendanceState: navAttendanceState[0],
+              attendanceStateText: getAttendanceStatusText(navAttendanceState[0])
+            });
 
             // Check PoA capability for checked-in users
             if (navAttendanceState[0] === 1) {
@@ -1380,25 +1370,30 @@ const EventDetails = () => {
                 <div className="text-foreground-secondary">attending</div>
                 {attendanceState !== null && (
                   <div className="mt-2">
-                    <span
-                      className={`inline-block px-3 py-1.5 rounded-full text-xs font-medium shadow-sm backdrop-blur-sm ${
-                        (Array.isArray(attendanceState)
-                          ? attendanceState[0]
-                          : attendanceState) === 0
-                          ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-300"
-                          : (Array.isArray(attendanceState)
-                              ? attendanceState[0]
-                              : attendanceState) === 1
-                          ? "bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30 text-emerald-300"
-                          : (Array.isArray(attendanceState)
-                              ? attendanceState[0]
-                              : attendanceState) === 2
-                          ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/30 text-blue-300"
-                          : "bg-gradient-to-r from-gray-500/20 to-slate-500/20 border border-gray-500/30 text-gray-300"
-                      }`}
-                    >
-                      {getAttendanceStatusText(attendanceState)}
-                    </span>
+                    {(() => {
+                      const currentState = Array.isArray(attendanceState) ? attendanceState[0] : attendanceState;
+                      console.log("🔍 Attendance State - Current UI state:", {
+                        attendanceState,
+                        currentState,
+                        stateText: getAttendanceStatusText(attendanceState)
+                      });
+                      
+                      return (
+                        <span
+                          className={`inline-block px-3 py-1.5 rounded-full text-xs font-medium shadow-sm backdrop-blur-sm ${
+                            currentState === 0
+                              ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-300"
+                              : currentState === 1
+                              ? "bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30 text-emerald-300"
+                              : currentState === 2
+                              ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/30 text-blue-300"
+                              : "bg-gradient-to-r from-gray-500/20 to-slate-500/20 border border-gray-500/30 text-gray-300"
+                          }`}
+                        >
+                          {getAttendanceStatusText(attendanceState)}
+                        </span>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
