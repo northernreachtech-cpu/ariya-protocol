@@ -657,10 +657,11 @@ const EventDetails = () => {
           await loadSubEvents(eventData.id);
         }
 
-        // Only fetch attendance state if not passed via navigation
+        // Only fetch attendance state if user is registered AND not passed via navigation
         if (
           activeAddress &&
           isAuthenticated &&
+          isRegistered && // ONLY check attendance for registered users
           (navAttendanceState === null || navAttendanceState === undefined)
         ) {
           try {

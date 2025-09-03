@@ -391,25 +391,44 @@ export class IdentityAccessSDK {
     _registrationRegistryId: string
   ): Promise<Registration | null> {
     try {
-      // Query for PassGenerated events to check if user is registered
-      const { data: transactions } = await suiClient.queryTransactionBlocks({
-        filter: {
-          MoveFunction: {
-            package: this.packageId,
-            module: "identity_access",
-            function: "register_for_event",
+      // Query for PassGenerated events from both paid and free event registrations
+      const [paidTransactions, freeTransactions] = await Promise.all([
+        suiClient.queryTransactionBlocks({
+          filter: {
+            MoveFunction: {
+              package: this.packageId,
+              module: "identity_access",
+              function: "register_for_event",
+            },
           },
-        },
-        options: {
-          showEffects: true,
-          showEvents: true,
-          showObjectChanges: true,
-        },
-        limit: 50,
-      });
+          options: {
+            showEffects: true,
+            showEvents: true,
+            showObjectChanges: true,
+          },
+          limit: 50,
+        }),
+        suiClient.queryTransactionBlocks({
+          filter: {
+            MoveFunction: {
+              package: this.packageId,
+              module: "identity_access",
+              function: "register_for_free_event",
+            },
+          },
+          options: {
+            showEffects: true,
+            showEvents: true,
+            showObjectChanges: true,
+          },
+          limit: 50,
+        })
+      ]);
+
+      const allTransactions = [...paidTransactions.data, ...freeTransactions.data];
 
       // Look for PassGenerated event for this specific user and event
-      for (const txn of transactions) {
+      for (const txn of allTransactions) {
         if (txn.events) {
           for (const event of txn.events) {
             if (event.type?.includes("PassGenerated")) {
@@ -425,6 +444,13 @@ export class IdentityAccessSDK {
                 eventData.event_id === eventId &&
                 eventData.wallet === userAddress
               ) {
+                console.log("📋 IdentityAccess: Found PassGenerated event:", {
+                  eventId,
+                  userAddress,
+                  passId: eventData.pass_id,
+                  expiresAt: eventData.expires_at
+                });
+
                 // Generate the pass hash for the registration object
                 const passHash = this.generatePassHash(
                   BigInt(eventData.pass_id),
@@ -435,12 +461,20 @@ export class IdentityAccessSDK {
                   .map((b) => b.toString(16).padStart(2, "0"))
                   .join("");
 
-                return {
+                const registration = {
                   wallet: userAddress,
                   registered_at: eventData.expires_at - 24 * 60 * 60 * 1000, // Approximate registration time
                   pass_hash: passHashHex,
                   checked_in: false, // Would need to check attendance separately
                 };
+
+                console.log("📋 IdentityAccess: Generated registration object:", {
+                  hasPassHash: !!registration.pass_hash,
+                  passHashLength: registration.pass_hash.length,
+                  registeredAt: registration.registered_at
+                });
+
+                return registration;
               }
             }
           }
@@ -454,7 +488,7 @@ export class IdentityAccessSDK {
   }
 
   /**
-   * Check if user is registered for an event (using Move contract function)
+   * Check if user is registered for an event using Move contract
    */
   async isRegistered(
     eventId: string,
@@ -462,17 +496,121 @@ export class IdentityAccessSDK {
     registrationRegistryId: string
   ): Promise<boolean> {
     try {
-      console.log("🔍 Checking registration via Move contract...", {
-        eventId,
-        userAddress,
-        registrationRegistryId,
-        packageId: this.packageId
-      });
-      
-      // Use the Move contract's is_registered function
       const tx = new Transaction();
       tx.moveCall({
         target: `${this.packageId}::identity_access::is_registered`,
+        arguments: [
+          tx.pure.address(userAddress),
+          tx.pure.id(eventId),
+          tx.object(registrationRegistryId),
+        ],
+      });
+
+      console.log("🔍 IdentityAccess: Calling Move contract is_registered with:", {
+        packageId: this.packageId,
+        eventId,
+        userAddress,
+        registrationRegistryId,
+        target: `${this.packageId}::identity_access::is_registered`
+      });
+
+      const result = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: userAddress,
+      });
+
+      console.log("🔍 IdentityAccess: Move contract response:", {
+        hasResult: !!result,
+        hasResults: !!(result?.results),
+        resultsLength: result?.results?.length || 0,
+        returnValues: result?.results?.[0]?.returnValues,
+        fullResult: result
+      });
+
+      if (result && result.results && result.results.length > 0) {
+        const returnVals = result.results[0].returnValues;
+        console.log("🔍 IdentityAccess: Processing return values:", {
+          returnVals,
+          isArray: Array.isArray(returnVals),
+          length: Array.isArray(returnVals) ? returnVals.length : 'N/A'
+        });
+        
+        if (Array.isArray(returnVals) && returnVals.length > 0) {
+          // The Move contract returns a boolean, so we need to extract it properly
+          const rawValue = returnVals[0];
+          
+          console.log("🔍 IdentityAccess: Raw return value from is_registered:", {
+            rawValue,
+            type: typeof rawValue,
+            isArray: Array.isArray(rawValue),
+            length: Array.isArray(rawValue) ? rawValue.length : 'N/A'
+          });
+
+          // Handle different return value formats
+          let isRegistered = false;
+          
+          if (Array.isArray(rawValue)) {
+            // If it's an array, check if it contains a truthy value
+            if (rawValue.length > 0) {
+              const firstVal = rawValue[0];
+              isRegistered = !!firstVal && (firstVal as any) !== 0;
+            }
+          } else if (typeof rawValue === 'boolean') {
+            // Direct boolean value
+            isRegistered = rawValue;
+          } else if (typeof rawValue === 'number') {
+            // Number value (0 = false, non-zero = true)
+            isRegistered = rawValue !== 0;
+          } else if (typeof rawValue === 'string') {
+            // String value (parse as boolean)
+            isRegistered = (rawValue as string).toLowerCase() === 'true' || rawValue !== '0';
+          }
+
+          console.log("🔍 IdentityAccess: Parsed registration status:", {
+            rawValue,
+            isRegistered
+          });
+
+          return isRegistered;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.log("❌ IdentityAccess: Error in isRegistered:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Test method to verify Move contract behavior
+   * This helps debug registration status issues
+   */
+  async testRegistrationStatus(
+    eventId: string,
+    userAddress: string,
+    registrationRegistryId: string
+  ): Promise<{
+    isRegistered: boolean;
+    contractCall: string;
+    arguments: any[];
+    response: any;
+    error?: string;
+  }> {
+    try {
+      const contractCall = `${this.packageId}::identity_access::is_registered`;
+      const arguments_ = [userAddress, eventId, registrationRegistryId];
+      
+      console.log("🧪 IdentityAccess: Testing registration status with:", {
+        contractCall,
+        arguments: arguments_,
+        eventId,
+        userAddress,
+        registrationRegistryId
+      });
+
+      const tx = new Transaction();
+      tx.moveCall({
+        target: contractCall,
         arguments: [
           tx.pure.address(userAddress),
           tx.pure.id(eventId),
@@ -485,43 +623,124 @@ export class IdentityAccessSDK {
         sender: userAddress,
       });
 
-      console.log("🔍 Contract call result:", {
-        hasResult: !!result,
-        hasResults: !!(result?.results),
-        resultsLength: result?.results?.length || 0,
-        firstResult: result?.results?.[0],
-        returnValues: result?.results?.[0]?.returnValues
+      const isRegistered = this.parseRegistrationResult(result);
+
+      return {
+        isRegistered,
+        contractCall,
+        arguments: arguments_,
+        response: result
+      };
+    } catch (error) {
+      console.log("❌ IdentityAccess: Test failed:", error);
+      return {
+        isRegistered: false,
+        contractCall: `${this.packageId}::identity_access::is_registered`,
+        arguments: [userAddress, eventId, registrationRegistryId],
+        response: null,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Helper method to parse registration result
+   */
+  private parseRegistrationResult(result: any): boolean {
+    if (!result || !result.results || result.results.length === 0) {
+      return false;
+    }
+
+    const returnVals = result.results[0].returnValues;
+    if (!Array.isArray(returnVals) || returnVals.length === 0) {
+      return false;
+    }
+
+    const rawValue = returnVals[0];
+    
+    // Handle different return value formats
+    if (Array.isArray(rawValue)) {
+      if (rawValue.length > 0) {
+        const firstVal = rawValue[0];
+        return !!firstVal && (firstVal as any) !== 0;
+      }
+      return false;
+    } else if (typeof rawValue === 'boolean') {
+      return rawValue;
+    } else if (typeof rawValue === 'number') {
+      return rawValue !== 0;
+    } else if (typeof rawValue === 'string') {
+      return (rawValue as string).toLowerCase() === 'true' || rawValue !== '0';
+    }
+    
+    return false;
+  }
+
+  /**
+   * Get registration details using Move contract
+   */
+  async getRegistrationDetails(
+    eventId: string,
+    userAddress: string,
+    registrationRegistryId: string
+  ): Promise<{ registered_at: number; checked_in: boolean; platform_fee_paid: number } | null> {
+    try {
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${this.packageId}::identity_access::get_registration`,
+        arguments: [
+          tx.pure.address(userAddress),
+          tx.pure.id(eventId),
+          tx.object(registrationRegistryId),
+        ],
+      });
+
+      const result = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: userAddress,
       });
 
       if (result && result.results && result.results.length > 0) {
         const returnVals = result.results[0].returnValues;
-        if (Array.isArray(returnVals) && returnVals.length > 0) {
-          const rawValue = returnVals[0];
-          const isRegistered = Array.isArray(rawValue) ? rawValue[0] : rawValue;
-          
-          console.log("📋 Contract registration check details:", {
-            rawReturnValue: rawValue,
-            parsedValue: isRegistered,
-            booleanResult: Boolean(isRegistered),
-            type: typeof isRegistered
+        if (Array.isArray(returnVals) && returnVals.length >= 3) {
+          // Helper function to safely extract primitive values from Move return values
+          const extractValue = (val: unknown): number => {
+            if (Array.isArray(val) && val.length > 0) {
+              const firstVal = val[0];
+              if (typeof firstVal === 'number') {
+                return firstVal;
+              }
+              if (Array.isArray(firstVal)) {
+                return extractValue(firstVal);
+              }
+            }
+            if (typeof val === 'number') {
+              return val;
+            }
+            if (typeof val === 'string') {
+              return parseInt(val) || 0;
+            }
+            return 0;
+          };
+
+          const registered_at = extractValue(returnVals[0]);
+          const checked_in = extractValue(returnVals[1]) !== 0;
+          const platform_fee_paid = extractValue(returnVals[2]);
+
+          console.log("📋 IdentityAccess: Move contract registration details:", {
+            registered_at,
+            checked_in,
+            platform_fee_paid,
+            rawReturnValues: returnVals
           });
-          
-          return Boolean(isRegistered);
+
+          return { registered_at, checked_in, platform_fee_paid };
         }
       }
-
-      console.log("❌ Contract check failed, falling back to event query...");
-      
-      // Fallback to event query method
-      const registration = await this.getRegistrationStatus(
-        eventId,
-        userAddress,
-        registrationRegistryId
-      );
-      return registration !== null;
+      return null;
     } catch (error) {
-      console.error("❌ Registration check failed:", error);
-      return false;
+      console.log("❌ IdentityAccess: Error getting registration details:", error);
+      return null;
     }
   }
 
@@ -566,6 +785,43 @@ export class IdentityAccessSDK {
       registered_at: registration.registered_at,
     };
 
+    return JSON.stringify(qrData);
+  }
+
+  /**
+   * Generate QR code data directly from pass_id (alternative method)
+   * This follows the documented ephemeral pass pattern
+   */
+  generateQRCodeDataFromPassId(
+    eventId: string,
+    userAddress: string,
+    passId: number
+  ): string {
+    // Generate the pass hash using the documented method
+    const passHash = this.generatePassHash(BigInt(passId), eventId, userAddress);
+    const passHashHex = Array.from(passHash)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    
+    // Generate a short reference ID for easy sharing
+    const shortRef = `${eventId.slice(0, 8)}${passId}${userAddress.slice(0, 8)}`;
+    
+    const qrData = {
+      ref: shortRef,
+      e: eventId,
+      p: passId, // Use pass_id directly for short format
+      u: userAddress,
+      t: Date.now(),
+    };
+    
+    console.log("🔍 IdentityAccess: Generated QR data from pass_id:", {
+      eventId,
+      userAddress,
+      passId,
+      passHashHex: passHashHex.slice(0, 16) + "...",
+      qrDataSize: JSON.stringify(qrData).length
+    });
+    
     return JSON.stringify(qrData);
   }
 
