@@ -248,6 +248,12 @@ export class IdentityAccessSDK {
   ): Promise<Registration | null> {
     try {
       // Query for PassGenerated events from both paid and free event registrations
+      console.log("🔍 PassGenerated Debug - Querying transactions for:", {
+        eventId,
+        userAddress,
+        packageId: this.packageId
+      });
+
       const [paidTransactions, freeTransactions] = await Promise.all([
         suiClient.queryTransactionBlocks({
           filter: {
@@ -281,17 +287,35 @@ export class IdentityAccessSDK {
         }),
       ]);
 
+      console.log("🔍 PassGenerated Debug - Transaction query results:", {
+        paidTransactionsCount: paidTransactions.data?.length || 0,
+        freeTransactionsCount: freeTransactions.data?.length || 0
+      });
+
       // Combine both transaction sets and look for PassGenerated events
       const allTransactions = [
         ...(paidTransactions.data || []),
         ...(freeTransactions.data || [])
       ];
 
+      console.log("🔍 PassGenerated Debug - Total transactions to search:", allTransactions.length);
+
       // Look for PassGenerated event for this specific user and event
+      console.log("🔍 PassGenerated Debug - Searching for PassGenerated events...");
+      
+      let foundEvents = 0;
+      let matchingEvents = 0;
+      
       for (const txn of allTransactions) {
         if (txn.events) {
           for (const event of txn.events) {
             if (event.type?.includes("PassGenerated")) {
+              foundEvents++;
+              console.log("🔍 PassGenerated Debug - Found PassGenerated event:", {
+                eventType: event.type,
+                parsedJson: event.parsedJson
+              });
+              
               const eventData = event.parsedJson as {
                 event_id: string;
                 wallet: string;
@@ -299,11 +323,22 @@ export class IdentityAccessSDK {
                 expires_at: number;
               };
 
+              console.log("🔍 PassGenerated Debug - Event data:", {
+                eventId: eventData?.event_id,
+                wallet: eventData?.wallet,
+                targetEventId: eventId,
+                targetWallet: userAddress,
+                matches: eventData?.event_id === eventId && eventData?.wallet === userAddress
+              });
+
               if (
                 eventData &&
                 eventData.event_id === eventId &&
                 eventData.wallet === userAddress
               ) {
+                matchingEvents++;
+                console.log("✅ PassGenerated Debug - Found matching registration!");
+                
                 // Generate the pass hash for the registration object
                 const passHash = this.generatePassHash(
                   BigInt(eventData.pass_id),
@@ -313,6 +348,8 @@ export class IdentityAccessSDK {
                 const passHashHex = Array.from(passHash)
                   .map((b) => b.toString(16).padStart(2, "0"))
                   .join("");
+
+                console.log("✅ PassGenerated Debug - Generated pass hash:", passHashHex);
 
                 return {
                   wallet: userAddress,
@@ -325,6 +362,12 @@ export class IdentityAccessSDK {
           }
         }
       }
+
+      console.log("🔍 PassGenerated Debug - Search complete:", {
+        totalTransactions: allTransactions.length,
+        foundPassGeneratedEvents: foundEvents,
+        matchingRegistrations: matchingEvents
+      });
 
       return null;
     } catch {

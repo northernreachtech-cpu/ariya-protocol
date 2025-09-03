@@ -619,15 +619,7 @@ const EventDetails = () => {
 
         // Check if user is registered and if user is organizer
         if (activeAddress && eventData && isAuthenticated) {
-          console.log("🔍 EventDetails: Checking registration status...", {
-            eventId: id,
-            activeAddress,
-            registrationRegistryId,
-            isAuthenticated
-          });
-
           const [isUserRegistered, organizerCheck] = await Promise.all([
-            // Use contract-based registration check instead of transaction history
             sdk.identityAccess.isRegistered(
               id,
               activeAddress,
@@ -636,20 +628,8 @@ const EventDetails = () => {
             sdk.identityAccess.isEventOrganizer(id, activeAddress),
           ]);
 
-          console.log("📋 EventDetails: Registration check results:", {
-            isRegistered: isUserRegistered,
-            isOrganizer: organizerCheck,
-            method: "contract-based"
-          });
-
           setIsRegistered(isUserRegistered);
           setIsOrganizer(organizerCheck);
-        } else {
-          console.log("⚠️ EventDetails: Skipping registration check:", {
-            hasActiveAddress: !!activeAddress,
-            hasEventData: !!eventData,
-            isAuthenticated
-          });
         }
 
         // Load sub-events if this is a parent event
@@ -664,6 +644,12 @@ const EventDetails = () => {
           isRegistered && // ONLY check attendance for registered users
           (navAttendanceState === null || navAttendanceState === undefined)
         ) {
+          console.log("🔍 Attendance Debug - Fetching attendance state for registered user:", {
+            eventId: id,
+            userAddress: activeAddress,
+            attendanceRegistryId
+          });
+          
           try {
             const tx = new Transaction();
             tx.moveCall({
@@ -678,29 +664,41 @@ const EventDetails = () => {
               transactionBlock: tx,
               sender: activeAddress,
             });
+            
+            console.log("🔍 Attendance Debug - Raw result from contract:", result);
+            
             if (result && result.results && result.results.length > 0) {
               const returnVals = result.results[0].returnValues;
+              console.log("🔍 Attendance Debug - Return values:", returnVals);
+              
               if (Array.isArray(returnVals) && returnVals.length >= 4) {
-                setHasRecord(
-                  Array.isArray(returnVals[0])
-                    ? returnVals[0].length > 0
-                    : !!returnVals[0]
-                );
-                setAttendanceState(
-                  Array.isArray(returnVals[1])
-                    ? returnVals[1][0]
-                    : parseInt(returnVals[1]) || 0
-                );
-                setCheckInTime(
-                  Array.isArray(returnVals[2])
-                    ? returnVals[2][0]
-                    : parseInt(returnVals[2]) || 0
-                );
-                setCheckOutTime(
-                  Array.isArray(returnVals[3])
-                    ? returnVals[3][0]
-                    : parseInt(returnVals[3]) || 0
-                );
+                const hasRecord = Array.isArray(returnVals[0])
+                  ? returnVals[0].length > 0
+                  : !!returnVals[0];
+                  
+                const attendanceState = Array.isArray(returnVals[1])
+                  ? returnVals[1][0]
+                  : parseInt(returnVals[1]) || 0;
+                  
+                const checkInTime = Array.isArray(returnVals[2])
+                  ? returnVals[2][0]
+                  : parseInt(returnVals[2]) || 0;
+                  
+                const checkOutTime = Array.isArray(returnVals[3])
+                  ? returnVals[3][0]
+                  : parseInt(returnVals[3]) || 0;
+                
+                console.log("🔍 Attendance Debug - Parsed values:", {
+                  hasRecord,
+                  attendanceState,
+                  checkInTime,
+                  checkOutTime
+                });
+                
+                setHasRecord(hasRecord);
+                setAttendanceState(attendanceState);
+                setCheckInTime(checkInTime);
+                setCheckOutTime(checkOutTime);
               }
             }
           } catch {
@@ -729,8 +727,16 @@ const EventDetails = () => {
             checkPoACapability();
           }
         } else {
+          console.log("🔍 Attendance Debug - Not fetching attendance state because:", {
+            hasActiveAddress: !!activeAddress,
+            isAuthenticated,
+            isRegistered,
+            hasNavAttendance: navAttendanceState !== null && navAttendanceState !== undefined
+          });
+          
           // Set attendance state from navigation
           if (Array.isArray(navAttendanceState)) {
+            console.log("🔍 Attendance Debug - Using navigation attendance state:", navAttendanceState);
             setAttendanceState(navAttendanceState[0]);
 
             // Check PoA capability for checked-in users
@@ -994,8 +1000,6 @@ const EventDetails = () => {
     if (!activeAddress || !event || !isAuthenticated) return;
 
     try {
-      console.log("🔍 EventDetails: Generating QR code for registered user...");
-      
       // First verify user is registered using contract-based check
       const isUserRegistered = await sdk.identityAccess.isRegistered(
         event.id,
@@ -1004,7 +1008,6 @@ const EventDetails = () => {
       );
 
       if (!isUserRegistered) {
-        console.log("❌ User not registered, cannot show QR");
         alert("You must be registered for this event to show QR code.");
         return;
       }
@@ -1017,7 +1020,6 @@ const EventDetails = () => {
       );
 
       if (registration) {
-        console.log("✅ Found registration data, generating QR...");
         const qrDataString = sdk.identityAccess.generateQRCodeData(
           event.id,
           activeAddress,
@@ -1026,7 +1028,6 @@ const EventDetails = () => {
         setQrData(qrDataString);
         setShowQR(true);
       } else {
-        console.log("⚠️ Registration confirmed but details not found - this may indicate transaction indexing delay");
         alert("You are registered but QR code details are not available yet. Please try again in a moment.");
       }
     } catch (error) {
