@@ -80,19 +80,6 @@ const Community = () => {
         }
 
         console.log("✅ Real community data:", communityDetails);
-        console.log("🔍 Community details breakdown:", {
-          id: communityDetails.id,
-          name: communityDetails.name,
-          nameType: typeof communityDetails.name,
-          nameIsArray: Array.isArray(communityDetails.name),
-          description: communityDetails.description,
-          descriptionType: typeof communityDetails.description,
-          descriptionIsArray: Array.isArray(communityDetails.description),
-          memberCount: communityDetails.memberCount,
-          eventId: communityDetails.eventId,
-          isActive: communityDetails.isActive,
-          features: communityDetails.features
-        });
         setCommunity(communityDetails);
 
         // Load real data from Firebase
@@ -248,10 +235,6 @@ const Community = () => {
               <p className="text-foreground-muted text-xs sm:text-sm lg:text-base max-w-2xl mx-auto px-4">
                 {community?.description}
               </p>
-              {/* Debug info */}
-              <div className="text-xs text-gray-500 mt-2">
-                Debug: name="{community?.name}" type={typeof community?.name}
-              </div>
             </div>
           </div>
 

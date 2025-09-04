@@ -6,6 +6,7 @@ import { useState } from "react";
 import { suiClient, useNetworkVariable } from "../config/sui";
 import { useZkLogin } from "../contexts/ZkLoginContext";
 import { useAriyaSDK } from "../lib/sdk";
+import { parseMoveAbortError } from "../utils/errorMessages";
 import Button from "./Button";
 import Card from "./Card";
 import ProfilePictureUpload from "./ProfilePictureUpload";
@@ -76,7 +77,8 @@ const ProfileCreationModal = ({
       // Check if transaction actually succeeded
       if (fullTx.effects?.status?.status === 'failure') {
         console.error("❌ Transaction failed:", fullTx.effects?.status?.error);
-        setError(`Transaction failed: ${fullTx.effects?.status?.error}`);
+        const userFriendlyError = parseMoveAbortError(fullTx.effects?.status?.error);
+        setError(userFriendlyError);
         setLoading(false);
         return;
       }
@@ -205,7 +207,8 @@ const ProfileCreationModal = ({
             onError: (error) => {
               console.error("❌ Error creating profile:", error);
               console.error("❌ Error details:", JSON.stringify(error, null, 2));
-              setError("Failed to create profile. Please try again.");
+              const userFriendlyError = parseMoveAbortError(error);
+              setError(userFriendlyError);
               setLoading(false);
             },
           }
@@ -216,7 +219,8 @@ const ProfileCreationModal = ({
       }
     } catch (error) {
       console.error("❌ Failed to create profile:", error);
-      setError("Failed to create profile. Please try again.");
+      const userFriendlyError = parseMoveAbortError(error);
+      setError(userFriendlyError);
       setLoading(false);
     }
   };
@@ -374,7 +378,8 @@ const ProfileCreationModal = ({
                   },
                   onError: (error) => {
                     console.error("❌ Error creating organizer profile:", error);
-                    setError("Failed to create organizer profile. You can try again later from your dashboard.");
+                    const userFriendlyError = parseMoveAbortError(error);
+                    setError(userFriendlyError);
                   },
                 }
               );
@@ -394,14 +399,16 @@ const ProfileCreationModal = ({
                   },
                   onError: (error) => {
                     console.error("❌ Error creating organizer profile:", error);
-                    setError("Failed to create organizer profile. You can try again later from your dashboard.");
+                    const userFriendlyError = parseMoveAbortError(error);
+                    setError(userFriendlyError);
                   },
                 }
               );
             }
           } catch (error) {
             console.error("❌ Error creating organizer profile:", error);
-            setError("Failed to create organizer profile. You can try again later from your dashboard.");
+            const userFriendlyError = parseMoveAbortError(error);
+            setError(userFriendlyError);
           } finally {
             setIsCreatingOrganizer(false);
           }

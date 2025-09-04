@@ -633,33 +633,17 @@ export class CommunityAccessSDK {
         sender: "0x0000000000000000000000000000000000000000000000000000000000000000", // Dummy sender
       });
 
-      console.log("🔍 getCommunityDetails contract call result:", {
-        communityId,
-        hasResults: result && result.results && result.results.length > 0,
-        resultLength: result?.results?.length || 0
-      });
-
       if (result && result.results && result.results.length > 0) {
         const returnVals = result.results[0].returnValues;
-        console.log("🔍 getCommunityDetails return values:", returnVals);
         
         if (Array.isArray(returnVals) && returnVals.length >= 5) {
-          console.log("🔍 Parsing name data:", {
-            rawName: returnVals[0],
-            isArray: Array.isArray(returnVals[0]),
-            length: Array.isArray(returnVals[0]) ? returnVals[0].length : 'N/A'
-          });
-          
           // Parse name from tuple [byteArray, typeString]
           let name = "Event Community";
           if (Array.isArray(returnVals[0]) && returnVals[0].length >= 2) {
             const nameTuple = returnVals[0];
-            console.log("🔍 Name tuple:", nameTuple);
             if (Array.isArray(nameTuple[0])) {
               const nameBytes = nameTuple[0];
-              console.log("🔍 Name bytes:", nameBytes);
               name = nameBytes.length > 0 ? String.fromCharCode(...nameBytes) : "Event Community";
-              console.log("🔍 Parsed name:", name);
             }
           }
           
@@ -674,8 +658,8 @@ export class CommunityAccessSDK {
           }
           
           const memberCount = Number(Array.isArray(returnVals[2]) ? returnVals[2][0] : returnVals[2]);
-          const isActive = Array.isArray(returnVals[3]) ? returnVals[3][0] : returnVals[3];
-          const accessType = Number(Array.isArray(returnVals[4]) ? returnVals[4][0] : returnVals[4]);
+          const isActive = Boolean(Array.isArray(returnVals[3]) ? returnVals[3][0] : returnVals[3]);
+           Number(Array.isArray(returnVals[4]) ? returnVals[4][0] : returnVals[4]);
 
           // Get event ID from CommunityCreated events
           const eventId = await this.getEventIdForCommunity(communityId);
@@ -694,13 +678,6 @@ export class CommunityAccessSDK {
             features: features,
           };
 
-          console.log("✅ Parsed community data:", {
-            name: parsedData.name,
-            description: parsedData.description,
-            memberCount: parsedData.memberCount,
-            isActive: parsedData.isActive,
-            features: parsedData.features
-          });
 
           return parsedData;
         }

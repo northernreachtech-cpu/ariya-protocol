@@ -1065,7 +1065,7 @@ export class EventManagementSDK {
    */
   async getEventCheckedInUsers(
     eventId: string,
-    attendanceRegistryId: string
+    _attendanceRegistryId: string
   ): Promise<Array<{ wallet: string; checkedInAt: number }>> {
     try {
       // Query attendance events for this event
