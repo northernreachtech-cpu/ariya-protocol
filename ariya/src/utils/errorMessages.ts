@@ -62,21 +62,13 @@ const ERROR_MESSAGES: Record<number, string> = {
  */
 export const parseMoveAbortError = (error: any): string => {
   try {
-    console.log("🔍 parseMoveAbortError - Input error:", error);
-    console.log("🔍 parseMoveAbortError - Error type:", typeof error);
-    console.log("🔍 parseMoveAbortError - Error keys:", error ? Object.keys(error) : "null");
-    
     const errorString = error?.message || error?.toString() || "";
-    console.log("🔍 parseMoveAbortError - Error string:", errorString);
     
     // Extract error code from MoveAbort pattern - updated to match actual format
     const moveAbortMatch = errorString.match(/MoveAbort\([^}]+},\s*(\d+)\)/);
-    console.log("🔍 parseMoveAbortError - MoveAbort match:", moveAbortMatch);
     
     if (moveAbortMatch) {
       const errorCode = parseInt(moveAbortMatch[1]);
-      console.log("🔍 parseMoveAbortError - Error code:", errorCode);
-      console.log("🔍 parseMoveAbortError - Error message:", ERROR_MESSAGES[errorCode]);
       
       // Return specific message if available, otherwise generic message
       if (ERROR_MESSAGES[errorCode]) {
@@ -87,10 +79,8 @@ export const parseMoveAbortError = (error: any): string => {
     }
     
     // If no MoveAbort pattern found, return generic message
-    console.log("🔍 parseMoveAbortError - No MoveAbort pattern found, returning generic message");
     return "Transaction failed. Please try again.";
   } catch (e) {
-    console.error("🔍 parseMoveAbortError - Exception:", e);
     return "Transaction failed. Please try again.";
   }
 };

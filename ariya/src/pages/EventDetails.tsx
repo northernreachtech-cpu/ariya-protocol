@@ -864,49 +864,35 @@ const EventDetails = () => {
 
       // Use actual event fee amount from the event data
       const eventFeeAmount = event.fee_amount || 0;
-      let paymentCoinId: string | undefined;
-
+      // For paid events, check if user has sufficient balance
       if (eventFeeAmount > 0) {
-        // For paid events, get user's SUI coins
+        // Get user's SUI coins to check balance
         const { data: coins } = await suiClient.getCoins({
           owner: activeAddress,
           coinType: "0x2::sui::SUI",
         });
 
-        // Debug logging
-        console.log("🔍 Event registration fee check:", {
-          eventFeeAmount,
-          feeInMist: eventFeeAmount,
-          availableCoins: coins.map(c => ({
-            balance: c.balance,
-            balanceInSui: Number(c.balance) / 1000000000
-          }))
-        });
-
-        // Find a coin with sufficient balance (eventFeeAmount is already in MIST)
-        const feeInMist = eventFeeAmount;
-        const coinWithBalance = coins.find((coin: { balance: string }) => {
-          const coinBalance = BigInt(coin.balance);
-          const requiredFee = BigInt(feeInMist);
-          return coinBalance >= requiredFee;
-        });
-
-        if (!coinWithBalance) {
-          const totalBalance = coins.reduce((sum, coin) => sum + BigInt(coin.balance), BigInt(0));
-          const totalBalanceInSui = Number(totalBalance) / 1000000000;
-          const feeInSui = eventFeeAmount / 1000000000;
-          
+        // Calculate total balance
+        const totalBalance = coins.reduce((sum, coin) => sum + BigInt(coin.balance), BigInt(0));
+        const totalBalanceInSui = Number(totalBalance) / 1000000000;
+        const feeInSui = eventFeeAmount / 1000000000;
+        
+        // Check if user has sufficient balance (including gas buffer)
+        const gasBuffer = 0.1; // 0.1 SUI buffer for gas
+        const totalRequired = feeInSui + gasBuffer;
+        
+        if (totalBalanceInSui < totalRequired) {
           console.error("❌ Insufficient balance for event registration:", {
             requiredFee: feeInSui,
+            gasBuffer: gasBuffer,
+            totalRequired: totalRequired,
             totalBalance: totalBalanceInSui,
             availableCoins: coins.length
           });
           
-          alert(`Insufficient SUI balance for event registration.\nRequired: ${feeInSui.toFixed(6)} SUI\nAvailable: ${totalBalanceInSui.toFixed(6)} SUI`);
+          alert(`Insufficient SUI balance for event registration.\nRequired: ${totalRequired.toFixed(6)} SUI (${feeInSui.toFixed(6)} SUI fee + ${gasBuffer} SUI gas buffer)\nAvailable: ${totalBalanceInSui.toFixed(6)} SUI`);
           return;
         }
-
-        paymentCoinId = coinWithBalance.coinObjectId;
       }
 
       console.log("🚀 Starting event registration with params:", {
@@ -917,7 +903,6 @@ const EventDetails = () => {
         platformTreasuryId,
         userAddress: activeAddress,
         eventFeeAmount,
-        paymentCoinId,
         organizerAddress: event.organizer
       });
       
@@ -940,8 +925,7 @@ const EventDetails = () => {
         platformTreasuryId,
         activeAddress,
         signAndExecute,
-        eventFeeAmount,
-        paymentCoinId
+        eventFeeAmount
       );
 
       console.log("📋 Registration result:", result);

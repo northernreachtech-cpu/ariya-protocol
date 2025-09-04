@@ -35,14 +35,13 @@ export class IdentityAccessSDK {
     treasuryId: string,
     userAddress: string,
     signAndExecute: (params: { transaction: Transaction }) => Promise<unknown>,
-    eventFeeAmount?: number,
-    paymentCoinId?: string
+    eventFeeAmount?: number
   ): Promise<{ qrData: unknown; passHash: Uint8Array } | null> {
     try {
       // 1. Register for the event (free or paid)
       let registerTx: Transaction;
       
-      if (eventFeeAmount && eventFeeAmount > 0 && paymentCoinId) {
+      if (eventFeeAmount && eventFeeAmount > 0) {
         // Paid event
         registerTx = this.registerForEvent(
           eventId,
@@ -50,7 +49,7 @@ export class IdentityAccessSDK {
           organizerSubscriptionId,
           organizerProfileId,
           treasuryId,
-          paymentCoinId
+          eventFeeAmount
         );
       } else {
         // Free event
@@ -177,9 +176,15 @@ export class IdentityAccessSDK {
     organizerSubscriptionId: string,
     organizerProfileId: string,
     treasuryId: string,
-    paymentCoinId: string
+    eventFeeAmount: number
   ): Transaction {
     const tx = new Transaction();
+    
+    // Split from tx.gas to create exact payment amount (as per Move documentation)
+    const [paymentCoin] = tx.splitCoins(tx.gas, [
+      tx.pure.u64(eventFeeAmount)
+    ]);
+    
     tx.moveCall({
       target: `${this.packageId}::identity_access::register_for_event`,
       arguments: [
@@ -188,10 +193,11 @@ export class IdentityAccessSDK {
         tx.object(organizerSubscriptionId), // organizer_subscription: &UserSubscription
         tx.object(organizerProfileId), // organizer_profile: &OrganizerProfile
         tx.object(treasuryId), // treasury: &mut PlatformTreasury
-        tx.object(paymentCoinId), // payment: Coin<SUI>
+        paymentCoin, // payment: Coin<SUI> - split from gas
         tx.object(CLOCK_ID), // clock: &Clock
       ],
     });
+    
     return tx;
   }
 
