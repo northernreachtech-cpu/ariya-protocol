@@ -11,7 +11,7 @@ interface AdminControlsProps {
 }
 
 const AdminControls: React.FC<AdminControlsProps> = ({ 
-  treasuryId, 
+  
   currentBalance, 
   onActionComplete 
 }) => {

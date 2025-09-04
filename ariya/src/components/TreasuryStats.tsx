@@ -69,18 +69,19 @@ const TreasuryStats: React.FC<TreasuryStatsProps> = ({ treasuryData, isAdmin }) 
           </div>
         </div>
 
-        {/* Admin Info */}
+        {/* Admin Status */}
         <div className="bg-card rounded-lg p-6 shadow-sm border border-border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-foreground-secondary">Treasury Admin</p>
-              <p className="text-sm font-mono text-foreground">
-                {formatAddress(treasuryData.admin)}
-              </p>
-              {isAdmin && (
+              <p className="text-sm font-medium text-foreground-secondary">Admin Status</p>
+              {isAdmin ? (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/20 text-success mt-2">
                   You are the admin
                 </span>
+              ) : (
+                <p className="text-sm text-foreground-muted mt-2">
+                  View-only access
+                </p>
               )}
             </div>
             <div className="p-3 bg-accent/20 rounded-full">

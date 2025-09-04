@@ -188,7 +188,7 @@ export class PlatformTreasurySDK {
   /**
    * Get platform fee deposit history
    */
-  async getFeeHistory(treasuryId: string, limit: number = 50): Promise<PlatformFeeEvent[]> {
+  async getFeeHistory(_treasuryId: string, limit: number = 50): Promise<PlatformFeeEvent[]> {
     try {
       const { data: events } = await suiClient.queryEvents({
         query: {
@@ -217,7 +217,7 @@ export class PlatformTreasurySDK {
   /**
    * Get treasury withdrawal history
    */
-  async getWithdrawalHistory(treasuryId: string, limit: number = 50): Promise<WithdrawalEvent[]> {
+  async getWithdrawalHistory(_treasuryId: string, limit: number = 50): Promise<WithdrawalEvent[]> {
     try {
       const { data: events } = await suiClient.queryEvents({
         query: {
@@ -245,7 +245,7 @@ export class PlatformTreasurySDK {
   /**
    * Get admin transfer history
    */
-  async getAdminTransferHistory(treasuryId: string, limit: number = 50): Promise<AdminTransferEvent[]> {
+  async getAdminTransferHistory(_treasuryId: string, limit: number = 50): Promise<AdminTransferEvent[]> {
     try {
       const { data: events } = await suiClient.queryEvents({
         query: {
