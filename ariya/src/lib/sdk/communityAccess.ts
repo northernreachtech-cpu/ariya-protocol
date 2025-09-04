@@ -462,16 +462,68 @@ export class CommunityAccessSDK {
   }
 
   /**
+   * Get event ID for a community from CommunityCreated events
+   */
+  private async getEventIdForCommunity(communityId: string): Promise<string | null> {
+    try {
+      const { data: events } = await suiClient.queryEvents({
+        query: {
+          MoveEventType: `${this.packageId}::community_access::CommunityCreated`,
+        },
+        limit: 50,
+        order: "descending",
+      });
+
+      for (const event of events) {
+        const eventData = event.parsedJson as any;
+        if (eventData && eventData.community_id === communityId) {
+          return eventData.event_id;
+        }
+      }
+      return null;
+    } catch (e) {
+      console.error("Error getting event ID for community:", e);
+      return null;
+    }
+  }
+
+  /**
    * Get community features
    */
   public async getCommunityFeatures(
-    _communityId: string,
-    _communityRegistryId: string
+    communityId: string,
+    communityRegistryId: string
   ): Promise<string[]> {
     try {
-      // For now, return default features since the Move function might not be implemented yet
-      // This can be updated when the actual Move function is available
+      // Use the Move contract's get_community_features function
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${this.packageId}::community_access::get_community_features`,
+        arguments: [
+          tx.pure.id(communityId),
+          tx.object(communityRegistryId),
+        ],
+      });
 
+      const result = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: "0x0000000000000000000000000000000000000000000000000000000000000000",
+      });
+
+      if (result && result.results && result.results.length > 0) {
+        const returnVals = result.results[0].returnValues;
+        if (Array.isArray(returnVals) && returnVals.length >= 5) {
+          const features: string[] = [];
+          if (returnVals[0]) features.push("forum");
+          if (returnVals[1]) features.push("resources");
+          if (returnVals[2]) features.push("calendar");
+          if (returnVals[3]) features.push("directory");
+          if (returnVals[4]) features.push("governance");
+          return features;
+        }
+      }
+
+      // Fallback to default features
       return ["forum", "directory"];
     } catch (e) {
       console.error("Error getting community features:", e);
@@ -563,27 +615,113 @@ export class CommunityAccessSDK {
    */
   public async getCommunityDetails(
     communityId: string,
-    _communityRegistryId: string
+    communityRegistryId: string
   ): Promise<CommunityInfo | null> {
     try {
+      // Use the Move contract's get_community_details function
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${this.packageId}::community_access::get_community_details`,
+        arguments: [
+          tx.pure.id(communityId),
+          tx.object(communityRegistryId),
+        ],
+      });
 
+      const result = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: "0x0000000000000000000000000000000000000000000000000000000000000000", // Dummy sender
+      });
 
-      // For now, return a basic community info object since we have the ID
-      // This avoids the devInspectTransactionBlock issue
+      console.log("🔍 getCommunityDetails contract call result:", {
+        communityId,
+        hasResults: result && result.results && result.results.length > 0,
+        resultLength: result?.results?.length || 0
+      });
+
+      if (result && result.results && result.results.length > 0) {
+        const returnVals = result.results[0].returnValues;
+        console.log("🔍 getCommunityDetails return values:", returnVals);
+        
+        if (Array.isArray(returnVals) && returnVals.length >= 5) {
+          console.log("🔍 Parsing name data:", {
+            rawName: returnVals[0],
+            isArray: Array.isArray(returnVals[0]),
+            length: Array.isArray(returnVals[0]) ? returnVals[0].length : 'N/A'
+          });
+          
+          // Parse name from tuple [byteArray, typeString]
+          let name = "Event Community";
+          if (Array.isArray(returnVals[0]) && returnVals[0].length >= 2) {
+            const nameTuple = returnVals[0];
+            console.log("🔍 Name tuple:", nameTuple);
+            if (Array.isArray(nameTuple[0])) {
+              const nameBytes = nameTuple[0];
+              console.log("🔍 Name bytes:", nameBytes);
+              name = nameBytes.length > 0 ? String.fromCharCode(...nameBytes) : "Event Community";
+              console.log("🔍 Parsed name:", name);
+            }
+          }
+          
+          // Parse description from tuple [byteArray, typeString]
+          let description = "Join the live community for this event";
+          if (Array.isArray(returnVals[1]) && returnVals[1].length >= 2) {
+            const descriptionTuple = returnVals[1];
+            if (Array.isArray(descriptionTuple[0])) {
+              const descriptionBytes = descriptionTuple[0];
+              description = descriptionBytes.length > 0 ? String.fromCharCode(...descriptionBytes) : "Join the live community for this event";
+            }
+          }
+          
+          const memberCount = Number(Array.isArray(returnVals[2]) ? returnVals[2][0] : returnVals[2]);
+          const isActive = Array.isArray(returnVals[3]) ? returnVals[3][0] : returnVals[3];
+          const accessType = Number(Array.isArray(returnVals[4]) ? returnVals[4][0] : returnVals[4]);
+
+          // Get event ID from CommunityCreated events
+          const eventId = await this.getEventIdForCommunity(communityId);
+
+          // Get community features
+          const features = await this.getCommunityFeatures(communityId, communityRegistryId);
+
+          const parsedData = {
+            id: communityId,
+            eventId: eventId || "",
+            name: name || "Event Community",
+            description: description || "Join the live community for this event",
+            memberCount: memberCount || 0,
+            created: Date.now(), // We'll get this from events if needed
+            isActive: isActive !== false,
+            features: features,
+          };
+
+          console.log("✅ Parsed community data:", {
+            name: parsedData.name,
+            description: parsedData.description,
+            memberCount: parsedData.memberCount,
+            isActive: parsedData.isActive,
+            features: parsedData.features
+          });
+
+          return parsedData;
+        }
+      }
+
+      // Fallback to hardcoded data if contract call fails
+      console.warn("⚠️ Failed to get community details from contract, using fallback data");
       return {
         id: communityId,
-        eventId: "", // We'll get this from the event data
-        name: "Event Community", // Default name
+        eventId: "",
+        name: "Event Community",
         description: "Join the live community for this event",
-        memberCount: 0, // Will be updated when we implement proper querying
+        memberCount: 0,
         created: Date.now(),
         isActive: true,
-        features: ["forum", "resources", "directory"], // Default features
+        features: ["forum", "resources", "directory"],
       };
     } catch (e) {
       console.error("Error getting community details:", e);
+      return null;
     }
-    return null;
   }
 
   /**

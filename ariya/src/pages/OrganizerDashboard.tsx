@@ -16,6 +16,7 @@ import {
   CheckCircle,
   Gift,
   Trash2,
+  Copy,
   FileText,
   Upload,
   Clock,
@@ -87,6 +88,142 @@ interface Event {
   rating?: number;
   revenue?: number;
 }
+
+// Registered Users List Component
+const RegisteredUsersList = ({ eventId, sdk }: { eventId: string; sdk: any }) => {
+  const [users, setUsers] = useState<Array<{ wallet: string; registeredAt: number }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        setLoading(true);
+        const registeredUsers = await sdk.eventManagement.getEventRegisteredUsers(eventId);
+        setUsers(registeredUsers);
+      } catch (error) {
+        console.error("Error loading registered users:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUsers();
+  }, [eventId, sdk]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="ml-2 text-foreground-secondary">Loading users...</span>
+      </div>
+    );
+  }
+
+  if (users.length === 0) {
+    return (
+      <div className="text-center py-4 text-foreground-secondary">
+        No registered users yet
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 max-h-64 overflow-y-auto">
+      {users.map((user, index) => (
+        <div key={user.wallet} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
+              {index + 1}
+            </div>
+            <div>
+              <div className="font-mono text-sm text-foreground">
+                {user.wallet.slice(0, 8)}...{user.wallet.slice(-6)}
+              </div>
+              <div className="text-xs text-foreground-secondary">
+                Registered {new Date(user.registeredAt).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigator.clipboard.writeText(user.wallet)}
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Checked-in Users List Component
+const CheckedInUsersList = ({ eventId, sdk }: { eventId: string; sdk: any }) => {
+  const [users, setUsers] = useState<Array<{ wallet: string; checkedInAt: number }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        setLoading(true);
+        const checkedInUsers = await sdk.eventManagement.getEventCheckedInUsers(eventId, "dummy");
+        setUsers(checkedInUsers);
+      } catch (error) {
+        console.error("Error loading checked-in users:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUsers();
+  }, [eventId, sdk]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="ml-2 text-foreground-secondary">Loading users...</span>
+      </div>
+    );
+  }
+
+  if (users.length === 0) {
+    return (
+      <div className="text-center py-4 text-foreground-secondary">
+        No checked-in users yet
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 max-h-64 overflow-y-auto">
+      {users.map((user) => (
+        <div key={user.wallet} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-400/20 flex items-center justify-center text-green-600 dark:text-green-400">
+              <CheckCircle className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="font-mono text-sm text-foreground">
+                {user.wallet.slice(0, 8)}...{user.wallet.slice(-6)}
+              </div>
+              <div className="text-xs text-foreground-secondary">
+                Checked in {new Date(user.checkedInAt).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigator.clipboard.writeText(user.wallet)}
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 // Event Details Modal component
 const EventDetailsModal = ({
@@ -599,6 +736,27 @@ const EventDetailsModal = ({
                 </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Registered and Checked-in Users */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Registered Users */}
+            <div className="bg-card-secondary rounded-lg p-6 border border-border">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Registered Users ({event.current_attendees || 0})
+              </h3>
+              <RegisteredUsersList eventId={event.id} sdk={sdk} />
+            </div>
+
+            {/* Checked-in Users */}
+            <div className="bg-card-secondary rounded-lg p-6 border border-border">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                Checked-in Users
+              </h3>
+              <CheckedInUsersList eventId={event.id} sdk={sdk} />
             </div>
           </div>
         </div>
@@ -1897,9 +2055,16 @@ const OrganizerDashboard = () => {
             event.id,
             eventRegistryId
           );
+          
+          console.log("🔍 Organizer Dashboard - Event attendee count:", {
+            eventId: event.id,
+            eventName: fullEventDetails?.name,
+            attendeeCount: attendeeCount,
+            originalCurrentAttendees: fullEventDetails?.current_attendees
+          });
 
           if (fullEventDetails) {
-            return {
+            const transformedEvent = {
               ...fullEventDetails,
               title: fullEventDetails.name, // Keep title for backward compatibility
               date: new Date(fullEventDetails.start_time).toISOString().split("T")[0],
@@ -1908,6 +2073,7 @@ const OrganizerDashboard = () => {
                 : fullEventDetails.state === 1
                 ? "active"
                 : "completed") as "upcoming" | "active" | "completed",
+              current_attendees: attendeeCount, // Update with real attendee count
               checkedIn: attendeeCount, // Use real attendee count
               totalCapacity: fullEventDetails.capacity,
               escrowStatus: "pending" as "pending" | "released" | "locked",
@@ -1915,6 +2081,23 @@ const OrganizerDashboard = () => {
               revenue: (fullEventDetails.fee_amount * attendeeCount) / 1000000000, // Calculate revenue
               state: fullEventDetails.state,
             };
+            
+            console.log("🔍 Transformed event data:", {
+              eventId: transformedEvent.id,
+              eventName: transformedEvent.name,
+              finalCurrentAttendees: transformedEvent.current_attendees,
+              originalCurrentAttendees: fullEventDetails.current_attendees,
+              realAttendeeCount: attendeeCount
+            });
+            
+            console.log("✅ FINAL RESULT - Event will display:", {
+              eventName: transformedEvent.name,
+              current_attendees: transformedEvent.current_attendees,
+              capacity: transformedEvent.capacity,
+              percentage: `${((transformedEvent.current_attendees / transformedEvent.capacity) * 100).toFixed(1)}%`
+            });
+            
+            return transformedEvent;
           } else {
             // Fallback to basic event info if full details not available
           return {

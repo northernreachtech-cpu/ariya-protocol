@@ -906,27 +906,50 @@ export class EventManagementSDK {
     _registrationRegistryId: string // eslint-disable-line @typescript-eslint/no-unused-vars
   ): Promise<number> {
     try {
-      // Query registration events for this specific event
-      const { data: transactions } = await suiClient.queryTransactionBlocks({
-        filter: {
-          MoveFunction: {
-            package: this.packageId,
-            module: "identity_access",
-            function: "register_for_event",
+      // Query both paid and free registration events for this specific event
+      const [paidTransactions, freeTransactions] = await Promise.all([
+        suiClient.queryTransactionBlocks({
+          filter: {
+            MoveFunction: {
+              package: this.packageId,
+              module: "identity_access",
+              function: "register_for_event",
+            },
           },
-        },
-        options: {
-          showEffects: true,
-          showEvents: true,
-          showObjectChanges: true,
-        },
-        limit: 100,
-      });
+          options: {
+            showEffects: true,
+            showEvents: true,
+            showObjectChanges: true,
+          },
+          limit: 100,
+        }),
+        suiClient.queryTransactionBlocks({
+          filter: {
+            MoveFunction: {
+              package: this.packageId,
+              module: "identity_access",
+              function: "register_for_free_event",
+            },
+          },
+          options: {
+            showEffects: true,
+            showEvents: true,
+            showObjectChanges: true,
+          },
+          limit: 100,
+        })
+      ]);
 
       let attendeeCount = 0;
 
+      // Combine both transaction sets
+      const allTransactions = [
+        ...(paidTransactions.data || []),
+        ...(freeTransactions.data || [])
+      ];
+
       // Count UserRegistered events for this event
-      for (const txn of transactions) {
+      for (const txn of allTransactions) {
         if (txn.events) {
           for (const event of txn.events) {
             if (event.type?.includes("UserRegistered")) {
@@ -937,15 +960,158 @@ export class EventManagementSDK {
 
               if (eventData && eventData.event_id === eventId) {
                 attendeeCount++;
+                console.log("🔍 Found UserRegistered event:", {
+                  eventId: eventData.event_id,
+                  wallet: eventData.wallet,
+                  totalCount: attendeeCount
+                });
+              }
+            }
+          }
+        }
+      }
+      
+      console.log("🔍 getEventAttendeeCount result:", {
+        eventId,
+        totalTransactions: allTransactions.length,
+        attendeeCount
+      });
+
+      return attendeeCount;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * Get list of registered users for an event with their wallet addresses
+   */
+  async getEventRegisteredUsers(
+    eventId: string
+  ): Promise<Array<{ wallet: string; registeredAt: number }>> {
+    try {
+      // Query both paid and free registration events for this specific event
+      const [paidTransactions, freeTransactions] = await Promise.all([
+        suiClient.queryTransactionBlocks({
+          filter: {
+            MoveFunction: {
+              package: this.packageId,
+              module: "identity_access",
+              function: "register_for_event",
+            },
+          },
+          options: {
+            showEffects: true,
+            showEvents: true,
+            showObjectChanges: true,
+          },
+          limit: 100,
+        }),
+        suiClient.queryTransactionBlocks({
+          filter: {
+            MoveFunction: {
+              package: this.packageId,
+              module: "identity_access",
+              function: "register_for_free_event",
+            },
+          },
+          options: {
+            showEffects: true,
+            showEvents: true,
+            showObjectChanges: true,
+          },
+          limit: 100,
+        })
+      ]);
+
+      const registeredUsers: Array<{ wallet: string; registeredAt: number }> = [];
+
+      // Combine both transaction sets
+      const allTransactions = [
+        ...(paidTransactions.data || []),
+        ...(freeTransactions.data || [])
+      ];
+
+      // Extract registered users for this event
+      for (const txn of allTransactions) {
+        if (txn.events) {
+          for (const event of txn.events) {
+            if (event.type?.includes("UserRegistered")) {
+              const eventData = event.parsedJson as {
+                event_id: string;
+                wallet: string;
+              };
+
+              if (eventData && eventData.event_id === eventId) {
+                registeredUsers.push({
+                  wallet: eventData.wallet,
+                  registeredAt: txn.timestampMs ? parseInt(txn.timestampMs) : Date.now()
+                });
               }
             }
           }
         }
       }
 
-      return attendeeCount;
+      return registeredUsers;
     } catch (error) {
-      return 0;
+      console.error("Error getting registered users:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get list of checked-in users for an event with their wallet addresses
+   */
+  async getEventCheckedInUsers(
+    eventId: string,
+    attendanceRegistryId: string
+  ): Promise<Array<{ wallet: string; checkedInAt: number }>> {
+    try {
+      // Query attendance events for this event
+      const { data: transactions } = await suiClient.queryTransactionBlocks({
+        filter: {
+          MoveFunction: {
+            package: this.packageId,
+            module: "attendance_verification",
+            function: "check_in_attendee",
+          },
+        },
+        options: {
+          showEffects: true,
+          showEvents: true,
+          showObjectChanges: true,
+        },
+        limit: 100,
+      });
+
+      const checkedInUsers: Array<{ wallet: string; checkedInAt: number }> = [];
+
+      for (const txn of transactions) {
+        if (txn.events) {
+          for (const event of txn.events) {
+            if (event.type?.includes("AttendeeCheckedIn")) {
+              const eventData = event.parsedJson as {
+                event_id: string;
+                attendee: string;
+                check_in_time: number;
+              };
+
+              if (eventData && eventData.event_id === eventId) {
+                checkedInUsers.push({
+                  wallet: eventData.attendee,
+                  checkedInAt: eventData.check_in_time
+                });
+              }
+            }
+          }
+        }
+      }
+
+      return checkedInUsers;
+    } catch (error) {
+      console.error("Error getting checked-in users:", error);
+      return [];
     }
   }
 
