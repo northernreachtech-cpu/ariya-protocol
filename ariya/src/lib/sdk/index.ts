@@ -6,6 +6,7 @@ import { CommunityAccessSDK } from "./communityAccess";
 import { AirdropDistributionSDK } from "./airdropDistribution";
 import { SubscriptionSDK } from "./subscription";
 import { DocumentFlowSDK } from "./documentFlow";
+import { PlatformTreasurySDK } from "./platformTreasury";
 import { useNetworkVariable } from "../../config/sui";
 
 // Main SDK class that combines all modules
@@ -17,6 +18,7 @@ export class AriyaSDK {
   public airdropDistribution: AirdropDistributionSDK;
   public subscription: SubscriptionSDK;
   public documentFlow: DocumentFlowSDK;
+  public platformTreasury: PlatformTreasurySDK;
 
   constructor(packageId: string) {
     this.eventManagement = new EventManagementSDK(packageId);
@@ -26,6 +28,7 @@ export class AriyaSDK {
     this.airdropDistribution = new AirdropDistributionSDK(packageId);
     this.subscription = new SubscriptionSDK(packageId);
     this.documentFlow = new DocumentFlowSDK(packageId);
+    this.platformTreasury = new PlatformTreasurySDK(packageId);
   }
 }
 
@@ -47,6 +50,13 @@ export {
 } from "./eventManagement";
 
 export { IdentityAccessSDK, type Registration } from "./identityAccess";
+
+export {
+  type TreasuryStatus,
+  type PlatformFeeEvent,
+  type WithdrawalEvent,
+  type AdminTransferEvent,
+} from "./platformTreasury";
 
 export {
   AttendanceVerificationSDK,

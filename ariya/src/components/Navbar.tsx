@@ -114,6 +114,11 @@ const Navbar = () => {
           icon: <FileText size={16} />,
         },
         {
+          name: "Treasury Dashboard",
+          href: "/admin/treasury",
+          icon: <Settings size={16} />,
+        },
+        {
           name: "SUI Workshop",
           href: "/sui-workshop",
           icon: <Settings size={16} />,

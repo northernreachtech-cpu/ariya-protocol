@@ -32,6 +32,7 @@ import Communities from "./pages/Communities";
 import DocFlow from "./pages/DocFlow";
 import UserDashboard from "./pages/UserDashboard";
 import SubscriptionManagement from "./pages/SubscriptionManagement";
+import TreasuryDashboard from "./pages/TreasuryDashboard";
 import ProfileCreationModal from "./components/ProfileCreationModal";
 import ProfileCheckOverlay from "./components/ProfileCheckOverlay";
 import { useUnifiedProfileCheck } from "./hooks/useUnifiedProfileCheck";
@@ -112,6 +113,7 @@ function AppContent() {
           path="/admin/workshop-responses"
           element={<AdminWorkshopResponses />}
         />
+        <Route path="/admin/treasury" element={<TreasuryDashboard />} />
         <Route path="/docflow" element={<DocFlow />} />
       </Routes>
 
