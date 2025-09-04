@@ -10,6 +10,7 @@ export interface Registration {
   wallet: string;
   registered_at: number;
   pass_hash: string | Uint8Array;
+  pass_id?: number; // Add pass_id for QR generation
   checked_in: boolean;
 }
 
@@ -318,6 +319,7 @@ export class IdentityAccessSDK {
                   wallet: userAddress,
                   registered_at: eventData.expires_at - 24 * 60 * 60 * 1000, // Approximate registration time
                   pass_hash: passHashHex,
+                  pass_id: eventData.pass_id, // Include pass_id for QR generation
                   checked_in: false, // Would need to check attendance separately
                 };
               }
@@ -378,19 +380,25 @@ export class IdentityAccessSDK {
   }
 
   /**
-   * Generate QR code data for registration
+   * Generate QR code data for registration (short format)
    */
   generateQRCodeData(
     eventId: string,
     userAddress: string,
     registration: Registration
   ): string {
-    // Generate a compact QR code string
+    // Extract pass_id from registration if available
+    // For now, we'll need to get it from the registration data
+    // This should match the format used in registerForEventAndGenerateQR
+    const passId = registration.pass_id || 0; // Fallback if not available
+    
+    // Generate short format QR code data (same as registerForEventAndGenerateQR)
     const qrData = {
-      event_id: eventId,
-      user_address: userAddress,
-      pass_hash: registration.pass_hash,
-      registered_at: registration.registered_at,
+      ref: `${eventId.slice(0, 8)}${passId}${userAddress.slice(0, 8)}`, // Short reference
+      e: eventId,
+      p: passId,
+      u: userAddress,
+      t: Date.now(),
     };
 
     return JSON.stringify(qrData);

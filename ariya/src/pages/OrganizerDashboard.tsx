@@ -729,6 +729,11 @@ const OrganizerDashboard = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [showCheckInSuccessModal, setShowCheckInSuccessModal] = useState(false);
+  const [checkInSuccessData, setCheckInSuccessData] = useState<{
+    userAddress: string;
+    eventName: string;
+  } | null>(null);
   const [settingMetadataEvent, setSettingMetadataEvent] = useState<
     string | null
   >(null);
@@ -904,21 +909,21 @@ const OrganizerDashboard = () => {
     try {
       let userAddress = "";
 
-      // Check if this is the original short format (e, p, u) or new format
-      if (qrData.p && qrData.u) {
-        console.log("🔍 QR Code analysis (original short format):");
-        console.log("  - e (event_id):", qrData.e);
-        console.log("  - p (pass_id):", qrData.p);
-        console.log("  - u (user_address):", qrData.u);
-        console.log("  - ref:", qrData.ref);
+      // Check if this is the short format (either original {p, u} or reconstructed {pass_id, user_address})
+      if ((qrData.p && qrData.u) || (qrData.pass_id && qrData.user_address)) {
+        console.log("🔍 QR Code analysis (short format):");
+        console.log("  - event_id:", qrData.event_id || qrData.e);
+        console.log("  - pass_id:", qrData.pass_id || qrData.p);
+        console.log("  - user_address:", qrData.user_address || qrData.u);
+        console.log("  - ref:", qrData.reference || qrData.ref);
         
-        userAddress = qrData.u;
+        userAddress = qrData.user_address || qrData.u;
         
         // First, verify the user is registered for this event
         console.log("🔍 Checking if user is registered...");
         const isRegistered = await sdk.identityAccess.isRegistered(
           selectedEventId!,
-          qrData.u, // Use u (user_address) from short format
+          userAddress, // Use user_address from either format
           registrationRegistryId
         );
         console.log("📋 Registration status:", isRegistered);
@@ -934,7 +939,7 @@ const OrganizerDashboard = () => {
         try {
           const registration = await sdk.identityAccess.getRegistrationStatus(
             selectedEventId!,
-            qrData.u, // Use u (user_address) from short format
+            userAddress, // Use user_address from either format
             registrationRegistryId
           );
           console.log("📋 Registration details:", registration);
@@ -942,24 +947,25 @@ const OrganizerDashboard = () => {
           console.log("⚠️ Could not get registration details:", error);
         }
 
-        // Use pass_id from the original short format to generate pass hash
-        console.log("📱 Using pass_id from original short format");
+        // Use pass_id from the short format to generate pass hash
+        console.log("📱 Using pass_id from short format");
+        const passId = qrData.pass_id || qrData.p;
         const tx = sdk.attendanceVerification.checkInAttendeeWithPassId(
           selectedEventId!,
-          qrData.u, // Use u (user_address)
-          parseInt(qrData.p), // Use p (pass_id)
+          userAddress, // Use user_address from either format
+          passId, // Use pass_id as string to preserve precision
           attendanceRegistryId,
           registrationRegistryId
         );
 
         console.log("🚀 Executing check-in transaction...");
         console.log("👤 Current account:", currentAccount?.address);
-        console.log("👤 QR User address:", qrData.u);
+        console.log("👤 QR User address:", userAddress);
         console.log("🔐 Transaction gas budget:", tx.getData().gasData);
         console.log("🔍 Transaction details:", {
           eventId: selectedEventId,
-          userAddress: qrData.u,
-          passId: qrData.p,
+          userAddress: userAddress,
+          passId: passId,
           attendanceRegistryId,
           registrationRegistryId
         });
@@ -969,9 +975,13 @@ const OrganizerDashboard = () => {
         });
         console.log("✅ Check-in transaction successful:", result);
 
-        alert(
-          `Successfully checked in ${qrData.u}. PoA capability transferred.`
-        );
+        // Show success modal instead of alert
+        const event = events.find(e => e.id === selectedEventId);
+        setCheckInSuccessData({
+          userAddress: userAddress,
+          eventName: event?.name || 'Event'
+        });
+        setShowCheckInSuccessModal(true);
       } else {
         console.log("📱 Using legacy QR format, validating...");
         // Fallback to old method for backward compatibility
@@ -1012,9 +1022,13 @@ const OrganizerDashboard = () => {
         });
         console.log("✅ Check-in transaction successful:", result);
 
-        alert(
-          `Successfully checked in ${validation.attendeeAddress}. PoA capability transferred.`
-        );
+        // Show success modal instead of alert
+        const event = events.find(e => e.id === selectedEventId);
+        setCheckInSuccessData({
+          userAddress: validation.attendeeAddress!,
+          eventName: event?.name || 'Event'
+        });
+        setShowCheckInSuccessModal(true);
       }
 
       // Verify capability transfer after successful check-in
@@ -2831,6 +2845,44 @@ const OrganizerDashboard = () => {
           message={successMessage}
           onClose={() => setShowSuccessModal(false)}
         />
+        {/* Check-in Success Modal */}
+        {showCheckInSuccessModal && checkInSuccessData && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+            <div className="bg-card border border-border rounded-lg p-8 max-w-md mx-4 shadow-lg text-center">
+              <div className="mb-6">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-400/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  Check-in Successful!
+                </h3>
+                <p className="text-foreground-secondary mb-4">
+                  Successfully checked in attendee for <strong>{checkInSuccessData.eventName}</strong>
+                </p>
+                <div className="bg-card-secondary rounded-lg p-4 mb-4">
+                  <div className="text-sm text-foreground-secondary mb-1">Attendee Address:</div>
+                  <div className="text-sm font-mono text-foreground break-all">
+                    {checkInSuccessData.userAddress}
+                  </div>
+                </div>
+                <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+                  ✓ PoA capability transferred successfully
+                </p>
+              </div>
+              <Button
+                onClick={() => {
+                  setShowCheckInSuccessModal(false);
+                  setCheckInSuccessData(null);
+                }}
+                className="w-full"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
         {/* Event Details Modal */}
         <EventDetailsModal
           isOpen={showEventDetailsModal}

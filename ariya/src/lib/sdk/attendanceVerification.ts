@@ -370,7 +370,7 @@ export class AttendanceVerificationSDK {
   checkInAttendeeWithPassId(
     eventId: string,
     userAddress: string,
-    passId: number,
+    passId: string | number,
     attendanceRegistryId: string,
     registrationRegistryId: string
   ): Transaction {
@@ -407,7 +407,7 @@ export class AttendanceVerificationSDK {
    * Generate pass hash from pass_id (same logic as identity_access module)
    */
   private generatePassHashFromId(
-    passId: number,
+    passId: string | number,
     eventId: string,
     wallet: string
   ): Uint8Array {
