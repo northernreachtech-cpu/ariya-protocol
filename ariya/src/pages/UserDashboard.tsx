@@ -4,6 +4,7 @@ import { Loader2, User, Calendar, Plus, Crown, Eye, MapPin, Clock, Users } from 
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { useAriyaSDK } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
+
 import type { UserSubscription } from "../lib/sdk";
 import Card from "../components/Card";
 import Button from "../components/Button";
@@ -31,6 +32,7 @@ const UserDashboard = () => {
   const profileRegistryId = useNetworkVariable("profileRegistryId");
   const subscriptionRegistryId = useNetworkVariable("subscriptionRegistryId");
   const eventRegistryId = useNetworkVariable("eventRegistryId");
+  const airdropRegistryId = useNetworkVariable("airdropRegistryId");
   // const platformTreasuryId = useNetworkVariable("platformTreasuryId");
 
   // Get the active address (either wallet or zkLogin)
@@ -46,6 +48,35 @@ const UserDashboard = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [assignedEvents, setAssignedEvents] = useState<any[]>([]);
   const [loadingAssignedEvents, setLoadingAssignedEvents] = useState(false);
+  // const [claimingAirdrop, setClaimingAirdrop] = useState<string | null>(null);
+
+  // const handleClaimAirdrop = async (airdropId: string) => {
+  //   if (!activeAddress || !airdropRegistryId) {
+  //     return;
+  //   }
+
+  //   setClaimingAirdrop(airdropId);
+  //   try {
+  //     const attendanceRegistryId = useNetworkVariable("attendanceRegistryId");
+  //     const nftRegistryId = useNetworkVariable("nftRegistryId");
+  //     const ratingRegistryId = useNetworkVariable("ratingRegistryId");
+      
+  //     const tx = sdk.airdropDistribution.claimAirdrop(
+  //       airdropId,
+  //       airdropRegistryId,
+  //       attendanceRegistryId,
+  //       nftRegistryId,
+  //       ratingRegistryId,
+  //       "0x6" // CLOCK_ID
+  //     );
+
+  //     await signAndExecute({ transaction: tx });
+  //   } catch (error) {
+  //     console.error("Error claiming airdrop:", error);
+  //   } finally {
+  //     setClaimingAirdrop(null);
+  //   }
+  // };
 
   const loadAssignedEvents = async () => {
     if (!activeAddress || !eventRegistryId || !profileRegistryId) {
@@ -545,27 +576,74 @@ const UserDashboard = () => {
             </div>
           ) : (
             /* Regular User Content (if not organizer) */
-            <div className="text-center py-12 sm:py-16">
-              <div className="mb-6">
-                <User className="h-16 w-16 mx-auto text-foreground-muted" />
+            <div className="space-y-8">
+              {/* Welcome Section */}
+              <div className="text-center py-8">
+                <div className="mb-6">
+                  <User className="h-16 w-16 mx-auto text-foreground-muted" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
+                  Welcome to Ariya!
+                </h3>
+                <p className="text-foreground-muted mb-6 max-w-md mx-auto">
+                  Your profile is set up. Browse events or become an organizer to
+                  create your own events.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button onClick={() => navigate("/events")}>Browse Events</Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleBecomeOrganizer}
+                    disabled={isCreatingOrganizer}
+                  >
+                    {isCreatingOrganizer ? "Creating..." : "Become Organizer"}
+                  </Button>
+                </div>
               </div>
-              <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
-                Welcome to Ariya!
-              </h3>
-              <p className="text-foreground-muted mb-6 max-w-md mx-auto">
-                Your profile is set up. Browse events or become an organizer to
-                create your own events.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button onClick={() => navigate("/events")}>Browse Events</Button>
-                <Button
-                  variant="outline"
-                  onClick={handleBecomeOrganizer}
-                  disabled={isCreatingOrganizer}
-                >
-                  {isCreatingOrganizer ? "Creating..." : "Become Organizer"}
-                </Button>
-              </div>
+
+              {/* Airdrop History Section */}
+              {airdropRegistryId && (
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold mb-4 text-foreground">
+                    My Airdrop Rewards
+                  </h3>
+                  <p className="text-foreground-muted mb-4">
+                    View and claim your airdrop rewards from events you've attended.
+                  </p>
+                  <div className="text-center py-8">
+                    <p className="text-foreground-muted">
+                      Airdrop history will appear here once you attend events with available rewards.
+                    </p>
+                  </div>
+                </Card>
+              )}
+
+              {/* Assigned Events Section */}
+              {assignedEvents.length > 0 && (
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold mb-4 text-foreground">
+                    Assigned Events
+                  </h3>
+                  <div className="space-y-4">
+                    {assignedEvents.map((event) => (
+                      <div key={event.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                        <div>
+                          <h4 className="font-medium text-foreground">{event.name}</h4>
+                          <p className="text-sm text-foreground-muted">{event.description}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/events/${event.id}`)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
             </div>
           )
         )}

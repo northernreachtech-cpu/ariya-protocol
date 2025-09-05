@@ -19,6 +19,7 @@ import {
   AIRDROP_DISTRIBUTION_TYPES,
 } from "../lib/sdk";
 
+
 interface AirdropManagementProps {
   eventId: string;
   airdrops: AirdropDetails[];

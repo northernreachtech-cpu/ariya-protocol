@@ -31,6 +31,7 @@ import useScrollToTop from "../hooks/useScrollToTop";
 import DocumentFlowCard from "../components/DocumentFlowCard";
 import CreateDocumentFlowModal from "../components/CreateDocumentFlowModal";
 import SubmitDocumentModal from "../components/SubmitDocumentModal";
+import AirdropDisplay from "../components/AirdropDisplay";
 // import { useMemo } from "react";
 import { Transaction } from "@mysten/sui/transactions";
 import { suiClient } from "../config/sui";
@@ -160,6 +161,7 @@ const EventDetails = () => {
   const platformTreasuryId = useNetworkVariable("platformTreasuryId");
   const subscriptionRegistryId = useNetworkVariable("subscriptionRegistryId");
   const documentFlowRegistryId = useNetworkVariable("documentFlowRegistryId");
+  const airdropRegistryId = useNetworkVariable("airdropRegistryId");
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
 
   // Attendance state from navigation (if available)
@@ -1051,6 +1053,37 @@ const EventDetails = () => {
     return false;
   };
 
+  const handleClaimAirdrop = async (airdropId: string) => {
+    if (!activeAddress || !airdropRegistryId || !attendanceRegistryId || !nftRegistryId) {
+      return;
+    }
+
+    try {
+      const ratingRegistryId = useNetworkVariable("ratingRegistryId");
+      const tx = sdk.airdropDistribution.claimAirdrop(
+        airdropId,
+        airdropRegistryId,
+        attendanceRegistryId,
+        nftRegistryId,
+        ratingRegistryId,
+        "0x6" // CLOCK_ID
+      );
+
+      await signAndExecute({ transaction: tx });
+
+      setMintResult({
+        success: true,
+        message: "Airdrop claimed successfully!",
+      });
+    } catch (error) {
+      console.error("Error claiming airdrop:", error);
+      setMintResult({
+        success: false,
+        message: "Failed to claim airdrop. Please try again.",
+      });
+    }
+  };
+
   const handleMintCompletionNFT = async () => {
     if (!activeAddress || !isAuthenticated || !event || !nftRegistryId) return;
     setMinting(true);
@@ -1602,6 +1635,17 @@ const EventDetails = () => {
                 </div>
               </div>
             </Card>
+
+            {/* Airdrop Section */}
+            {event && airdropRegistryId && (
+              <Card className="p-4 sm:p-6">
+                <AirdropDisplay
+                  eventId={event.id}
+                  userAddress={activeAddress || undefined}
+                  onClaim={handleClaimAirdrop}
+                />
+              </Card>
+            )}
           </div>
         </div>
       </div>

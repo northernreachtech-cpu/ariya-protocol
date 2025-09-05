@@ -6,7 +6,7 @@ import {
   Calendar,
   Users,
   Settings,
-  FileText,
+
   Home,
   Crown,
 } from "lucide-react";
@@ -108,11 +108,6 @@ const Navbar = () => {
       type: "dropdown",
       label: "Tools",
       items: [
-        {
-          name: "Document Flow",
-          href: "/docflow",
-          icon: <FileText size={16} />,
-        },
         {
           name: "Treasury Dashboard",
           href: "/admin/treasury",

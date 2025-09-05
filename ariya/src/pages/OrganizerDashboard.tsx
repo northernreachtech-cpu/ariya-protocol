@@ -36,6 +36,7 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import StatCard from "../components/StatCard";
 import AirdropCreationModal from "../components/AirdropCreationModal";
+import AirdropAnalytics from "../components/AirdropAnalytics";
 import AssigneeSelector from "../components/AssigneeSelector";
 // import AirdropManagement from "../components/AirdropManagement";
 import ErrorModal from "../components/ErrorModal";
@@ -2001,6 +2002,7 @@ const OrganizerDashboard = () => {
         coinWithBalance.coinObjectId,
         airdropRegistryId,
         attendanceRegistryId,
+        profileRegistryId, // Added missing profileRegistryId
         "0x6" // CLOCK_ID
       );
 
@@ -2997,6 +2999,13 @@ const OrganizerDashboard = () => {
             </div>
           )}
         </div>
+
+        {/* Airdrop Analytics Section */}
+        {isOrganizer && currentAccount?.address && (
+          <div className="mb-6 sm:mb-8">
+            <AirdropAnalytics organizerAddress={currentAccount.address} />
+          </div>
+        )}
 
         {/* QR Scanner Modal for Check-in */}
         {showQRScanner && selectedEventId && (

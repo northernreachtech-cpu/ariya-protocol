@@ -11,9 +11,9 @@ const TreasuryStats: React.FC<TreasuryStatsProps> = ({ treasuryData, isAdmin }) 
     return (amount / 1e9).toFixed(4);
   };
 
-  const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
+  // const formatAddress = (address: string) => {
+  //   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  // };
 
   return (
     <div className="treasury-stats">
