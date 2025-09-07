@@ -32,6 +32,7 @@ import {
 import { useAriyaSDK } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
 import { Transaction } from "@mysten/sui/transactions";
+import { TelegramService } from "../lib/firebase";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import StatCard from "../components/StatCard";
@@ -1181,8 +1182,21 @@ const OrganizerDashboard = () => {
         });
         console.log("✅ Check-in transaction successful:", result);
 
-        // Show success modal instead of alert
+        // Send check-in notification to the user
         const event = events.find(e => e.id === selectedEventId);
+        if (event && validation.attendeeAddress) {
+          try {
+            await TelegramService.sendCheckInNotification(
+              validation.attendeeAddress,
+              event.name
+            );
+          } catch (error) {
+            console.error("Failed to send check-in notification:", error);
+            // Don't show error to user, just log it
+          }
+        }
+
+        // Show success modal instead of alert
         setCheckInSuccessData({
           userAddress: validation.attendeeAddress!,
           eventName: event?.name || 'Event'
@@ -1760,68 +1774,47 @@ const OrganizerDashboard = () => {
     setCreatingDocumentFlow(true);
     try {
       console.log("📦 Creating transaction...");
-      const tx = sdk.documentFlow.createDocumentFlow(
+      const tx = await sdk.documentFlow.createDocumentFlow(
         selectedEventForDocFlow.id,
         participants,
         "0x6", // CLOCK_ID
         documentFlowRegistryId,
-        profileRegistryId
+        profileRegistryId,
+        currentAccount.address // organizer address
       );
 
-      console.log("✅ Transaction created successfully");
-      console.log("🔍 Transaction details:", {
-        packageId: sdk.documentFlow.getPackageId(),
-        target: `${sdk.documentFlow.getPackageId()}::document_flow::create_document_flow`,
-        arguments: [
-          selectedEventForDocFlow.id,
-          participants.length,
-          "0x6",
-          documentFlowRegistryId,
-          profileRegistryId
-        ]
-      });
+      // Test with dry run first
+      console.log("🧪 Testing transaction with dry run...");
+      try {
+        const dryRunResult = await suiClient.devInspectTransactionBlock({
+          transactionBlock: tx,
+          sender: currentAccount?.address || "0x0"
+        });
+        console.log("🧪 Dry run result:", {
+          status: dryRunResult.effects?.status?.status,
+          events: (dryRunResult.effects as any)?.events?.length || 0,
+          objectChanges: (dryRunResult.effects as any)?.objectChanges?.length || 0,
+          error: (dryRunResult.effects as any)?.status?.error
+        });
+      } catch (dryRunError) {
+        console.error("🧪 Dry run failed:", dryRunError);
+      }
 
-      console.log("⏳ Executing transaction...");
+      console.log("⏳ Executing document flow transaction...");
       const result = await signAndExecute({ transaction: tx });
       
-      console.log("✅ Transaction executed successfully:", {
+      console.log("🔍 Transaction result:", {
         digest: result.digest,
-        effects: result.effects
+        status: (result.effects as any)?.status?.status,
+        events: (result.effects as any)?.events?.length || 0,
+        objectChanges: (result.effects as any)?.objectChanges?.length || 0,
+        fullEffects: result.effects
       });
-
-      console.log("📋 Full transaction result:", result);
       
-      // Check if there are any events in the transaction
-      console.log("📋 Transaction result keys:", Object.keys(result));
-      
-      // Try to access events and object changes if they exist
-      const events = (result as any).events;
-      const objectChanges = (result as any).objectChanges;
-      
-      if (events) {
-        console.log("📋 Transaction events:", events.length);
-        events.forEach((event: any, index: number) => {
-          console.log(`📋 Event ${index + 1}:`, {
-            type: event.type,
-            parsedJson: event.parsedJson
-          });
-        });
-      } else {
-        console.log("❌ No events found in transaction result");
-      }
-      
-      // Check object changes
-      if (objectChanges) {
-        console.log("📋 Object changes:", objectChanges.length);
-        objectChanges.forEach((change: any, index: number) => {
-          console.log(`📋 Change ${index + 1}:`, {
-            type: change.type,
-            objectType: change.objectType,
-            objectId: change.objectId
-          });
-        });
-      } else {
-        console.log("❌ No object changes found in transaction result");
+      // Check for Move abort errors
+      if ((result.effects as any)?.status?.status === 'failure') {
+        console.error("❌ Transaction failed:", (result.effects as any).status.error);
+        throw new Error(`Transaction failed: ${(result.effects as any).status.error}`);
       }
       
       // Small delay to ensure blockchain state is updated

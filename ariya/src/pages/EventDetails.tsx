@@ -24,6 +24,7 @@ import { useZkLogin } from "../contexts/ZkLoginContext";
 import { useAriyaSDK } from "../lib/sdk";
 import type { Event as EventData, DocumentFlow, DocumentSubmission, ChainParticipant } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
+import { TelegramService } from "../lib/firebase";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import QRDisplay from "../components/QRDisplay";
@@ -549,12 +550,13 @@ const EventDetails = () => {
     
     setDocumentFlowLoading(true);
     try {
-      const tx = sdk.documentFlow.createDocumentFlow(
+      const tx = await sdk.documentFlow.createDocumentFlow(
         event.id,
         participants,
         clockId,
         documentFlowRegistryId,
-        profileRegistryId
+        profileRegistryId,
+        event.organizer
       );
       
       await signAndExecute({ transaction: tx });
@@ -562,6 +564,21 @@ const EventDetails = () => {
       // Reload document flow data
       await loadDocumentFlowData(event.id);
       setShowCreateFlowModal(false);
+
+      // Send Telegram notification to assignees
+      if (activeAddress && event) {
+        try {
+          for (const participant of participants) {
+            await TelegramService.sendDocumentFlowNotification(
+              participant.address,
+              event.name,
+              "New document flow created - you have been assigned as an approver"
+            );
+          }
+        } catch (error) {
+          console.error("Failed to send Telegram notifications:", error);
+        }
+      }
     } catch (error) {
       console.error('Failed to create document flow:', error);
     } finally {
@@ -595,6 +612,26 @@ const EventDetails = () => {
       // Reload document flow data
       await loadDocumentFlowData(event.id);
       setShowSubmitDocumentModal(false);
+
+      // Send Telegram notification for document submission
+      if (activeAddress && event && documentFlowData.flow) {
+        try {
+          // Notify the next approver in the chain
+          const nextApprover = documentFlowData.flow.chain_of_command.find(
+            (_participant, index) => index === 0 // First approver for now
+          );
+          
+          if (nextApprover) {
+            await TelegramService.sendDocumentFlowNotification(
+              nextApprover.address,
+              event.name,
+              "New document submitted for your approval"
+            );
+          }
+        } catch (error) {
+          console.error("Failed to send Telegram notification:", error);
+        }
+      }
     } catch (error) {
       console.error('Failed to submit document:', error);
     }
@@ -938,6 +975,20 @@ const EventDetails = () => {
         setQrData(qrDataString);
         setShowQR(true);
         setIsRegistered(true);
+
+        // Send Telegram notification for successful registration
+        if (activeAddress && event) {
+          try {
+            await TelegramService.sendRegistrationConfirmation(
+              activeAddress,
+              event.name,
+              formatDate(event.start_time)
+            );
+          } catch (error) {
+            console.error("Failed to send Telegram notification:", error);
+            // Don't show error to user, just log it
+          }
+        }
       } else {
         alert("Registration failed. Please try again.");
       }
@@ -1646,6 +1697,7 @@ const EventDetails = () => {
                 />
               </Card>
             )}
+
           </div>
         </div>
       </div>

@@ -22,6 +22,7 @@ import Card from "../components/Card";
 import AssigneeSelector from "../components/AssigneeSelector";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { suiClient, useNetworkVariable } from "../config/sui";
+import { TelegramService } from "../lib/firebase";
 
 // Get ImgBB API key from environment variable
 const IMGBB_KEY = import.meta.env.VITE_IMGBB_API_KEY;
@@ -276,7 +277,7 @@ const CreateEvent = () => {
         signAndExecute(
           { transaction: tx },
           {
-            onSuccess: (result) => {
+            onSuccess: async (result) => {
               console.log("✅ Event created successfully:", result);
 
             // Extract event ID from the result
@@ -285,6 +286,42 @@ const CreateEvent = () => {
               sdk.eventManagement.extractEventIdFromResult(result as any);
             if (eventId) {
               console.log("Event ID:", eventId);
+              
+              // Send event creation notification to organizer
+              if (activeAddress) {
+                try {
+                  await TelegramService.sendEventCreationNotification(
+                    activeAddress,
+                    formData.title,
+                    formData.date,
+                    formData.time
+                  );
+                } catch (error) {
+                  console.error("Failed to send event creation notification:", error);
+                }
+              }
+              
+              // Schedule event reminder (24 hours before event)
+              if (activeAddress) {
+                try {
+                  const eventDateTime = new Date(`${formData.date}T${formData.time}`);
+                  const reminderTime = new Date(eventDateTime.getTime() - 24 * 60 * 60 * 1000); // 24 hours before
+                  const now = new Date();
+                  
+                  if (reminderTime > now) {
+                    const timeUntil = Math.ceil((reminderTime.getTime() - now.getTime()) / (1000 * 60 * 60)); // hours
+                    await TelegramService.scheduleEventReminder(
+                      activeAddress,
+                      formData.title,
+                      formData.date,
+                      `${timeUntil} hours`
+                    );
+                  }
+                } catch (error) {
+                  console.error("Failed to schedule event reminder:", error);
+                }
+              }
+              
               // You can now use this event ID to fetch event details or navigate to event page
               navigate(`/event/${eventId}`);
                           } else {

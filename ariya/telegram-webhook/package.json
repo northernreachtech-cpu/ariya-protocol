@@ -1,0 +1,20 @@
+{
+  "name": "ariya-telegram-webhook",
+  "version": "1.0.0",
+  "description": "Telegram webhook for Ariya Events bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "firebase-admin": "^11.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

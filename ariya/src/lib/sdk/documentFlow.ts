@@ -103,38 +103,45 @@ export class DocumentFlowSDK {
   /**
    * Creates a new document flow for an event
    */
-  createDocumentFlow(
+  async createDocumentFlow(
     eventId: string,
     participants: ChainParticipant[],
     clockId: string,
     registryId: string,
-    profileRegistryId: string
-  ): Transaction {
-    console.log("📦 Creating document flow transaction...");
-    console.log("📋 Parameters:", {
-      eventId,
-      participantsCount: participants.length,
-      clockId,
-      registryId,
-      profileRegistryId
-    });
+    profileRegistryId: string,
+    organizerAddress: string
+  ): Promise<Transaction> {
+    console.log("🔧 Creating document flow for event:", eventId);
+    console.log("🔧 Participants:", participants);
+    console.log("🔧 Clock ID:", clockId);
+    console.log("🔧 Registry ID:", registryId);
+    console.log("🔧 Profile Registry ID:", profileRegistryId);
+
+    // First, verify the event exists and get its type
+    let eventObject;
+    try {
+      eventObject = await suiClient.getObject({
+        id: eventId,
+        options: { showType: true, showContent: true }
+      });
+      
+      console.log("🔍 Event object:", eventObject);
+      
+      if (!eventObject.data) {
+        throw new Error(`Event ${eventId} not found`);
+      }
+      
+      console.log("🔍 Event type:", eventObject.data.type);
+      console.log("🔍 Event content:", eventObject.data.content);
+      
+    } catch (error) {
+      console.error("❌ Error fetching event:", error);
+      throw new Error(`Failed to fetch event: ${error}`);
+    }
 
     const tx = new Transaction();
-
-    console.log("🔨 Logging participant details...");
-    participants.forEach((participant, index) => {
-      console.log(`👤 Participant ${index + 1}:`, {
-        address: participant.address,
-        name: participant.name,
-        hierarchy_level: participant.hierarchy_level,
-        role: participant.role
-      });
-    });
-
-    console.log("🔨 Creating document flow call...");
     
-    // Create the document flow with participants as a vector of ChainParticipant objects
-    // We need to create the ChainParticipant objects first, then pass them as a vector
+    // Create ChainParticipant structs using moveCall to create_chain_participant
     const chainParticipants = participants.map(participant => 
       tx.moveCall({
         target: `${this.packageId}::document_flow::create_chain_participant`,
@@ -147,31 +154,27 @@ export class DocumentFlowSDK {
       })
     );
     
+    console.log("🔧 Created chain participants:", chainParticipants.length);
+    
+    // Create the document flow with the correct signature
     const [flowManagerCap] = tx.moveCall({
       target: `${this.packageId}::document_flow::create_document_flow`,
       arguments: [
-        tx.object(eventId), // event: &Event
+        tx.object(eventId), // event: &Event (shared object)
         tx.makeMoveVec({ elements: chainParticipants }), // participants: vector<ChainParticipant>
-        tx.object(clockId), // clock: &Clock
+        tx.object(clockId), // clock: &Clock ("0x0")
         tx.object(registryId), // registry: &mut DocumentFlowRegistry
         tx.object(profileRegistryId), // profile_registry: &ProfileRegistry
-        // ctx: &mut TxContext is automatically provided by the SDK
       ],
     });
 
-    console.log("✅ Document flow call created");
-
-    // Transfer the FlowManagerCap to the sender (will be set during execution)
-    console.log("🔨 Adding transfer call...");
-    tx.transferObjects([flowManagerCap], tx.pure.address("0x0"));
-    console.log("✅ Transfer call added");
+    // Transfer the FlowManagerCap to the organizer
+    tx.transferObjects([flowManagerCap], tx.pure.address(organizerAddress));
 
     // Set gas budget
-    console.log("🔨 Setting gas budget...");
-    tx.setGasBudget(50000000); // 50,000,000 MIST = 0.05 SUI
-    console.log("✅ Gas budget set");
+    tx.setGasBudget(100000000); // 100,000,000 MIST = 0.1 SUI
 
-    console.log("🎉 Document flow transaction created successfully");
+    console.log("✅ Document flow transaction created");
     return tx;
   }
 
@@ -288,34 +291,86 @@ export class DocumentFlowSDK {
 
   /**
    * Get document flow by event ID (Contract Compliant)
+   * Uses event-based discovery to find flow_id, then fetches the DocumentFlow object
    */
   async getDocumentFlow(eventId: string): Promise<DocumentFlow | null> {
-    console.log("🔍 Getting document flow for event:", eventId);
-    
     try {
-      // Since the Move contract doesn't expose getter functions for the registry,
-      // we need to use a simplified approach that checks existence without relying on events
-      const hasFlow = await this.hasDocumentFlow(eventId);
-      
-      if (!hasFlow) {
-        console.log("❌ No document flow found for event:", eventId);
+      // Query for DocumentFlowCreated events to find the flow_id for this event
+      const { data: events } = await suiClient.queryEvents({
+        query: {
+          MoveEventType: `${this.packageId}::document_flow::DocumentFlowCreated`,
+        },
+        limit: 100,
+        order: 'descending',
+      });
+
+      // Find the event that matches our event_id
+      const flowCreatedEvent = events.find(event => {
+        const eventData = event.parsedJson as {
+          flow_id: string;
+          event_id: string;
+          organizer: string;
+          chain_size: number;
+        };
+        return eventData && eventData.event_id === eventId;
+      });
+
+      if (!flowCreatedEvent) {
         return null;
       }
-      
-      console.log("✅ Document flow exists for event:", eventId);
-      
-      // Return a simplified DocumentFlow object indicating existence
-      // Note: Full details would require Move contract getter functions
-      return {
-        id: "flow_exists", // Placeholder - would need Move getter
-        event_id: eventId,
-        organizer: "unknown", // Would need Move getter
-        chain_of_command: [], // Would need Move getter
-        is_active: true,
-        created_at: Date.now(),
+
+      const eventData = flowCreatedEvent.parsedJson as {
+        flow_id: string;
+        event_id: string;
+        organizer: string;
+        chain_size: number;
       };
+
+      // Now fetch the actual DocumentFlow object using the flow_id
+      const flowResponse = await suiClient.getObject({
+        id: eventData.flow_id,
+        options: {
+          showContent: true,
+          showType: true,
+        },
+      });
+
+      if (!flowResponse.data?.content || flowResponse.data.content.dataType !== "moveObject") {
+        console.error("DocumentFlow object not found or invalid:", eventData.flow_id);
+        return null;
+      }
+
+      const fields = flowResponse.data.content.fields as {
+        id: { id: string };
+        event_id: string;
+        organizer: string;
+        chain_of_command: Array<{
+          address: string;
+          name: string;
+          hierarchy_level: string;
+          role: string;
+        }>;
+        is_active: boolean;
+        created_at: string;
+      };
+
+      const documentFlow: DocumentFlow = {
+        id: fields.id.id,
+        event_id: fields.event_id,
+        organizer: fields.organizer,
+        chain_of_command: fields.chain_of_command.map(participant => ({
+          address: participant.address,
+          name: participant.name,
+          hierarchy_level: parseInt(participant.hierarchy_level),
+          role: participant.role,
+        })),
+        is_active: fields.is_active,
+        created_at: parseInt(fields.created_at),
+      };
+
+      return documentFlow;
     } catch (error) {
-      console.error("❌ Error getting document flow:", error);
+      console.error("Error getting document flow:", error);
       return null;
     }
   }
@@ -748,35 +803,77 @@ export class DocumentFlowSDK {
 
   /**
    * Check if an event has a document flow (Contract Compliant)
+   * Uses event-based discovery by querying DocumentFlowCreated events
    */
   async hasDocumentFlow(eventId: string): Promise<boolean> {
-    console.log("🔍 Checking if event has document flow:", eventId);
-    
     try {
-      // Since we cannot directly query the Move registry without getter functions,
-      // and the document_flow module may not be deployed, we'll return false for now
-      // This is the most accurate representation until the Move contract is properly deployed
-      
-      console.log("⚠️ Document flow module is not deployed - returning false");
-      return false;
+      // Query for DocumentFlowCreated events to find flows by event ID
+      const { data: events } = await suiClient.queryEvents({
+        query: {
+          MoveEventType: `${this.packageId}::document_flow::DocumentFlowCreated`,
+        },
+        limit: 100,
+        order: 'descending',
+      });
+
+      // Check if any event matches our event_id
+      const flowCreatedEvent = events.find(event => {
+        const eventData = event.parsedJson as {
+          flow_id: string;
+          event_id: string;
+          organizer: string;
+          chain_size: number;
+        };
+        return eventData && eventData.event_id === eventId;
+      });
+
+      return !!flowCreatedEvent;
     } catch (error) {
-      console.error("❌ Error checking document flow:", error);
+      console.error("Error checking document flow:", error);
       return false;
     }
   }
 
   /**
-   * Get document flow status for multiple events
+   * Get document flow status for multiple events (Optimized)
+   * Uses a single event query to check all events at once
    */
   async getDocumentFlowStatus(eventIds: string[]): Promise<{ [eventId: string]: boolean }> {
     const status: { [eventId: string]: boolean } = {};
     
-    await Promise.all(
-      eventIds.map(async (eventId) => {
-        status[eventId] = await this.hasDocumentFlow(eventId);
-      })
-    );
+    // Initialize all events as false
+    eventIds.forEach(eventId => {
+      status[eventId] = false;
+    });
     
-    return status;
+    try {
+      // Single query to get all DocumentFlowCreated events
+      const { data: events } = await suiClient.queryEvents({
+        query: {
+          MoveEventType: `${this.packageId}::document_flow::DocumentFlowCreated`,
+        },
+        limit: 200, // Increased limit to handle more events
+        order: 'descending',
+      });
+
+      // Check which events have document flows
+      events.forEach(event => {
+        const eventData = event.parsedJson as {
+          flow_id: string;
+          event_id: string;
+          organizer: string;
+          chain_size: number;
+        };
+        
+        if (eventData && eventIds.includes(eventData.event_id)) {
+          status[eventData.event_id] = true;
+        }
+      });
+
+      return status;
+    } catch (error) {
+      console.error("Error getting document flow status:", error);
+      return status; // Return initialized status (all false)
+    }
   }
 }

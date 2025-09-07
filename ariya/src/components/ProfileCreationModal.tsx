@@ -7,10 +7,12 @@ import { suiClient, useNetworkVariable } from "../config/sui";
 import { useZkLogin } from "../contexts/ZkLoginContext";
 import { useAriyaSDK } from "../lib/sdk";
 import { parseMoveAbortError } from "../utils/errorMessages";
+import { TelegramService } from "../lib/firebase";
 import Button from "./Button";
 import Card from "./Card";
 import ProfilePictureUpload from "./ProfilePictureUpload";
 import { OrganizerChoiceModal } from "./OrganizerChoiceModal";
+import TelegramLinkModal from "./TelegramLinkModal";
 
 interface ProfileCreationModalProps {
   isOpen: boolean;
@@ -47,6 +49,8 @@ const ProfileCreationModal = ({
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>("");
   const [showOrganizerChoice, setShowOrganizerChoice] = useState(false);
   const [isCreatingOrganizer, setIsCreatingOrganizer] = useState(false);
+  const [showTelegramLink, setShowTelegramLink] = useState(false);
+  const [telegramLinked, setTelegramLinked] = useState(false);
 
   const handleProfilePictureUpload = (_blobId: string, imageUrl: string) => {
     setUploadedImageUrl(imageUrl);
@@ -168,8 +172,8 @@ const ProfileCreationModal = ({
         formData.name,
         formData.bio,
         formData.photoUrl,
-        formData.telegramUsername,
-        formData.xUsername,
+        formData.telegramUsername ? `@${formData.telegramUsername}` : "",
+        formData.xUsername ? `@${formData.xUsername}` : "",
         profileRegistryId,
         activeAddress
       );
@@ -187,8 +191,8 @@ const ProfileCreationModal = ({
           formData.name,
           formData.bio,
           formData.photoUrl,
-          formData.telegramUsername,
-          formData.xUsername,
+          formData.telegramUsername ? `@${formData.telegramUsername}` : "",
+          formData.xUsername ? `@${formData.xUsername}` : "",
           profileRegistryId,
           activeAddress,
         ],
@@ -203,6 +207,17 @@ const ProfileCreationModal = ({
             onSuccess: async (result) => {
               console.log("✅ Profile created successfully:", result);
               await handleTransactionSuccess(result);
+              
+              // Send Telegram notification for profile creation
+              if (activeAddress) {
+                try {
+                  const profileType = isOrganizer ? 'organizer' : 'user';
+                  await TelegramService.sendProfileCreationNotification(activeAddress, profileType);
+                } catch (error) {
+                  console.error("Failed to send Telegram notification:", error);
+                  // Don't show error to user, just log it
+                }
+              }
             },
             onError: (error) => {
               console.error("❌ Error creating profile:", error);
@@ -286,18 +301,49 @@ const ProfileCreationModal = ({
               <label className="block text-sm font-medium mb-1">
                 Telegram Username
               </label>
-              <input
-                type="text"
-                value={formData.telegramUsername}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    telegramUsername: e.target.value,
-                  }))
-                }
-                className="w-full p-3 rounded-lg border border-border bg-card-secondary text-sm"
-                placeholder="@username"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.telegramUsername}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    console.log("Telegram username changed:", value);
+                    // Remove @ if user types it, we'll add it when needed
+                    const cleanValue = value.startsWith("@") ? value.substring(1) : value;
+                    setFormData((prev) => ({
+                      ...prev,
+                      telegramUsername: cleanValue,
+                    }));
+                  }}
+                  className="flex-1 p-3 rounded-lg border border-border bg-card-secondary text-sm"
+                  placeholder="username (without @)"
+                  disabled={telegramLinked}
+                />
+                {formData.telegramUsername && !telegramLinked && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      console.log("Link Telegram Account button clicked");
+                      setShowTelegramLink(true);
+                    }}
+                    className="px-4 bg-blue-500 text-white border-blue-500 hover:bg-blue-600 whitespace-nowrap"
+                  >
+                    Link Telegram Account
+                  </Button>
+                )}
+                {telegramLinked && (
+                  <div className="flex items-center px-3 py-2 bg-green-100 text-green-700 text-sm rounded-lg border border-green-200">
+                    ✓ Linked: @{formData.telegramUsername}
+                  </div>
+                )}
+              </div>
+              {formData.telegramUsername && !telegramLinked && (
+                <p className="text-xs text-foreground-secondary mt-1">
+                  Click "Link Telegram Account" to verify your account and enable notifications. Make sure you've started a chat with the Ariya bot first.
+                </p>
+              )}
             </div>
 
             <div>
@@ -307,14 +353,17 @@ const ProfileCreationModal = ({
               <input
                 type="text"
                 value={formData.xUsername}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Remove @ if user types it, we'll add it when needed
+                  const cleanValue = value.startsWith("@") ? value.substring(1) : value;
                   setFormData((prev) => ({
                     ...prev,
-                    xUsername: e.target.value,
-                  }))
-                }
+                    xUsername: cleanValue,
+                  }));
+                }}
                 className="w-full p-3 rounded-lg border border-border bg-card-secondary text-sm"
-                placeholder="@username"
+                placeholder="username (without @)"
               />
             </div>
 
@@ -414,6 +463,18 @@ const ProfileCreationModal = ({
           }
         }}
         isLoading={isCreatingOrganizer}
+      />
+
+      {/* Telegram Link Modal */}
+      <TelegramLinkModal
+        isOpen={showTelegramLink}
+        onClose={() => setShowTelegramLink(false)}
+        userId={activeAddress || ""}
+        onSuccess={() => {
+          setTelegramLinked(true);
+          setShowTelegramLink(false);
+        }}
+        preFilledUsername={formData.telegramUsername}
       />
     </div>
   );

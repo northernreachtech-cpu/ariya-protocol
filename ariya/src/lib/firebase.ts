@@ -383,5 +383,347 @@ export class CommunityMembersService {
   }
 }
 
+// Telegram Bot Service
+export class TelegramService {
+  private static readonly BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
+  private static readonly BOT_API_URL = `https://api.telegram.org/bot${TelegramService.BOT_TOKEN}`;
+
+  // Send message to user
+  static async sendMessage(chatId: string, text: string, options?: {
+    parse_mode?: 'HTML' | 'Markdown';
+    reply_markup?: any;
+  }): Promise<boolean> {
+    try {
+      const response = await fetch(`${TelegramService.BOT_API_URL}/sendMessage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text,
+          parse_mode: options?.parse_mode || 'HTML',
+          reply_markup: options?.reply_markup,
+        }),
+      });
+
+      const result = await response.json();
+      return result.ok;
+    } catch (error) {
+      console.error('Error sending Telegram message:', error);
+      return false;
+    }
+  }
+
+  // Get user info from Telegram
+  static async getUserInfo(chatId: string): Promise<any> {
+    try {
+      const response = await fetch(`${TelegramService.BOT_API_URL}/getChat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: chatId,
+        }),
+      });
+
+      const result = await response.json();
+      return result.ok ? result.result : null;
+    } catch (error) {
+      console.error('Error getting Telegram user info:', error);
+      return null;
+    }
+  }
+
+  // Generate verification code
+  static generateVerificationCode(): string {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+  }
+
+  // Store verification code in Firestore
+  static async storeVerificationCode(userId: string, code: string, telegramHandle?: string): Promise<void> {
+    try {
+      const data: any = {
+        code,
+        userId, // Store the user's wallet address
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+      };
+      
+      if (telegramHandle) {
+        data.telegramHandle = telegramHandle;
+      }
+      
+      await db.collection('telegram_verification').doc(userId).set(data);
+    } catch (error) {
+      console.error('Error storing verification code:', error);
+      throw error;
+    }
+  }
+
+  // Verify code and link Telegram account
+  static async verifyAndLinkAccount(userId: string, code: string, telegramHandle: string): Promise<boolean> {
+    try {
+      const verificationDoc = await db.collection('telegram_verification').doc(userId).get();
+      
+      if (!verificationDoc.exists) {
+        return false;
+      }
+
+      const verificationData = verificationDoc.data();
+      const now = new Date();
+      const expiresAt = verificationData?.expiresAt?.toDate();
+
+      if (!expiresAt || now > expiresAt) {
+        // Code expired
+        await verificationDoc.ref.delete();
+        return false;
+      }
+
+      if (verificationData?.code !== code) {
+        return false;
+      }
+
+      // Mark as verified by updating the verification document
+      await verificationDoc.ref.update({
+        verified: true,
+        verified_at: firebase.firestore.FieldValue.serverTimestamp(),
+        telegram_handle: telegramHandle,
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error verifying Telegram account:', error);
+      return false;
+    }
+  }
+
+  // Handle /verify command from Telegram bot
+  static async handleVerifyCommand(telegramUserId: string, telegramHandle: string, code: string): Promise<boolean> {
+    try {
+      // Find user by telegram handle
+      const usersSnapshot = await db.collection('users')
+        .where('telegram_handle', '==', telegramHandle)
+        .where('telegram_verified', '==', false)
+        .get();
+
+      if (usersSnapshot.empty) {
+        return false;
+      }
+
+      const userDoc = usersSnapshot.docs[0];
+      const userId = userDoc.id;
+
+      // Check verification code
+      const verificationDoc = await db.collection('telegram_verification').doc(userId).get();
+      
+      if (!verificationDoc.exists) {
+        return false;
+      }
+
+      const verificationData = verificationDoc.data();
+      const now = new Date();
+      const expiresAt = verificationData?.expiresAt?.toDate();
+
+      if (!expiresAt || now > expiresAt) {
+        await verificationDoc.ref.delete();
+        return false;
+      }
+
+      if (verificationData?.code !== code) {
+        return false;
+      }
+
+      // Update user with Telegram user ID
+      await userDoc.ref.update({
+        telegram_user_id: telegramUserId,
+        telegram_verified: true,
+        telegram_verified_at: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Clean up verification code
+      await verificationDoc.ref.delete();
+
+      return true;
+    } catch (error) {
+      console.error('Error handling verify command:', error);
+      return false;
+    }
+  }
+
+  // Send event registration confirmation
+  static async sendRegistrationConfirmation(userId: string, eventName: string, eventDate: string): Promise<void> {
+    try {
+      // Find verification document by userId (wallet address)
+      const verificationDoc = await db.collection('telegram_verification').doc(userId).get();
+      if (!verificationDoc.exists) return;
+
+      const verificationData = verificationDoc.data();
+      if (!verificationData?.verified || !verificationData?.telegram_user_id) return;
+
+      const message = `
+🎉 <b>Registration Confirmed!</b>
+
+You've successfully registered for:
+<b>${eventName}</b>
+
+📅 Date: ${eventDate}
+
+We'll send you reminders before the event starts. See you there!
+      `.trim();
+
+      await TelegramService.sendMessage(verificationData.telegram_user_id, message);
+    } catch (error) {
+      console.error('Error sending registration confirmation:', error);
+    }
+  }
+
+  // Send event reminder
+  static async sendEventReminder(userId: string, eventName: string, eventDate: string, timeUntil: string): Promise<void> {
+    try {
+      // Find verification document by userId (wallet address)
+      const verificationDoc = await db.collection('telegram_verification').doc(userId).get();
+      if (!verificationDoc.exists) return;
+
+      const verificationData = verificationDoc.data();
+      if (!verificationData?.verified || !verificationData?.telegram_user_id) return;
+
+      const message = `
+⏰ <b>Event Reminder</b>
+
+Your event is coming up:
+<b>${eventName}</b>
+
+📅 Date: ${eventDate}
+⏱️ Time until event: ${timeUntil}
+
+Don't forget to check in when you arrive!
+      `.trim();
+
+      await TelegramService.sendMessage(verificationData.telegram_user_id, message);
+    } catch (error) {
+      console.error('Error sending event reminder:', error);
+    }
+  }
+
+  // Send check-in notification
+  static async sendCheckInNotification(userId: string, eventName: string): Promise<void> {
+    try {
+      // Find verification document by userId (wallet address)
+      const verificationDoc = await db.collection('telegram_verification').doc(userId).get();
+      if (!verificationDoc.exists) return;
+
+      const verificationData = verificationDoc.data();
+      if (!verificationData?.verified || !verificationData?.telegram_user_id) return;
+
+      const message = `
+✅ <b>Checked In!</b>
+
+Welcome to <b>${eventName}</b>!
+
+You're now checked in and can participate in the event activities.
+      `.trim();
+
+      await TelegramService.sendMessage(verificationData.telegram_user_id, message);
+    } catch (error) {
+      console.error('Error sending check-in notification:', error);
+    }
+  }
+
+  // Send document flow notification
+  static async sendDocumentFlowNotification(userId: string, eventName: string, action: string): Promise<void> {
+    try {
+      // Find verification document by userId (wallet address)
+      const verificationDoc = await db.collection('telegram_verification').doc(userId).get();
+      if (!verificationDoc.exists) return;
+
+      const verificationData = verificationDoc.data();
+      if (!verificationData?.verified || !verificationData?.telegram_user_id) return;
+
+      const message = `
+📄 <b>Document Flow Update</b>
+
+Event: <b>${eventName}</b>
+Action: ${action}
+
+Check your app for more details.
+      `.trim();
+
+      await TelegramService.sendMessage(verificationData.telegram_user_id, message);
+    } catch (error) {
+      console.error('Error sending document flow notification:', error);
+    }
+  }
+
+  // Send profile creation notification
+  static async sendProfileCreationNotification(userId: string, profileType: 'user' | 'organizer'): Promise<void> {
+    try {
+      // Find verification document by userId (wallet address)
+      const verificationDoc = await db.collection('telegram_verification').doc(userId).get();
+      if (!verificationDoc.exists) return;
+
+      const verificationData = verificationDoc.data();
+      if (!verificationData?.verified || !verificationData?.telegram_user_id) return;
+
+      const profileTypeText = profileType === 'organizer' ? 'Organizer' : 'User';
+      const emoji = profileType === 'organizer' ? '🎪' : '👤';
+
+      const message = `
+${emoji} <b>Profile Created Successfully!</b>
+
+Your ${profileTypeText} profile has been created on Ariya Events Platform.
+
+${profileType === 'organizer' ? 'You can now create and manage events!' : 'You can now register for events and participate in the community!'}
+
+Welcome to Ariya! 🎉
+      `.trim();
+
+      await TelegramService.sendMessage(verificationData.telegram_user_id, message);
+    } catch (error) {
+      console.error('Error sending profile creation notification:', error);
+    }
+  }
+
+  // Send event creation notification
+  static async sendEventCreationNotification(userId: string, eventName: string, eventDate: string, eventTime: string): Promise<void> {
+    try {
+      // Find verification document by userId (wallet address)
+      const verificationDoc = await db.collection('telegram_verification').doc(userId).get();
+      if (!verificationDoc.exists) return;
+
+      const verificationData = verificationDoc.data();
+      if (!verificationData?.verified || !verificationData?.telegram_user_id) return;
+
+      const message = `
+🎪 <b>Event Created Successfully!</b>
+
+Your event has been created:
+<b>${eventName}</b>
+
+📅 Date: ${eventDate}
+⏰ Time: ${eventTime}
+
+You can now manage your event from the organizer dashboard. We'll send you reminders before the event starts!
+      `.trim();
+
+      await TelegramService.sendMessage(verificationData.telegram_user_id, message);
+    } catch (error) {
+      console.error('Error sending event creation notification:', error);
+    }
+  }
+
+  // Schedule event reminder (simplified version - in a real app you'd use a proper scheduler)
+  static async scheduleEventReminder(userId: string, eventName: string, eventDate: string, timeUntil: string): Promise<void> {
+    try {
+      // For now, we'll just send the reminder immediately
+      // In a real app, you'd store this in a database and use a cron job or scheduler
+      await TelegramService.sendEventReminder(userId, eventName, eventDate, timeUntil);
+    } catch (error) {
+      console.error('Error scheduling event reminder:', error);
+    }
+  }
+}
+
 // Export Firebase auth
 export { auth };
