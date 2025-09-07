@@ -2,8 +2,7 @@ import {
   useCurrentAccount,
   useSignAndExecuteTransaction,
 } from "@mysten/dapp-kit";
-import { useState } from "react";
-import { suiClient, useNetworkVariable } from "../config/sui";
+import { useState, useEffect } from "react";
 import { useZkLogin } from "../contexts/ZkLoginContext";
 import { useAriyaSDK } from "../lib/sdk";
 import { parseMoveAbortError } from "../utils/errorMessages";
@@ -11,126 +10,98 @@ import { TelegramService } from "../lib/firebase";
 import Button from "./Button";
 import Card from "./Card";
 import ProfilePictureUpload from "./ProfilePictureUpload";
-import { OrganizerChoiceModal } from "./OrganizerChoiceModal";
 import TelegramLinkModal from "./TelegramLinkModal";
 
-interface ProfileCreationModalProps {
+interface UserProfile {
+  id: string;
+  name: string;
+  bio: string;
+  photoUrl: string;
+  telegramUsername: string;
+  xUsername: string;
+}
+
+interface ProfileUpdateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  isOrganizer?: boolean;
+  userProfile: UserProfile;
 }
 
-const ProfileCreationModal = ({
+const ProfileUpdateModal = ({
   isOpen,
   onClose,
   onSuccess,
-  isOrganizer = false,
-}: ProfileCreationModalProps) => {
+  userProfile,
+}: ProfileUpdateModalProps) => {
   const currentAccount = useCurrentAccount();
   const { zkAddress, isZkAuthenticated } = useZkLogin();
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const sdk = useAriyaSDK();
-  const profileRegistryId = useNetworkVariable("profileRegistryId");
 
   // Get the active address (either wallet or zkLogin)
   const activeAddress = currentAccount?.address || zkAddress;
   const isAuthenticated = currentAccount || isZkAuthenticated;
 
   const [formData, setFormData] = useState({
-    name: "",
-    bio: "",
-    photoUrl: "",
-    telegramUsername: "",
-    xUsername: "",
+    name: userProfile.name,
+    bio: userProfile.bio,
+    photoUrl: userProfile.photoUrl,
+    telegramUsername: userProfile.telegramUsername.replace("@", ""),
+    xUsername: userProfile.xUsername.replace("@", ""),
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string>("");
-  const [showOrganizerChoice, setShowOrganizerChoice] = useState(false);
-  const [isCreatingOrganizer, setIsCreatingOrganizer] = useState(false);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string>(userProfile.photoUrl);
   const [showTelegramLink, setShowTelegramLink] = useState(false);
   const [telegramLinked, setTelegramLinked] = useState(false);
+  const [profileCap, setProfileCap] = useState<{
+    id: string;
+    profile_id: string;
+    owner: string;
+  } | null>(null);
+
+  // Load ProfileCap when modal opens
+  useEffect(() => {
+    if (isOpen && activeAddress) {
+      loadProfileCap();
+    }
+  }, [isOpen, activeAddress]);
+
+  const loadProfileCap = async () => {
+    if (!activeAddress) return;
+    
+    try {
+      const cap = await sdk.eventManagement.getUserProfileCap(activeAddress);
+      setProfileCap(cap);
+    } catch (error) {
+      setError("Failed to load profile capability. Please try again.");
+    }
+  };
 
   const handleProfilePictureUpload = (_blobId: string, imageUrl: string) => {
     setUploadedImageUrl(imageUrl);
     setFormData((prev) => ({ ...prev, photoUrl: imageUrl }));
   };
 
-  const handleTransactionSuccess = async (result: any) => {
-    // --- Transaction Effects Debugging ---
-    try {
-      // Wait for the transaction to be finalized
-      await suiClient.waitForTransaction({
-        digest: result.digest,
-      });
-
-      const fullTx = await suiClient.getTransactionBlock({
-        digest: result.digest,
-        options: {
-          showObjectChanges: true,
-          showEffects: true,
-        },
-      });
-
-      
-      // Check if transaction actually succeeded
-      if (fullTx.effects?.status?.status === 'failure') {
-        const userFriendlyError = parseMoveAbortError(fullTx.effects?.status?.error);
-        setError(userFriendlyError);
-        setLoading(false);
-        return;
-      }
-      
-      if (fullTx.objectChanges) {
-        const createdObjects = fullTx.objectChanges.filter(
-          (change) => change.type === "created"
-        );
-        createdObjects.forEach((change) => {
-          if (change.type === "created") {
-            // Object created
-          }
-        });
-
-        // Look specifically for ProfileCap objects
-        createdObjects.filter((change) =>
-          change.objectType?.includes("ProfileCap")
-        );
-      } else {
-      }
-    } catch (txError) {
-    }
-    // --- End Debugging ---
-
-    // Show organizer choice modal after successful profile creation
-    setShowOrganizerChoice(true);
-    setLoading(false);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeAddress || !profileRegistryId || !isAuthenticated) return;
+    if (!activeAddress || !profileCap || !isAuthenticated) return;
 
-    
-    // Check if user already has a profile
-    try {
-      await sdk.eventManagement.hasProfile(activeAddress, profileRegistryId);
-    } catch (error) {
-      // Error checking existing profile
-    }
 
     setLoading(true);
     setError("");
 
     // Check wallet balance before proceeding
     try {
+      const { suiClient } = await import("../config/sui");
       const balance = await suiClient.getBalance({
         owner: activeAddress,
         coinType: "0x2::sui::SUI"
       });
       
       if (Number(balance.totalBalance) === 0) {
-        setError("Insufficient Sui balance. Please add some Sui to your wallet to create a profile.");
+        setError("Insufficient Sui balance. Please add some Sui to your wallet to update your profile.");
         setLoading(false);
         return;
       }
@@ -139,15 +110,15 @@ const ProfileCreationModal = ({
     }
 
     try {
-      // Create the transaction for profile creation
-      const tx = sdk.eventManagement.createProfile(
+      // Create the transaction for profile update
+      const tx = sdk.eventManagement.updateProfile(
+        userProfile.id,
+        profileCap.id,
         formData.name,
         formData.bio,
         formData.photoUrl,
         formData.telegramUsername ? `@${formData.telegramUsername}` : "",
-        formData.xUsername ? `@${formData.xUsername}` : "",
-        profileRegistryId,
-        activeAddress
+        formData.xUsername ? `@${formData.xUsername}` : ""
       );
 
       // Set the sender for zkLogin transactions
@@ -157,23 +128,24 @@ const ProfileCreationModal = ({
 
 
       // Handle transaction execution 
-      // With Enoki wallet registered, signAndExecute will work for both regular and zkLogin wallets
       if (currentAccount || isZkAuthenticated) {
         signAndExecute(
           { transaction: tx },
           {
-            onSuccess: async (result) => {
-              await handleTransactionSuccess(result);
+            onSuccess: async (_result) => {
               
-              // Send Telegram notification for profile creation
+              // Send Telegram notification for profile update
               if (activeAddress) {
                 try {
-                  const profileType = isOrganizer ? 'organizer' : 'user';
-                  await TelegramService.sendProfileCreationNotification(activeAddress, profileType);
+                  await TelegramService.sendProfileUpdateNotification(activeAddress);
                 } catch (error) {
                   // Failed to send Telegram notification
                 }
               }
+              
+              setLoading(false);
+              onSuccess();
+              onClose();
             },
             onError: (error) => {
               const userFriendlyError = parseMoveAbortError(error);
@@ -200,12 +172,10 @@ const ProfileCreationModal = ({
       <Card className="w-full max-w-md max-h-[90vh] flex flex-col">
         <div className="p-6 pb-4">
           <h2 className="text-xl sm:text-2xl font-bold mb-3">
-            {isOrganizer ? "Complete Your Profile" : "Create Your Profile"}
+            Update Your Profile
           </h2>
           <p className="text-foreground-secondary text-sm mb-4">
-            {isOrganizer
-              ? "As an organizer, you need a general profile to continue."
-              : "Create your profile to get started with Ariya."}
+            Update your profile information to keep it current.
           </p>
           {!currentAccount && isZkAuthenticated && (
             <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
@@ -329,10 +299,10 @@ const ProfileCreationModal = ({
             <div className="flex gap-3 pt-4">
               <Button
                 type="submit"
-                disabled={loading || !formData.name.trim()}
+                disabled={loading || !formData.name.trim() || !profileCap}
                 className="flex-1"
               >
-                {loading ? "Creating..." : "Create Profile"}
+                {loading ? "Updating..." : "Update Profile"}
               </Button>
               <Button
                 type="button"
@@ -347,69 +317,6 @@ const ProfileCreationModal = ({
           </form>
         </div>
       </Card>
-
-      {/* Organizer Choice Modal */}
-      <OrganizerChoiceModal
-        isOpen={showOrganizerChoice}
-        onClose={() => {
-          setShowOrganizerChoice(false);
-          onSuccess();
-          onClose();
-        }}
-        onBecomeOrganizer={async () => {
-          if (!activeAddress) {
-            setError("No active address found");
-            return;
-          }
-          setIsCreatingOrganizer(true);
-          try {
-            const tx = sdk.eventManagement.createOrganizerProfile(activeAddress);
-            
-            if (currentAccount) {
-              // For regular wallet
-              await signAndExecute(
-                { transaction: tx },
-                {
-                  onSuccess: () => {
-                    setShowOrganizerChoice(false);
-                    onSuccess();
-                    onClose();
-                  },
-                  onError: (error) => {
-                    const userFriendlyError = parseMoveAbortError(error);
-                    setError(userFriendlyError);
-                  },
-                }
-              );
-            } else {
-              // For zkLogin
-              const txWithSender = tx;
-              txWithSender.setSender(activeAddress);
-              
-              await signAndExecute(
-                { transaction: txWithSender },
-                {
-                  onSuccess: () => {
-                    setShowOrganizerChoice(false);
-                    onSuccess();
-                    onClose();
-                  },
-                  onError: (error) => {
-                    const userFriendlyError = parseMoveAbortError(error);
-                    setError(userFriendlyError);
-                  },
-                }
-              );
-            }
-          } catch (error) {
-            const userFriendlyError = parseMoveAbortError(error);
-            setError(userFriendlyError);
-          } finally {
-            setIsCreatingOrganizer(false);
-          }
-        }}
-        isLoading={isCreatingOrganizer}
-      />
 
       {/* Telegram Link Modal */}
       <TelegramLinkModal
@@ -426,4 +333,4 @@ const ProfileCreationModal = ({
   );
 };
 
-export default ProfileCreationModal;
+export default ProfileUpdateModal;

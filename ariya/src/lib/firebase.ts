@@ -25,7 +25,7 @@ const requiredVars = [
 
 const missingVars = requiredVars.filter((varName) => !import.meta.env[varName]);
 if (missingVars.length > 0) {
-  console.warn("Missing Firebase environment variables:", missingVars);
+  // Missing Firebase environment variables
 }
 
 // Initialize Firebase
@@ -89,7 +89,6 @@ export class CommunityPostsService {
 
       return posts;
     } catch (error) {
-      console.error("Error getting posts:", error);
       return [];
     }
   }
@@ -105,7 +104,6 @@ export class CommunityPostsService {
       });
       return docRef.id;
     } catch (error) {
-      console.error("Error creating post:", error);
       throw error;
     }
   }
@@ -126,7 +124,6 @@ export class CommunityPostsService {
 
       return replies;
     } catch (error) {
-      console.error("Error getting replies:", error);
       return [];
     }
   }
@@ -154,7 +151,6 @@ export class CommunityPostsService {
         });
       }
     } catch (error) {
-      console.error("Error toggling like:", error);
       throw error;
     }
   }
@@ -163,7 +159,6 @@ export class CommunityPostsService {
     try {
       await db.collection("community_posts").doc(postId).delete();
     } catch (error) {
-      console.error("Error deleting post:", error);
       throw error;
     }
   }
@@ -205,7 +200,6 @@ export class CommunityResourcesService {
 
       return resources;
     } catch (error) {
-      console.error("Error getting resources:", error);
       return [];
     }
   }
@@ -244,7 +238,6 @@ export class CommunityResourcesService {
 
       return docRef.id;
     } catch (error) {
-      console.error("Error uploading resource:", error);
       throw error;
     }
   }
@@ -260,7 +253,6 @@ export class CommunityResourcesService {
         downloaders: firebase.firestore.FieldValue.arrayUnion(userId),
       });
     } catch (error) {
-      console.error("Error tracking download:", error);
       throw error;
     }
   }
@@ -282,7 +274,6 @@ export class CommunityResourcesService {
         await resourceDoc.ref.delete();
       }
     } catch (error) {
-      console.error("Error deleting resource:", error);
       throw error;
     }
   }
@@ -306,7 +297,6 @@ export class CommunityMembersService {
 
       return members;
     } catch (error) {
-      console.error("Error getting members:", error);
       return [];
     }
   }
@@ -324,7 +314,6 @@ export class CommunityMembersService {
           lastActive: firebase.firestore.FieldValue.serverTimestamp(),
         });
     } catch (error) {
-      console.error("Error adding member:", error);
       throw error;
     }
   }
@@ -359,7 +348,6 @@ export class CommunityMembersService {
         });
       }
     } catch (error) {
-      console.error("Error updating member activity:", error);
       throw error;
     }
   }
@@ -377,7 +365,6 @@ export class CommunityMembersService {
           contributionScore: firebase.firestore.FieldValue.increment(score),
         });
     } catch (error) {
-      console.error("Error updating contribution score:", error);
       throw error;
     }
   }
@@ -410,7 +397,6 @@ export class TelegramService {
       const result = await response.json();
       return result.ok;
     } catch (error) {
-      console.error('Error sending Telegram message:', error);
       return false;
     }
   }
@@ -431,7 +417,6 @@ export class TelegramService {
       const result = await response.json();
       return result.ok ? result.result : null;
     } catch (error) {
-      console.error('Error getting Telegram user info:', error);
       return null;
     }
   }
@@ -457,7 +442,6 @@ export class TelegramService {
       
       await db.collection('telegram_verification').doc(userId).set(data);
     } catch (error) {
-      console.error('Error storing verification code:', error);
       throw error;
     }
   }
@@ -494,7 +478,6 @@ export class TelegramService {
 
       return true;
     } catch (error) {
-      console.error('Error verifying Telegram account:', error);
       return false;
     }
   }
@@ -547,7 +530,6 @@ export class TelegramService {
 
       return true;
     } catch (error) {
-      console.error('Error handling verify command:', error);
       return false;
     }
   }
@@ -575,7 +557,6 @@ We'll send you reminders before the event starts. See you there!
 
       await TelegramService.sendMessage(verificationData.telegram_user_id, message);
     } catch (error) {
-      console.error('Error sending registration confirmation:', error);
     }
   }
 
@@ -603,7 +584,6 @@ Don't forget to check in when you arrive!
 
       await TelegramService.sendMessage(verificationData.telegram_user_id, message);
     } catch (error) {
-      console.error('Error sending event reminder:', error);
     }
   }
 
@@ -627,7 +607,29 @@ You're now checked in and can participate in the event activities.
 
       await TelegramService.sendMessage(verificationData.telegram_user_id, message);
     } catch (error) {
-      console.error('Error sending check-in notification:', error);
+    }
+  }
+
+  // Send profile update notification
+  static async sendProfileUpdateNotification(userId: string): Promise<void> {
+    try {
+      // Find verification document by userId (wallet address)
+      const verificationDoc = await db.collection('telegram_verification').doc(userId).get();
+      if (!verificationDoc.exists) return;
+
+      const verificationData = verificationDoc.data();
+      if (!verificationData?.verified || !verificationData?.telegram_user_id) return;
+
+      const message = `
+👤 <b>Profile Updated!</b>
+
+Your Ariya Protocol profile has been successfully updated.
+
+Your new information is now live on the platform.
+      `.trim();
+
+      await TelegramService.sendMessage(verificationData.telegram_user_id, message);
+    } catch (error) {
     }
   }
 
@@ -652,7 +654,6 @@ Check your app for more details.
 
       await TelegramService.sendMessage(verificationData.telegram_user_id, message);
     } catch (error) {
-      console.error('Error sending document flow notification:', error);
     }
   }
 
@@ -681,7 +682,6 @@ Welcome to Ariya! 🎉
 
       await TelegramService.sendMessage(verificationData.telegram_user_id, message);
     } catch (error) {
-      console.error('Error sending profile creation notification:', error);
     }
   }
 
@@ -709,7 +709,6 @@ You can now manage your event from the organizer dashboard. We'll send you remin
 
       await TelegramService.sendMessage(verificationData.telegram_user_id, message);
     } catch (error) {
-      console.error('Error sending event creation notification:', error);
     }
   }
 
@@ -720,7 +719,6 @@ You can now manage your event from the organizer dashboard. We'll send you remin
       // In a real app, you'd store this in a database and use a cron job or scheduler
       await TelegramService.sendEventReminder(userId, eventName, eventDate, timeUntil);
     } catch (error) {
-      console.error('Error scheduling event reminder:', error);
     }
   }
 }

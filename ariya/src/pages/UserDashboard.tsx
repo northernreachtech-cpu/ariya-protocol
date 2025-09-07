@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, User, Calendar, Plus, Crown, Eye, MapPin, Clock, Users } from "lucide-react";
+import { Loader2, User, Calendar, Plus, Crown, Eye, MapPin, Clock, Users, Edit3 } from "lucide-react";
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { useAriyaSDK } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
@@ -10,6 +10,7 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import ProfilePicture from "../components/ProfilePicture";
 import ProfileCreationModal from "../components/ProfileCreationModal";
+import ProfileUpdateModal from "../components/ProfileUpdateModal";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { useZkLogin } from "../contexts/ZkLoginContext";
 
@@ -46,6 +47,7 @@ const UserDashboard = () => {
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [isCreatingOrganizer, setIsCreatingOrganizer] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showProfileUpdateModal, setShowProfileUpdateModal] = useState(false);
   const [assignedEvents, setAssignedEvents] = useState<any[]>([]);
   const [loadingAssignedEvents, setLoadingAssignedEvents] = useState(false);
   // const [claimingAirdrop, setClaimingAirdrop] = useState<string | null>(null);
@@ -364,6 +366,17 @@ const UserDashboard = () => {
                     )}
                   </div>
                 </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowProfileUpdateModal(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                    Edit Profile
+                  </Button>
+                </div>
 
               </div>
             </div>
@@ -658,6 +671,19 @@ const UserDashboard = () => {
           loadUserData(); // Reload user data to check for profile
         }}
       />
+
+      {/* Profile Update Modal */}
+      {userProfile && (
+        <ProfileUpdateModal
+          isOpen={showProfileUpdateModal}
+          onClose={() => setShowProfileUpdateModal(false)}
+          onSuccess={() => {
+            setShowProfileUpdateModal(false);
+            loadUserData(); // Reload user data to get updated profile
+          }}
+          userProfile={userProfile}
+        />
+      )}
     </div>
   );
 };

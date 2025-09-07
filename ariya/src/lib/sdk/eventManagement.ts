@@ -799,6 +799,76 @@ export class EventManagementSDK {
   }
 
   /**
+   * Get user's ProfileCap by address
+   */
+  async getUserProfileCap(userAddress: string): Promise<{
+    id: string;
+    profile_id: string;
+    owner: string;
+  } | null> {
+    try {
+      const objects = await suiClient.getOwnedObjects({
+        owner: userAddress,
+        filter: {
+          StructType: `${this.packageId}::event_management::ProfileCap`,
+        },
+        options: {
+          showContent: true,
+        },
+      });
+
+      if (objects.data.length === 0) {
+        return null;
+      }
+
+      const profileCap = objects.data[0];
+      if (profileCap.data?.content && 'fields' in profileCap.data.content) {
+        const fields = profileCap.data.content.fields as any;
+        return {
+          id: profileCap.data.objectId,
+          profile_id: fields.profile_id,
+          owner: fields.owner,
+        };
+      }
+
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Update user profile (requires ProfileCap)
+   */
+  updateProfile(
+    profileId: string,
+    profileCapId: string,
+    name: string,
+    bio: string,
+    photoUrl: string,
+    telegramUsername: string,
+    xUsername: string
+  ): Transaction {
+    const tx = new Transaction();
+    
+    tx.moveCall({
+      target: `${this.packageId}::event_management::update_profile`,
+      arguments: [
+        tx.object(profileId),
+        tx.object(profileCapId),
+        tx.pure.string(name),
+        tx.pure.string(bio),
+        tx.pure.string(photoUrl),
+        tx.pure.string(telegramUsername),
+        tx.pure.string(xUsername),
+      ],
+    });
+    
+    tx.setGasBudget(10000000); // 10,000,000 MIST = 0.01 SUI
+    return tx;
+  }
+
+  /**
    * Get user profile by ID
    */
   async getUserProfile(profileId: string): Promise<{
@@ -960,22 +1030,12 @@ export class EventManagementSDK {
 
               if (eventData && eventData.event_id === eventId) {
                 attendeeCount++;
-                console.log("🔍 Found UserRegistered event:", {
-                  eventId: eventData.event_id,
-                  wallet: eventData.wallet,
-                  totalCount: attendeeCount
-                });
               }
             }
           }
         }
       }
       
-      console.log("🔍 getEventAttendeeCount result:", {
-        eventId,
-        totalTransactions: allTransactions.length,
-        attendeeCount
-      });
 
       return attendeeCount;
     } catch (error) {
@@ -1055,7 +1115,6 @@ export class EventManagementSDK {
 
       return registeredUsers;
     } catch (error) {
-      console.error("Error getting registered users:", error);
       return [];
     }
   }
@@ -1110,7 +1169,6 @@ export class EventManagementSDK {
 
       return checkedInUsers;
     } catch (error) {
-      console.error("Error getting checked-in users:", error);
       return [];
     }
   }

@@ -75,28 +75,15 @@ const QRScanner = ({ isOpen, onClose, onScan, eventId }: QRScannerProps) => {
 
       scannerRef.current.render(
         (decodedText) => {
-          console.log("=== QR CODE SCANNED ===");
-          console.log("Raw decoded text:", decodedText);
-          console.log("Decoded text type:", typeof decodedText);
-          console.log("Decoded text length:", decodedText.length);
-          console.log("First 100 characters:", decodedText.substring(0, 100));
 
           try {
             const qrData = JSON.parse(decodedText);
-            console.log("📱 Parsed QR data:", {
-              ...qrData,
-              // Show original short format if present
-              format: qrData.e && qrData.p && qrData.u ? "original_short" : "other"
-            });
-            console.log("📏 Decoded QR data size:", decodedText.length, "bytes");
             handleScanResult(qrData);
           } catch (err) {
-            console.error("QR parsing error:", err);
             setError("Invalid QR code format");
           }
         },
         (errorMessage) => {
-          console.log("QR scanning error:", errorMessage);
 
           // Provide more helpful error messages
           if (typeof errorMessage === "string") {
@@ -126,7 +113,6 @@ const QRScanner = ({ isOpen, onClose, onScan, eventId }: QRScannerProps) => {
         }
       );
     } catch (err) {
-      console.error("Scanner start error:", err);
       setError("Failed to start QR scanner");
       setScanning(false);
     }
@@ -142,26 +128,12 @@ const QRScanner = ({ isOpen, onClose, onScan, eventId }: QRScannerProps) => {
 
   const handleScanResult = (data: any) => {
     try {
-      console.log("handleScanResult received data:", data);
 
       // If data is a string, parse it
       const parsedData = typeof data === "string" ? JSON.parse(data) : data;
-      console.log("Parsed data for validation:", parsedData);
 
       // Log the structure to understand the new format
-      console.log("QR Data structure:", {
-        hasRef: !!parsedData.ref,
-        hasEventId: !!parsedData.e,
-        hasPassId: !!parsedData.p,
-        hasUserAddress: !!parsedData.u,
-        hasTimestamp: !!parsedData.t,
-      });
 
-      console.log("Comparing event IDs:", {
-        qrEventId: parsedData.e,
-        currentEventId: eventId,
-        match: parsedData.e === eventId,
-      });
 
       // Validate QR data structure
       if (!parsedData.e) {
@@ -196,7 +168,6 @@ const QRScanner = ({ isOpen, onClose, onScan, eventId }: QRScannerProps) => {
         reference: parsedData.ref,
       };
 
-      console.log("Reconstructed full data:", fullData);
 
       setSuccess("QR code scanned successfully!");
       setTimeout(() => {
@@ -204,7 +175,6 @@ const QRScanner = ({ isOpen, onClose, onScan, eventId }: QRScannerProps) => {
         onClose();
       }, 1500);
     } catch (err) {
-      console.error("Error in handleScanResult:", err);
       setError("Invalid QR code format");
     }
   };

@@ -77,7 +77,6 @@ const CreateEvent = () => {
 
       try {
         setLoading(true);
-        console.log("🔍 Fetching organizer profile for:", activeAddress);
         
         // Get organizer's OrganizerCap objects
         const { data: objects } = await suiClient.getOwnedObjects({
@@ -88,10 +87,8 @@ const CreateEvent = () => {
           options: { showContent: true },
         });
 
-        console.log("📦 Found OrganizerCap objects:", objects.length);
 
         if (objects.length === 0) {
-          console.log("❌ No OrganizerCap found, redirecting to dashboard");
           navigate("/dashboard");
           return;
         }
@@ -103,7 +100,6 @@ const CreateEvent = () => {
             profile_id: string;
           };
           const organizerProfileId = fields.profile_id;
-          console.log("📋 OrganizerProfile ID from OrganizerCap:", organizerProfileId);
           
           // Verify the OrganizerProfile exists
           try {
@@ -113,19 +109,15 @@ const CreateEvent = () => {
             });
             
             if (profileResponse.data?.content?.dataType === "moveObject") {
-              console.log("✅ OrganizerProfile verified:", organizerProfileId);
               setProfileId(organizerProfileId);
             } else {
-              console.error("❌ OrganizerProfile not found or invalid");
               setError("Organizer profile not found");
             }
           } catch (profileError) {
-            console.error("❌ Error fetching OrganizerProfile:", profileError);
             setError("Failed to verify organizer profile");
           }
         }
       } catch (error) {
-        console.error("Error fetching organizer profile:", error);
         setError("Failed to fetch organizer profile");
       } finally {
         setLoading(false);
@@ -215,7 +207,6 @@ const CreateEvent = () => {
       const url = data.data.url;
       setFormData((prev) => ({ ...prev, imageUrl: url }));
     } catch (error) {
-      console.error("Error uploading image:", error);
       setError("Failed to upload image");
     } finally {
       setUploadingImage(false);
@@ -237,16 +228,11 @@ const CreateEvent = () => {
       setIsSubmitting(true);
       setError("");
 
-      console.log("🚀 Starting event creation...");
-      console.log("📋 Form data:", formData);
-      console.log("📋 Profile ID:", profileId);
-      console.log("📋 Event Registry ID:", eventRegistryId);
 
       // Convert date and time to timestamp (Move expects milliseconds)
       const startTime = new Date(`${formData.date}T${formData.time}`).getTime();
       const endTime = startTime + 3600 * 2 * 1000; // Default 2 hours duration in milliseconds
       
-      console.log("⏰ Start time:", startTime, "End time:", endTime);
 
       // Create event transaction with actual profileId
       const tx = sdk.eventManagement.createEvent(
@@ -269,7 +255,6 @@ const CreateEvent = () => {
         profileId // organizerProfile
       );
 
-      console.log("📦 Transaction created, executing...");
       
       // Execute transaction
       if (currentAccount) {
@@ -278,14 +263,12 @@ const CreateEvent = () => {
           { transaction: tx },
           {
             onSuccess: async (result) => {
-              console.log("✅ Event created successfully:", result);
 
             // Extract event ID from the result
             const eventId =
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
               sdk.eventManagement.extractEventIdFromResult(result as any);
             if (eventId) {
-              console.log("Event ID:", eventId);
               
               // Send event creation notification to organizer
               if (activeAddress) {
@@ -297,7 +280,6 @@ const CreateEvent = () => {
                     formData.time
                   );
                 } catch (error) {
-                  console.error("Failed to send event creation notification:", error);
                 }
               }
               
@@ -318,19 +300,16 @@ const CreateEvent = () => {
                     );
                   }
                 } catch (error) {
-                  console.error("Failed to schedule event reminder:", error);
                 }
               }
               
               // You can now use this event ID to fetch event details or navigate to event page
               navigate(`/event/${eventId}`);
                           } else {
-                console.warn("Could not extract event ID from result");
                 navigate("/dashboard/organizer");
               }
             },
-            onError: (error) => {
-              console.error("Error creating event:", error);
+            onError: () => {
               setError("Failed to create event. Please try again.");
             },
           }
@@ -344,30 +323,25 @@ const CreateEvent = () => {
           { transaction: txWithSender },
           {
             onSuccess: (result) => {
-              console.log("✅ Event created successfully:", result);
 
               // Extract event ID from the result
               const eventId =
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 sdk.eventManagement.extractEventIdFromResult(result as any);
               if (eventId) {
-                console.log("Event ID:", eventId);
                 // You can now use this event ID to fetch event details or navigate to event page
                 navigate(`/event/${eventId}`);
               } else {
-                console.warn("Could not extract event ID from result");
                 navigate("/dashboard/organizer");
               }
             },
-            onError: (error) => {
-              console.error("Error creating event:", error);
+            onError: () => {
               setError("Failed to create event. Please try again.");
             },
           }
         );
       }
     } catch (error) {
-      console.error("Error:", error);
       setError("Failed to create event. Please try again.");
     } finally {
       setIsSubmitting(false);
