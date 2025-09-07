@@ -1087,7 +1087,7 @@ const OrganizerDashboard = () => {
 
   // Document Flow state
   const [showDocFlowModal, setShowDocFlowModal] = useState(false);
-  const [selectedEventForDocFlow, setSelectedEventForDocFlow] = useState<Event | null>(null);
+  const [selectedEventForDocFlow, _setSelectedEventForDocFlow] = useState<Event | null>(null);
   const [showCreateFlowModal, setShowCreateFlowModal] = useState(false);
   const [showSubmitDocumentModal, setShowSubmitDocumentModal] = useState(false);
   const [creatingDocumentFlow, setCreatingDocumentFlow] = useState(false);
@@ -1116,16 +1116,16 @@ const OrganizerDashboard = () => {
   const [eventToDeleteFromDetails, setEventToDeleteFromDetails] = useState<Event | null>(null);
 
   // Airdrop validation state
-  const [eventEligibleRecipients, setEventEligibleRecipients] = useState<{
-    [eventId: string]: {
-      checkedIn: number;
-      checkedOut: number;
-      totalAttendees: number;
-    };
-  }>({});
-  const [validatingAirdrop, setValidatingAirdrop] = useState<{
-    [eventId: string]: boolean;
-  }>({});
+  // const [eventEligibleRecipients, setEventEligibleRecipients] = useState<{
+  //   [eventId: string]: {
+  //     checkedIn: number;
+  //     checkedOut: number;
+  //     totalAttendees: number;
+  //   };
+  // }>({});
+  // const [validatingAirdrop, setValidatingAirdrop] = useState<{
+  //   [eventId: string]: boolean;
+  // }>({});
 
   // Delete event state
   const [deletingEvent, setDeletingEvent] = useState<string | null>(null);
@@ -2068,59 +2068,59 @@ const OrganizerDashboard = () => {
     return Math.ceil(allSubEvents.length / 4);
   };
 
-  const checkEligibleRecipients = async (eventId: string) => {
-    if (!attendanceRegistryId) return;
+  // const checkEligibleRecipients = async (eventId: string) => {
+  //   if (!attendanceRegistryId) return;
 
-    setValidatingAirdrop((prev) => ({ ...prev, [eventId]: true }));
+  //   setValidatingAirdrop((prev) => ({ ...prev, [eventId]: true }));
 
-    try {
-      // Query attendance stats for the event
-      const tx = new Transaction();
-      tx.moveCall({
-        target: `${sdk.attendanceVerification.getPackageId()}::attendance_verification::get_event_stats`,
-        arguments: [tx.pure.id(eventId), tx.object(attendanceRegistryId)],
-      });
+  //   try {
+  //     // Query attendance stats for the event
+  //     const tx = new Transaction();
+  //     tx.moveCall({
+  //       target: `${sdk.attendanceVerification.getPackageId()}::attendance_verification::get_event_stats`,
+  //       arguments: [tx.pure.id(eventId), tx.object(attendanceRegistryId)],
+  //     });
 
-      const result = await suiClient.devInspectTransactionBlock({
-        transactionBlock: tx,
-        sender: currentAccount?.address || "0x0",
-      });
+  //     const result = await suiClient.devInspectTransactionBlock({
+  //       transactionBlock: tx,
+  //       sender: currentAccount?.address || "0x0",
+  //     });
 
-      if (result && result.results && result.results.length > 0) {
-        const returnVals = result.results[0].returnValues;
-        if (Array.isArray(returnVals) && returnVals.length >= 3) {
-          const checkedIn = Array.isArray(returnVals[0])
-            ? (returnVals[0] as unknown as number[])[0] || 0
-            : parseInt(returnVals[0] as string) || 0;
-          const checkedOut = Array.isArray(returnVals[1])
-            ? (returnVals[1] as unknown as number[])[0] || 0
-            : parseInt(returnVals[1] as string) || 0;
-          const totalAttendees = checkedIn + checkedOut;
+  //     if (result && result.results && result.results.length > 0) {
+  //       const returnVals = result.results[0].returnValues;
+  //       if (Array.isArray(returnVals) && returnVals.length >= 3) {
+  //         const checkedIn = Array.isArray(returnVals[0])
+  //           ? (returnVals[0] as unknown as number[])[0] || 0
+  //           : parseInt(returnVals[0] as string) || 0;
+  //         const checkedOut = Array.isArray(returnVals[1])
+  //           ? (returnVals[1] as unknown as number[])[0] || 0
+  //           : parseInt(returnVals[1] as string) || 0;
+  //         const totalAttendees = checkedIn + checkedOut;
 
-          setEventEligibleRecipients((prev) => ({
-            ...prev,
-            [eventId]: {
-              checkedIn,
-              checkedOut,
-              totalAttendees,
-            },
-          }));
-        }
-      }
-    } catch (error) {
-      // Set default values if query fails
-      setEventEligibleRecipients((prev) => ({
-        ...prev,
-        [eventId]: {
-          checkedIn: 0,
-          checkedOut: 0,
-          totalAttendees: 0,
-        },
-      }));
-    } finally {
-      setValidatingAirdrop((prev) => ({ ...prev, [eventId]: false }));
-    }
-  };
+  //         setEventEligibleRecipients((prev) => ({
+  //           ...prev,
+  //           [eventId]: {
+  //             checkedIn,
+  //             checkedOut,
+  //             totalAttendees,
+  //           },
+  //         }));
+  //       }
+  //     }
+  //   } catch (error) {
+  //     // Set default values if query fails
+  //     setEventEligibleRecipients((prev) => ({
+  //       ...prev,
+  //       [eventId]: {
+  //         checkedIn: 0,
+  //         checkedOut: 0,
+  //         totalAttendees: 0,
+  //       },
+  //     }));
+  //   } finally {
+  //     setValidatingAirdrop((prev) => ({ ...prev, [eventId]: false }));
+  //   }
+  // };
 
   const handleAirdropSubmit = async (config: AirdropConfig, amount: number) => {
     if (

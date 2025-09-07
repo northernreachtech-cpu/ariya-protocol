@@ -4,7 +4,7 @@ import { Calendar, Users, Shield, Award, QrCode, Coins } from "lucide-react";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import FloatingElements from "../components/FloatingElements";
-import heroImage from "../assets/hero-image.png";
+// import heroImage from "../assets/hero-image.png";
 import useScrollToTop from "../hooks/useScrollToTop";
 
 const LandingPage = () => {
@@ -215,17 +215,17 @@ const LandingPage = () => {
       {/* Floating Background Elements */}
       <FloatingElements />
 
-      {/* Hero Section - Flex layout with content left and illustration right */}
+      {/* Hero Section - Centered content */}
       <section className="pt-24 sm:pt-32 pb-12 sm:pb-20 relative z-20">
         <div className="container mx-auto px-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
-              {/* Left Content */}
+          <div className="max-w-4xl mx-auto">
+            <div className="flex flex-col items-center justify-center text-center">
+              {/* Centered Content */}
               <motion.div
-                initial={{ opacity: 0, x: -50 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
-                className="flex-1 text-center lg:text-left"
+                className="w-full"
               >
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-livvic font-bold mb-4 sm:mb-6 leading-tight">
                   <span className="bg-gradient-to-r from-primary via-secondary to-accent text-transparent bg-clip-text">
@@ -234,12 +234,12 @@ const LandingPage = () => {
                   <br />
                   <span className="text-foreground">Event Protocol</span>
                 </h1>
-                <p className="text-lg sm:text-xl lg:text-2xl text-foreground-secondary mb-6 sm:mb-8 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+                <p className="text-lg sm:text-xl lg:text-2xl text-foreground-secondary dark:text-foreground-secondary text-slate-700 mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed">
                   Create, manage, and attend events with blockchain-powered
                   check-ins, anonymous identity management, and NFT
                   proof-of-attendance.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start px-4 lg:px-0 max-w-lg mx-auto lg:mx-0">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 lg:px-0 max-w-lg mx-auto">
                   <Link to="/event/create" className="w-full sm:w-auto">
                     <Button size="lg" className="w-full sm:w-auto">
                       <Calendar className="mr-2 h-5 w-5" />
@@ -257,23 +257,6 @@ const LandingPage = () => {
                     </Button>
                   </Link>
                 </div>
-              </motion.div>
-
-              {/* Right Illustration */}
-              <motion.div
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="flex-1 w-full max-w-md mx-auto lg:mx-0 flex justify-center lg:justify-end"
-              >
-                <img
-                  src={heroImage}
-                  alt="Hero Illustration"
-                  className="w-3/4 lg:w-2/3 h-auto transform scale-x-[-1]"
-                  style={{
-                    filter: "drop-shadow(0 10px 25px rgba(0, 0, 0, 0.1))",
-                  }}
-                />
               </motion.div>
             </div>
           </div>
@@ -294,7 +277,7 @@ const LandingPage = () => {
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-livvic font-bold mb-3 sm:mb-4 text-foreground">
                 Powerful Features
               </h2>
-              <p className="text-foreground-secondary text-base sm:text-lg lg:text-xl max-w-3xl mx-auto px-4 leading-relaxed">
+              <p className="text-foreground-secondary dark:text-foreground-secondary text-slate-700 text-base sm:text-lg lg:text-xl max-w-3xl mx-auto px-4 leading-relaxed">
                 Everything you need to create, manage, and participate in
                 decentralized events
               </p>
@@ -324,7 +307,7 @@ const LandingPage = () => {
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-livvic font-bold mb-3 sm:mb-4 text-foreground">
                 How It Works
               </h2>
-              <p className="text-foreground-secondary text-base sm:text-lg lg:text-xl max-w-3xl mx-auto px-4 leading-relaxed">
+              <p className="text-foreground-secondary dark:text-foreground-secondary text-slate-700 text-base sm:text-lg lg:text-xl max-w-3xl mx-auto px-4 leading-relaxed">
                 Get started with decentralized events in four simple steps
               </p>
             </motion.div>
@@ -374,7 +357,7 @@ const LandingPage = () => {
                 <h2 className="text-2xl sm:text-3xl lg:text-4xl font-livvic font-bold mb-4 sm:mb-6 text-foreground">
                   Ready to Get Started?
                 </h2>
-                <p className="text-foreground-secondary text-base sm:text-lg lg:text-xl mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed">
+                <p className="text-foreground-secondary dark:text-foreground-secondary text-slate-700 text-base sm:text-lg lg:text-xl mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed">
                   Join the future of event management with blockchain technology
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center max-w-lg mx-auto">
@@ -403,28 +386,14 @@ const LandingPage = () => {
       <footer className="py-12 sm:py-16 border-t border-border relative z-20">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-6 md:gap-0">
-              <div className="text-center md:text-left">
+            <div className="flex flex-col items-center gap-6">
+              <div className="text-center">
                 <h3 className="text-xl sm:text-2xl font-livvic font-bold bg-gradient-to-r from-primary to-secondary text-transparent bg-clip-text">
                   Ariya
                 </h3>
                 <p className="text-foreground-muted text-sm sm:text-base mt-1">
                   Decentralized Event Management
                 </p>
-              </div>
-              <div className="flex flex-wrap justify-center md:justify-end gap-6 sm:gap-8 text-sm sm:text-base text-foreground-muted">
-                <a href="#" className="hover:text-foreground transition-colors">
-                  Privacy
-                </a>
-                <a href="#" className="hover:text-foreground transition-colors">
-                  Terms
-                </a>
-                <a href="#" className="hover:text-foreground transition-colors">
-                  Docs
-                </a>
-                <a href="#" className="hover:text-foreground transition-colors">
-                  Support
-                </a>
               </div>
             </div>
           </div>
