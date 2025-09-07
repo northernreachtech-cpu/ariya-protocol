@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Menu,
@@ -17,6 +17,9 @@ import { cn } from "../utils/cn";
 import { useTheme } from "../contexts/ThemeContext";
 import logoWhite from "../assets/logo-white.png";
 import logoBlack from "../assets/logo-black.png";
+import { useCurrentAccount } from "@mysten/dapp-kit";
+import { useAriyaSDK } from "../lib/sdk";
+import { useNetworkVariable } from "../config/sui";
 
 interface MenuItem {
   type: "link" | "dropdown";
@@ -34,8 +37,31 @@ interface MenuItem {
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isTreasuryAdmin, setIsTreasuryAdmin] = useState(false);
   const location = useLocation();
   const { theme } = useTheme();
+  const currentAccount = useCurrentAccount();
+  const sdk = useAriyaSDK();
+  const platformTreasuryId = useNetworkVariable("platformTreasuryId");
+
+  // Check if current user is treasury admin
+  useEffect(() => {
+    const checkTreasuryAdmin = async () => {
+      if (currentAccount?.address && platformTreasuryId) {
+        try {
+          const isAdmin = await sdk.platformTreasury.isAdmin(platformTreasuryId, currentAccount.address);
+          setIsTreasuryAdmin(isAdmin);
+        } catch (error) {
+          console.error("Error checking treasury admin:", error);
+          setIsTreasuryAdmin(false);
+        }
+      } else {
+        setIsTreasuryAdmin(false);
+      }
+    };
+
+    checkTreasuryAdmin();
+  }, [currentAccount?.address, platformTreasuryId, sdk.platformTreasury]);
 
   // Menu structure with dropdowns
   const menuItems: MenuItem[] = [
@@ -108,17 +134,11 @@ const Navbar = () => {
       type: "dropdown",
       label: "Tools",
       items: [
-        {
+        ...(isTreasuryAdmin ? [{
           name: "Treasury Dashboard",
           href: "/admin/treasury",
           icon: <Settings size={16} />,
-        },
-        {
-          name: "SUI Workshop",
-          href: "/sui-workshop",
-          icon: <Settings size={16} />,
-          exclusive: true,
-        },
+        }] : []),
         { name: "Organizers", href: "/organizers", icon: <Users size={16} /> },
       ],
     },

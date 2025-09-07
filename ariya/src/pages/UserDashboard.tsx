@@ -32,7 +32,7 @@ const UserDashboard = () => {
   const profileRegistryId = useNetworkVariable("profileRegistryId");
   const subscriptionRegistryId = useNetworkVariable("subscriptionRegistryId");
   const eventRegistryId = useNetworkVariable("eventRegistryId");
-  const airdropRegistryId = useNetworkVariable("airdropRegistryId");
+  // const airdropRegistryId = useNetworkVariable("airdropRegistryId");
   // const platformTreasuryId = useNetworkVariable("platformTreasuryId");
 
   // Get the active address (either wallet or zkLogin)
@@ -602,7 +602,7 @@ const UserDashboard = () => {
               </div>
 
               {/* Airdrop History Section */}
-              {airdropRegistryId && (
+              {/* {airdropRegistryId && (
                 <Card className="p-6">
                   <h3 className="text-lg font-semibold mb-4 text-foreground">
                     My Airdrop Rewards
@@ -616,7 +616,7 @@ const UserDashboard = () => {
                     </p>
                   </div>
                 </Card>
-              )}
+              )} */}
 
               {/* Assigned Events Section */}
               {assignedEvents.length > 0 && (

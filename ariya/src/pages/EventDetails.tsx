@@ -14,7 +14,7 @@ import {
   DollarSign,
   CheckCircle,
   Eye,
-  FileText,
+  // FileText,
 } from "lucide-react";
 import {
   useCurrentAccount,
@@ -32,11 +32,11 @@ import useScrollToTop from "../hooks/useScrollToTop";
 import DocumentFlowCard from "../components/DocumentFlowCard";
 import CreateDocumentFlowModal from "../components/CreateDocumentFlowModal";
 import SubmitDocumentModal from "../components/SubmitDocumentModal";
-import AirdropDisplay from "../components/AirdropDisplay";
+// import AirdropDisplay from "../components/AirdropDisplay";
 // import { useMemo } from "react";
 import { Transaction } from "@mysten/sui/transactions";
 import { suiClient } from "../config/sui";
-import { EscrowSettlementSDK } from "../lib/sdk";
+// import { EscrowSettlementSDK } from "../lib/sdk";
 
 // Skeleton loader components for EventDetails
 const EventDetailsSkeleton = () => (
@@ -162,7 +162,7 @@ const EventDetails = () => {
   const platformTreasuryId = useNetworkVariable("platformTreasuryId");
   const subscriptionRegistryId = useNetworkVariable("subscriptionRegistryId");
   const documentFlowRegistryId = useNetworkVariable("documentFlowRegistryId");
-  const airdropRegistryId = useNetworkVariable("airdropRegistryId");
+  // const airdropRegistryId = useNetworkVariable("airdropRegistryId");
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
 
   // Attendance state from navigation (if available)
@@ -199,14 +199,14 @@ const EventDetails = () => {
   const [organizerProfile, setOrganizerProfile] = useState<unknown>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
-  const [showSponsorModal, setShowSponsorModal] = useState(false);
-  const [sponsorAmount, setSponsorAmount] = useState(0);
-  const [sponsorLoading, setSponsorLoading] = useState(false);
-  const [sponsorError, setSponsorError] = useState("");
-  const [sponsorSuccess, setSponsorSuccess] = useState("");
-  const escrowRegistryId = useNetworkVariable("escrowRegistryId");
+  // const [showSponsorModal, setShowSponsorModal] = useState(false);
+  // const [sponsorAmount, setSponsorAmount] = useState(0);
+  // const [sponsorLoading, setSponsorLoading] = useState(false);
+  // const [sponsorError, setSponsorError] = useState("");
+  // const [sponsorSuccess, setSponsorSuccess] = useState("");
+  // const escrowRegistryId = useNetworkVariable("escrowRegistryId");
   const clockId = "0x6";
-  const [escrowSDK, setEscrowSDK] = useState<EscrowSettlementSDK | null>(null);
+  // const [escrowSDK, setEscrowSDK] = useState<EscrowSettlementSDK | null>(null);
   const [joiningCommunity, setJoiningCommunity] = useState(false);
   const [mintingPoA, setMintingPoA] = useState(false);
   const [hasPoACapability, setHasPoACapability] = useState(false);
@@ -225,9 +225,9 @@ const EventDetails = () => {
   const [showCreateFlowModal, setShowCreateFlowModal] = useState(false);
   const [showSubmitDocumentModal, setShowSubmitDocumentModal] = useState(false);
 
-  useEffect(() => {
-    setEscrowSDK(new EscrowSettlementSDK(sdk.eventManagement.getPackageId()));
-  }, [sdk]);
+  // useEffect(() => {
+  //   setEscrowSDK(new EscrowSettlementSDK(sdk.eventManagement.getPackageId()));
+  // }, [sdk]);
 
   // Helper to fetch organizer profile by address
   const fetchOrganizerProfile = async (organizerAddress: string) => {
@@ -536,14 +536,14 @@ const EventDetails = () => {
     }
   }, [sdk]);
 
-  const handleOpenDocFlow = useCallback(() => {
-    if (!event) return;
-    
-    setShowDocFlowModal(true);
-    if (!documentFlowData.flow) {
-      loadDocumentFlowData(event.id);
-    }
-  }, [event, documentFlowData.flow, loadDocumentFlowData]);
+  // const handleOpenDocFlow = useCallback(() => {
+  //   if (!event) return;
+  //   
+  //   setShowDocFlowModal(true);
+  //   if (!documentFlowData.flow) {
+  //     loadDocumentFlowData(event.id);
+  //   }
+  // }, [event, documentFlowData.flow, loadDocumentFlowData]);
 
   const handleCreateDocumentFlow = async (participants: ChainParticipant[]) => {
     if (!event || !activeAddress || !isAuthenticated || !documentFlowRegistryId || !profileRegistryId) return;
@@ -1104,36 +1104,36 @@ const EventDetails = () => {
     return false;
   };
 
-  const handleClaimAirdrop = async (airdropId: string) => {
-    if (!activeAddress || !airdropRegistryId || !attendanceRegistryId || !nftRegistryId) {
-      return;
-    }
+  // const handleClaimAirdrop = async (airdropId: string) => {
+  //   if (!activeAddress || !airdropRegistryId || !attendanceRegistryId || !nftRegistryId) {
+  //     return;
+  //   }
 
-    try {
-      const ratingRegistryId = useNetworkVariable("ratingRegistryId");
-      const tx = sdk.airdropDistribution.claimAirdrop(
-        airdropId,
-        airdropRegistryId,
-        attendanceRegistryId,
-        nftRegistryId,
-        ratingRegistryId,
-        "0x6" // CLOCK_ID
-      );
+  //   try {
+  //     const ratingRegistryId = useNetworkVariable("ratingRegistryId");
+  //     const tx = sdk.airdropDistribution.claimAirdrop(
+  //       airdropId,
+  //       airdropRegistryId,
+  //       attendanceRegistryId,
+  //       nftRegistryId,
+  //       ratingRegistryId,
+  //       "0x6" // CLOCK_ID
+  //     );
 
-      await signAndExecute({ transaction: tx });
+  //     await signAndExecute({ transaction: tx });
 
-      setMintResult({
-        success: true,
-        message: "Airdrop claimed successfully!",
-      });
-    } catch (error) {
-      console.error("Error claiming airdrop:", error);
-      setMintResult({
-        success: false,
-        message: "Failed to claim airdrop. Please try again.",
-      });
-    }
-  };
+  //     setMintResult({
+  //       success: true,
+  //       message: "Airdrop claimed successfully!",
+  //     });
+  //   } catch (error) {
+  //     console.error("Error claiming airdrop:", error);
+  //     setMintResult({
+  //       success: false,
+  //       message: "Failed to claim airdrop. Please try again.",
+  //     });
+  //   }
+  // };
 
   const handleMintCompletionNFT = async () => {
     if (!activeAddress || !isAuthenticated || !event || !nftRegistryId) return;
@@ -1577,7 +1577,7 @@ const EventDetails = () => {
                 )}
 
                 {/* Sponsor this Event Button */}
-                {!isOrganizer && event.state === 1 && (
+                {/* {!isOrganizer && event.state === 1 && (
                   <Button
                     variant="outline"
                     size="lg"
@@ -1586,10 +1586,10 @@ const EventDetails = () => {
                   >
                     Sponsor this Event
                   </Button>
-                )}
+                )} */}
 
                 {/* Document Flow Button - Only for organizers and assignees */}
-                {(isOrganizer || (event.assignee && event.assignee === activeAddress)) && (
+                {/* {(isOrganizer || (event.assignee && event.assignee === activeAddress)) && (
                   <Button
                     variant="outline"
                     size="lg"
@@ -1599,7 +1599,7 @@ const EventDetails = () => {
                     <FileText className="mr-2 h-5 w-5" />
                     Document Flow
                   </Button>
-                )}
+                )} */}
 
                 <Button
                   variant="outline"
@@ -1688,7 +1688,7 @@ const EventDetails = () => {
             </Card>
 
             {/* Airdrop Section */}
-            {event && airdropRegistryId && (
+            {/* {event && airdropRegistryId && (
               <Card className="p-4 sm:p-6">
                 <AirdropDisplay
                   eventId={event.id}
@@ -1696,7 +1696,7 @@ const EventDetails = () => {
                   onClaim={handleClaimAirdrop}
                 />
               </Card>
-            )}
+            )} */}
 
           </div>
         </div>
@@ -1843,7 +1843,7 @@ const EventDetails = () => {
         </div>
       )}
       {/* Sponsor Modal */}
-      {showSponsorModal && (
+      {/* {showSponsorModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-fade-in">
           <div className="relative bg-card/80 backdrop-blur-2xl border border-border shadow-2xl rounded-2xl max-w-md w-full mx-4 p-0 overflow-hidden animate-slide-up">
             <div className="flex flex-col items-center justify-center pt-8 pb-2 bg-gradient-to-r from-primary/80 to-secondary/80">
@@ -1944,7 +1944,7 @@ const EventDetails = () => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Document Flow Modal */}
       {showDocFlowModal && event && (

@@ -261,47 +261,7 @@ const ConnectWalletButton = () => {
                           e.stopPropagation();
                         }}
                       >
-                        {wallets.map((wallet) => {
-                          const displayInfo = getWalletDisplayInfo(wallet.name);
-                          return (
-                            <button
-                              key={wallet.name}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                console.log(
-                                  "🎯 Mobile wallet button clicked:",
-                                  wallet.name
-                                );
-                                handleConnect(wallet.name);
-                              }}
-                              disabled={isConnecting}
-                              className={`w-full p-3 rounded-lg border transition-all duration-200 text-left flex items-center ${
-                                isConnecting
-                                  ? "bg-card border-border text-foreground-muted cursor-not-allowed"
-                                  : "bg-card hover:bg-card-secondary border-border hover:border-primary/30"
-                              }`}
-                            >
-                              <span className="text-xl mr-3">
-                                {displayInfo.icon}
-                              </span>
-                              <div>
-                                <div className="font-medium text-foreground">
-                                  {wallet.name}
-                                </div>
-                                <div className="text-sm text-foreground-muted">
-                                  {isConnecting
-                                    ? "Connecting..."
-                                    : displayInfo.description}
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })}
-                        
-                        <div className="my-3 border-t border-border" />
-                        
-                        {/* zkLogin Button */}
+                        {/* zkLogin Button - moved to top */}
                         <button
                           onClick={async (e) => {
                             e.preventDefault();
@@ -332,6 +292,48 @@ const ConnectWalletButton = () => {
                             </div>
                           </div>
                         </button>
+                        
+                        <div className="my-3 border-t border-border" />
+                        
+                        {wallets
+                          .filter((wallet) => !wallet.name.toLowerCase().includes('google'))
+                          .map((wallet) => {
+                            const displayInfo = getWalletDisplayInfo(wallet.name);
+                            return (
+                              <button
+                                key={wallet.name}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log(
+                                    "🎯 Mobile wallet button clicked:",
+                                    wallet.name
+                                  );
+                                  handleConnect(wallet.name);
+                                }}
+                                disabled={isConnecting}
+                                className={`w-full p-3 rounded-lg border transition-all duration-200 text-left flex items-center ${
+                                  isConnecting
+                                    ? "bg-card border-border text-foreground-muted cursor-not-allowed"
+                                    : "bg-card hover:bg-card-secondary border-border hover:border-primary/30"
+                                }`}
+                              >
+                                <span className="text-xl mr-3">
+                                  {displayInfo.icon}
+                                </span>
+                                <div>
+                                  <div className="font-medium text-foreground">
+                                    {wallet.name}
+                                  </div>
+                                  <div className="text-sm text-foreground-muted">
+                                    {isConnecting
+                                      ? "Connecting..."
+                                      : displayInfo.description}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
                       </div>
                     </Card>
                   </div>
@@ -356,43 +358,7 @@ const ConnectWalletButton = () => {
                     </button>
                   </div>
                   <div className="space-y-2">
-                    {wallets.map((wallet) => {
-                      const displayInfo = getWalletDisplayInfo(wallet.name);
-                      return (
-                        <button
-                          key={wallet.name}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleConnect(wallet.name);
-                          }}
-                          disabled={isConnecting}
-                          className={`w-full p-3 rounded-lg border transition-all duration-200 text-left flex items-center ${
-                            isConnecting
-                              ? "bg-card border-border text-foreground-muted cursor-not-allowed"
-                              : "bg-card hover:bg-card-secondary border-border hover:border-primary/30"
-                          }`}
-                        >
-                          <span className="text-xl mr-3">
-                            {displayInfo.icon}
-                          </span>
-                          <div>
-                            <div className="font-medium text-foreground">
-                              {wallet.name}
-                            </div>
-                            <div className="text-sm text-foreground-muted">
-                              {isConnecting
-                                ? "Connecting..."
-                                : displayInfo.description}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                    
-                    <div className="my-3 border-t border-border" />
-                    
-                    {/* zkLogin Button */}
+                    {/* zkLogin Button - moved to top */}
                     <button
                       onClick={async (e) => {
                         e.preventDefault();
@@ -410,19 +376,57 @@ const ConnectWalletButton = () => {
                           ? "bg-card border-border text-foreground-muted cursor-not-allowed"
                           : "bg-card hover:bg-card-secondary border-border hover:border-primary/30"
                       }`}
-                                            >
-                          <GoogleIcon className="h-5 w-5 mr-3" />
-                          <div>
-                            <div className="font-medium text-foreground">
-                              Sign in with Google
+                    >
+                      <GoogleIcon className="h-5 w-5 mr-3" />
+                      <div>
+                        <div className="font-medium text-foreground">
+                          Sign in with Google
+                        </div>
+                        <div className="text-sm text-foreground-muted">
+                          {isZkConnecting
+                            ? "Connecting..."
+                            : "Use your Google account"}
+                        </div>
+                      </div>
+                    </button>
+                    
+                    <div className="my-3 border-t border-border" />
+                    
+                    {wallets
+                      .filter((wallet) => !wallet.name.toLowerCase().includes('google'))
+                      .map((wallet) => {
+                        const displayInfo = getWalletDisplayInfo(wallet.name);
+                        return (
+                          <button
+                            key={wallet.name}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleConnect(wallet.name);
+                            }}
+                            disabled={isConnecting}
+                            className={`w-full p-3 rounded-lg border transition-all duration-200 text-left flex items-center ${
+                              isConnecting
+                                ? "bg-card border-border text-foreground-muted cursor-not-allowed"
+                                : "bg-card hover:bg-card-secondary border-border hover:border-primary/30"
+                            }`}
+                          >
+                            <span className="text-xl mr-3">
+                              {displayInfo.icon}
+                            </span>
+                            <div>
+                              <div className="font-medium text-foreground">
+                                {wallet.name}
+                              </div>
+                              <div className="text-sm text-foreground-muted">
+                                {isConnecting
+                                  ? "Connecting..."
+                                  : displayInfo.description}
+                              </div>
                             </div>
-                            <div className="text-sm text-foreground-muted">
-                              {isZkConnecting
-                                ? "Connecting..."
-                                : "Use your Google account"}
-                            </div>
-                          </div>
-                        </button>
+                          </button>
+                        );
+                      })}
                   </div>
                 </Card>
               </div>

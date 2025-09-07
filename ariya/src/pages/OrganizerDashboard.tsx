@@ -37,7 +37,7 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import StatCard from "../components/StatCard";
 import AirdropCreationModal from "../components/AirdropCreationModal";
-import AirdropAnalytics from "../components/AirdropAnalytics";
+// import AirdropAnalytics from "../components/AirdropAnalytics";
 import AssigneeSelector from "../components/AssigneeSelector";
 // import AirdropManagement from "../components/AirdropManagement";
 import ErrorModal from "../components/ErrorModal";
@@ -1783,25 +1783,25 @@ const OrganizerDashboard = () => {
     }
   };
 
-  const handleCreateAirdrop = async (event: Event) => {
-    // Check eligible recipients first
-    await checkEligibleRecipients(event.id);
+  // const handleCreateAirdrop = async (event: Event) => {
+  //   // Check eligible recipients first
+  //   await checkEligibleRecipients(event.id);
 
-    const recipients = eventEligibleRecipients[event.id];
+  //   const recipients = eventEligibleRecipients[event.id];
 
-    // If no eligible recipients, show error modal instead
-    if (!recipients || recipients.totalAttendees === 0) {
-      setErrorMessage(
-        "No eligible recipients found for this event. Ensure attendees have checked in or completed the event."
-      );
-      setErrorDetails(new Error("No eligible recipients"));
-      setShowErrorModal(true);
-      return;
-    }
+  //   // If no eligible recipients, show error modal instead
+  //   if (!recipients || recipients.totalAttendees === 0) {
+  //     setErrorMessage(
+  //       "No eligible recipients found for this event. Ensure attendees have checked in or completed the event."
+  //     );
+  //     setErrorDetails(new Error("No eligible recipients"));
+  //     setShowErrorModal(true);
+  //     return;
+  //   }
 
-    setSelectedEventForAirdrop(event);
-    setShowAirdropModal(true);
-  };
+  //   setSelectedEventForAirdrop(event);
+  //   setShowAirdropModal(true);
+  // };
 
   const loadDocumentFlowData = async (eventId: string) => {
     console.log("🔄 Loading document flow data for event:", eventId);
@@ -1884,24 +1884,24 @@ const OrganizerDashboard = () => {
     }
   };
 
-  const handleOpenDocFlow = (event: Event) => {
-    console.log("🚀 Opening document flow for event:", {
-      eventId: event.id,
-      eventName: event.name,
-      hasExistingData: !!documentFlowData[event.id]
-    });
+  // const handleOpenDocFlow = (event: Event) => {
+  //   console.log("🚀 Opening document flow for event:", {
+  //     eventId: event.id,
+  //     eventName: event.name,
+  //     hasExistingData: !!documentFlowData[event.id]
+  //   });
     
-    setSelectedEventForDocFlow(event);
-    setShowDocFlowModal(true);
+  //   setSelectedEventForDocFlow(event);
+  //   setShowDocFlowModal(true);
     
-    // Load document flow data if not already loaded
-    if (!documentFlowData[event.id]) {
-      console.log("📡 Loading document flow data for event:", event.id);
-      loadDocumentFlowData(event.id);
-    } else {
-      console.log("✅ Using existing document flow data for event:", event.id);
-    }
-  };
+  //   // Load document flow data if not already loaded
+  //   if (!documentFlowData[event.id]) {
+  //     console.log("📡 Loading document flow data for event:", event.id);
+  //     loadDocumentFlowData(event.id);
+  //   } else {
+  //     console.log("✅ Using existing document flow data for event:", event.id);
+  //   }
+  // };
 
   const handleCreateDocumentFlow = async (participants: any[]) => {
     if (!selectedEventForDocFlow || !documentFlowRegistryId || !currentAccount) {
@@ -2455,65 +2455,53 @@ const OrganizerDashboard = () => {
     }
   };
 
-  const getEscrowStatusColor = (status: string) => {
-    switch (status) {
-      case "released":
-        return "text-green-600 dark:text-green-400";
-      case "pending":
-        return "text-yellow-600 dark:text-yellow-400";
-      case "locked":
-        return "text-red-600 dark:text-red-400";
-      default:
-        return "text-foreground-muted";
-    }
-  };
 
-  const getAirdropButtonStatus = (event: Event) => {
-    const recipients = eventEligibleRecipients[event.id];
-    const isValidating = validatingAirdrop[event.id];
+  // const getAirdropButtonStatus = (event: Event) => {
+  //   const recipients = eventEligibleRecipients[event.id];
+  //   const isValidating = validatingAirdrop[event.id];
 
-    if (isValidating) {
-      return {
-        disabled: true,
-        text: "Checking Recipients...",
-        icon: Loader2,
-        variant: "outline" as const,
-        className: "opacity-50",
-        tooltip: "Validating eligible recipients...",
-      };
-    }
+  //   if (isValidating) {
+  //     return {
+  //       disabled: true,
+  //       text: "Checking Recipients...",
+  //       icon: Loader2,
+  //       variant: "outline" as const,
+  //       className: "opacity-50",
+  //       tooltip: "Validating eligible recipients...",
+  //     };
+  //   }
 
-    if (!recipients) {
-      return {
-        disabled: false,
-        text: "Create Airdrop",
-        icon: Gift,
-        variant: "outline" as const,
-        className: "",
-        tooltip: "Click to check eligible recipients",
-      };
-    }
+  //   if (!recipients) {
+  //     return {
+  //       disabled: false,
+  //       text: "Create Airdrop",
+  //       icon: Gift,
+  //       variant: "outline" as const,
+  //       className: "",
+  //       tooltip: "Click to check eligible recipients",
+  //     };
+  //   }
 
-    if (recipients.totalAttendees === 0) {
-      return {
-        disabled: true,
-        text: "No Recipients",
-        icon: Gift,
-        variant: "outline" as const,
-        className: "opacity-50 cursor-not-allowed",
-        tooltip: `No eligible recipients found. Checked in: ${recipients.checkedIn}, Checked out: ${recipients.checkedOut}`,
-      };
-    }
+  //   if (recipients.totalAttendees === 0) {
+  //     return {
+  //       disabled: true,
+  //       text: "No Recipients",
+  //       icon: Gift,
+  //       variant: "outline" as const,
+  //       className: "opacity-50 cursor-not-allowed",
+  //       tooltip: `No eligible recipients found. Checked in: ${recipients.checkedIn}, Checked out: ${recipients.checkedOut}`,
+  //     };
+  //   }
 
-    return {
-      disabled: false,
-      text: `Create Airdrop (${recipients.totalAttendees} eligible)`,
-      icon: Gift,
-      variant: "outline" as const,
-      className: "",
-      tooltip: `${recipients.checkedIn} checked in, ${recipients.checkedOut} checked out`,
-    };
-  };
+  //   return {
+  //     disabled: false,
+  //     text: `Create Airdrop (${recipients.totalAttendees} eligible)`,
+  //     icon: Gift,
+  //     variant: "outline" as const,
+  //     className: "",
+  //     tooltip: `${recipients.checkedIn} checked in, ${recipients.checkedOut} checked out`,
+  //   };
+  // };
 
   return (
     <div className="min-h-screen bg-background">
@@ -2570,11 +2558,11 @@ const OrganizerDashboard = () => {
             />
             <StatCard
               title="Total Revenue"
-              value={`$${totalRevenue.toLocaleString()}`}
+              value={`${totalRevenue.toFixed(2)} SUI`}
               icon={DollarSign}
               color="accent"
               trend={{ value: 15, isPositive: true }}
-              description="Total earnings"
+              description="Registration earnings"
             />
             <StatCard
               title="Average Rating"
@@ -2725,28 +2713,14 @@ const OrganizerDashboard = () => {
 
                           {/* Event Stats */}
                           <div className="flex flex-col justify-center bg-card-secondary rounded-lg p-4 h-full min-w-[180px]">
-                            <div className="flex flex-row items-center justify-between gap-4 mb-2">
-                              {/* Escrow Status */}
+                            <div className="flex flex-row items-center justify-center gap-4 mb-2">
+                              {/* Event Registration Revenue */}
                               <div className="flex-1 text-center p-2 rounded bg-foreground-muted">
                                 <div className="text-xs text-foreground-muted mb-1">
-                                  Escrow
-                                </div>
-                                <div
-                                  className={`text-sm font-medium ${getEscrowStatusColor(
-                                    event.escrowStatus || "pending"
-                                  )}`}
-                                >
-                                  {(event.escrowStatus || "pending").charAt(0).toUpperCase() +
-                                    (event.escrowStatus || "pending").slice(1)}
-                                </div>
-                              </div>
-                              {/* Revenue */}
-                              <div className="flex-1 text-center p-2 rounded bg-foreground-muted">
-                                <div className="text-xs text-foreground-muted mb-1">
-                                  Revenue
+                                  Registration Revenue
                                 </div>
                                 <div className="text-sm font-medium text-foreground">
-                                  ${(event.revenue || 0).toLocaleString()}
+                                  {(event.revenue || 0).toFixed(2)} SUI
                                 </div>
                               </div>
                             </div>
@@ -2882,7 +2856,7 @@ const OrganizerDashboard = () => {
                                     </Button>
                                   );
                                 })()}
-                                {(() => {
+                                {/* {(() => {
                                   const airdropStatus =
                                     getAirdropButtonStatus(event);
                                   const AirdropIcon = airdropStatus.icon;
@@ -2908,7 +2882,7 @@ const OrganizerDashboard = () => {
                                         : airdropStatus.text}
                                     </Button>
                                   );
-                                })()}
+                                })()} */}
                               </>
                             )}
                             <Button
@@ -2934,7 +2908,7 @@ const OrganizerDashboard = () => {
                                 ? "NFT Minting Enabled"
                                 : "Enable NFT Minting"}
                             </Button>
-                            <Button
+                            {/* <Button
                               variant="outline"
                               size="sm"
                               className={`flex-1 min-w-[140px] ${
@@ -2946,7 +2920,7 @@ const OrganizerDashboard = () => {
                             >
                               <FileText className="mr-1 h-3 w-3" />
                               {documentFlowStatus[event.id] ? 'Document Flow ✓' : 'Document Flow'}
-                            </Button>
+                            </Button> */}
                           </div>
 
                           {/* Utility Actions Group */}
@@ -3058,9 +3032,9 @@ const OrganizerDashboard = () => {
                                       
                                       <div className="mt-3 pt-2 border-t border-border">
                                         <div className="flex items-center justify-between text-xs">
-                                          <span className="text-foreground-secondary">Revenue:</span>
+                                          <span className="text-foreground-secondary">Registration Revenue:</span>
                                           <span className="font-medium text-foreground">
-                                            ${(subEvent.revenue || 0).toFixed(2)}
+                                            {(subEvent.revenue || 0).toFixed(2)} SUI
                                           </span>
                                         </div>
                                       </div>
@@ -3157,11 +3131,11 @@ const OrganizerDashboard = () => {
         </div>
 
         {/* Airdrop Analytics Section */}
-        {isOrganizer && currentAccount?.address && (
+        {/* {isOrganizer && currentAccount?.address && (
           <div className="mb-6 sm:mb-8">
             <AirdropAnalytics organizerAddress={currentAccount.address} />
           </div>
-        )}
+        )} */}
 
         {/* QR Scanner Modal for Check-in */}
         {showQRScanner && selectedEventId && (
