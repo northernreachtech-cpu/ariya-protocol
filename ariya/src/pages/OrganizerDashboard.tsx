@@ -235,6 +235,16 @@ const EventDetailsModal = ({
   onUpdateAssignee,
   sdk,
   profileRegistryId,
+  onShowActivateConfirm,
+  onShowCompleteConfirm,
+  onShowDeleteConfirm,
+  onCreateCommunity,
+  onSetEventMetadata,
+  eventCommunities,
+  checkingCommunities,
+  creatingCommunity,
+  eventsWithNFTEnabled,
+  settingMetadataEvent,
 }: {
   isOpen: boolean;
   event: Event | null;
@@ -242,6 +252,16 @@ const EventDetailsModal = ({
   onUpdateAssignee: (event: Event) => void;
   sdk: any;
   profileRegistryId: string;
+  onShowActivateConfirm: (event: Event) => void;
+  onShowCompleteConfirm: (event: Event) => void;
+  onShowDeleteConfirm: (event: Event) => void;
+  onCreateCommunity: (event: Event) => void;
+  onSetEventMetadata: (event: Event) => void;
+  eventCommunities: { [eventId: string]: any };
+  checkingCommunities: { [eventId: string]: boolean };
+  creatingCommunity: boolean;
+  eventsWithNFTEnabled: { [eventId: string]: boolean };
+  settingMetadataEvent: string | null;
 }) => {
   const [assigneeProfile, setAssigneeProfile] = useState<{
     name: string;
@@ -764,14 +784,149 @@ const EventDetailsModal = ({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 p-6 border-t border-border">
-          <Button variant="outline" onClick={onClose}>
-            Close
-              </Button>
-          <Button onClick={() => window.open(`/event/${event.id}`, '_blank')}>
-            View Public Page
-              </Button>
+        <div className="flex justify-between items-center p-6 border-t border-border">
+          {/* Event Actions */}
+          <div className="flex flex-col gap-3">
+            {/* Organizer Role Notice */}
+            <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+              <p className="text-green-800 dark:text-green-200 text-sm">
+                <strong>Organizer Role:</strong> You have full control over this event including activation, completion, and deletion.
+              </p>
             </div>
+            
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+            {event.state === 0 && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  onShowActivateConfirm(event);
+                }}
+              >
+                <Play className="mr-1 h-3 w-3" />
+                Activate Event
+              </Button>
+            )}
+            
+            {event.state === 1 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  onShowCompleteConfirm(event);
+                }}
+              >
+                <CheckCircle className="mr-1 h-3 w-3" />
+                Complete Event
+              </Button>
+            )}
+            
+            {event.state === 0 && event.current_attendees === 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                onClick={() => {
+                  onShowDeleteConfirm(event);
+                }}
+              >
+                <Trash2 className="mr-1 h-3 w-3" />
+                Delete Event
+              </Button>
+            )}
+            </div>
+            
+            {/* Sub-Event Management Actions */}
+            {event.is_child && event.state === 1 && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <h4 className="text-sm font-medium text-foreground-secondary mb-2">Sub-Event Management</h4>
+                <div className="flex flex-wrap gap-2">
+                  {/* Create Community Button */}
+                  {(() => {
+                    const existingCommunity = eventCommunities[event.id];
+                    const isChecking = checkingCommunities[event.id];
+
+                    if (isChecking) {
+                      return (
+                        <Button
+                          size="sm"
+                          className="flex-1 min-w-[140px]"
+                          variant="outline"
+                          disabled={true}
+                        >
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          Checking...
+                        </Button>
+                      );
+                    }
+
+                    if (existingCommunity) {
+                      return (
+                        <Button
+                          size="sm"
+                          className="flex-1 min-w-[140px]"
+                          variant="outline"
+                          disabled={true}
+                        >
+                          <CheckCircle className="mr-1 h-3 w-3" />
+                          Community Exists
+                        </Button>
+                      );
+                    }
+
+                    return (
+                      <Button
+                        size="sm"
+                        className="flex-1 min-w-[140px]"
+                        variant="outline"
+                        onClick={() => onCreateCommunity(event)}
+                        disabled={creatingCommunity}
+                      >
+                        <MessageCircle className="mr-1 h-3 w-3" />
+                        {creatingCommunity ? "Creating..." : "Create Community"}
+                      </Button>
+                    );
+                  })()}
+                  
+                  {/* Enable NFT Minting Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 min-w-[140px]"
+                    onClick={() => onSetEventMetadata(event)}
+                    disabled={
+                      settingMetadataEvent === event.id ||
+                      eventsWithNFTEnabled[event.id]
+                    }
+                  >
+                    {settingMetadataEvent === event.id ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : eventsWithNFTEnabled[event.id] ? (
+                      <CheckCircle className="mr-1 h-3 w-3" />
+                    ) : (
+                      <Settings className="mr-1 h-3 w-3" />
+                    )}
+                    {settingMetadataEvent === event.id
+                      ? "Enabling..."
+                      : eventsWithNFTEnabled[event.id]
+                      ? "NFT Minting Enabled"
+                      : "Enable NFT Minting"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Right side buttons */}
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+            <Button onClick={() => window.open(`/event/${event.id}`, '_blank')}>
+              View Public Page
+            </Button>
+          </div>
+        </div>
         </div>
     </div>
   );
@@ -951,6 +1106,14 @@ const OrganizerDashboard = () => {
   const [subEvents, setSubEvents] = useState<{ [parentId: string]: Event[] }>({});
   const [_loadingSubEvents, setLoadingSubEvents] = useState<{ [parentId: string]: boolean }>({});
   const [subEventPages, setSubEventPages] = useState<{ [parentId: string]: number }>({});
+  
+  // Confirmation modals state for EventDetailsModal
+  const [showActivateConfirmModal, setShowActivateConfirmModal] = useState(false);
+  const [showCompleteConfirmModal, setShowCompleteConfirmModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [eventToActivateFromDetails, setEventToActivateFromDetails] = useState<Event | null>(null);
+  const [eventToCompleteFromDetails, setEventToCompleteFromDetails] = useState<Event | null>(null);
+  const [eventToDeleteFromDetails, setEventToDeleteFromDetails] = useState<Event | null>(null);
 
   // Airdrop validation state
   const [eventEligibleRecipients, setEventEligibleRecipients] = useState<{
@@ -3079,6 +3242,28 @@ const OrganizerDashboard = () => {
           onUpdateAssignee={handleUpdateAssignee}
           sdk={sdk}
           profileRegistryId={profileRegistryId}
+          onShowActivateConfirm={(event) => {
+            setEventToActivateFromDetails(event);
+            setShowActivateConfirmModal(true);
+            setShowEventDetailsModal(false);
+          }}
+          onShowCompleteConfirm={(event) => {
+            setEventToCompleteFromDetails(event);
+            setShowCompleteConfirmModal(true);
+            setShowEventDetailsModal(false);
+          }}
+          onShowDeleteConfirm={(event) => {
+            setEventToDeleteFromDetails(event);
+            setShowDeleteConfirmModal(true);
+            setShowEventDetailsModal(false);
+          }}
+          onCreateCommunity={handleCreateCommunity}
+          onSetEventMetadata={handleSetEventMetadata}
+          eventCommunities={eventCommunities}
+          checkingCommunities={checkingCommunities}
+          creatingCommunity={creatingCommunity}
+          eventsWithNFTEnabled={eventsWithNFTEnabled}
+          settingMetadataEvent={settingMetadataEvent}
         />
         {/* Error Modal */}
         <ErrorModal
@@ -3381,6 +3566,128 @@ const OrganizerDashboard = () => {
             eventName={selectedEventForDocFlow.name}
             userAddress={currentAccount.address}
           />
+        )}
+
+        {/* Activate Event Confirmation Modal (from EventDetailsModal) */}
+        {showActivateConfirmModal && eventToActivateFromDetails && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+            <div className="bg-card border border-border rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
+              <h3 className="text-xl font-semibold mb-4 text-green-600">
+                Activate Event
+              </h3>
+              <p className="text-foreground mb-6">
+                Are you sure you want to activate{" "}
+                <span className="font-bold">{eventToActivateFromDetails.name}</span>? This will make the event available for registration.
+              </p>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  onClick={() => {
+                    handleActivateEvent(eventToActivateFromDetails.id);
+                    setShowActivateConfirmModal(false);
+                    setEventToActivateFromDetails(null);
+                  }}
+                  disabled={activatingEvent === eventToActivateFromDetails.id}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  {activatingEvent === eventToActivateFromDetails.id
+                    ? "Activating..."
+                    : "Yes, Activate"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowActivateConfirmModal(false);
+                    setEventToActivateFromDetails(null);
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Complete Event Confirmation Modal (from EventDetailsModal) */}
+        {showCompleteConfirmModal && eventToCompleteFromDetails && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+            <div className="bg-card border border-border rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
+              <h3 className="text-xl font-semibold mb-4 text-blue-600">
+                Complete Event
+              </h3>
+              <p className="text-foreground mb-6">
+                Are you sure you want to mark{" "}
+                <span className="font-bold">{eventToCompleteFromDetails.name}</span> as
+                completed? This action cannot be undone and will allow attendees
+                to rate your event.
+              </p>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  onClick={() => {
+                    handleCompleteEvent(eventToCompleteFromDetails);
+                    setShowCompleteConfirmModal(false);
+                    setEventToCompleteFromDetails(null);
+                  }}
+                  disabled={completingEvent === eventToCompleteFromDetails.id}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  {completingEvent === eventToCompleteFromDetails.id
+                    ? "Completing..."
+                    : "Yes, Complete"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowCompleteConfirmModal(false);
+                    setEventToCompleteFromDetails(null);
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Event Confirmation Modal (from EventDetailsModal) */}
+        {showDeleteConfirmModal && eventToDeleteFromDetails && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+            <div className="bg-card border border-border rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
+              <h3 className="text-xl font-semibold mb-4 text-red-600">
+                Delete Event
+              </h3>
+              <p className="text-foreground mb-6">
+                Are you sure you want to delete{" "}
+                <span className="font-bold">{eventToDeleteFromDetails.name}</span>? This action cannot be undone and will permanently remove the event.
+              </p>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  onClick={() => {
+                    handleDeleteEvent(eventToDeleteFromDetails);
+                    setShowDeleteConfirmModal(false);
+                    setEventToDeleteFromDetails(null);
+                  }}
+                  disabled={deletingEvent === eventToDeleteFromDetails.id}
+                  className="flex-1 bg-red-600 hover:bg-red-700"
+                >
+                  {deletingEvent === eventToDeleteFromDetails.id
+                    ? "Deleting..."
+                    : "Yes, Delete"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDeleteConfirmModal(false);
+                    setEventToDeleteFromDetails(null);
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

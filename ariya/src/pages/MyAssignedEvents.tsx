@@ -10,14 +10,18 @@ import {
   ArrowLeft,
   RefreshCw,
   Filter,
-  Search
+  Search,
+  QrCode,
+  CheckCircle,
+  X
 } from "lucide-react";
-import { useCurrentAccount } from "@mysten/dapp-kit";
+import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { useAriyaSDK } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
 import { useZkLogin } from "../contexts/ZkLoginContext";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import QRScanner from "../components/QRScanner";
 import useScrollToTop from "../hooks/useScrollToTop";
 
 interface AssignedEvent {
@@ -52,6 +56,8 @@ const MyAssignedEvents = () => {
   const sdk = useAriyaSDK();
   const eventRegistryId = useNetworkVariable("eventRegistryId");
   const profileRegistryId = useNetworkVariable("profileRegistryId");
+  const attendanceRegistryId = useNetworkVariable("attendanceRegistryId");
+  const registrationRegistryId = useNetworkVariable("registrationRegistryId");
 
   // Get the active address (either wallet or zkLogin)
   const activeAddress = currentAccount?.address || zkAddress;
@@ -62,6 +68,22 @@ const MyAssignedEvents = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "upcoming" | "active" | "completed">("all");
+  
+  // Check-in functionality state
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [selectedEventForCheckIn, setSelectedEventForCheckIn] = useState<string | null>(null);
+  const [checkingInUser, setCheckingInUser] = useState(false);
+  const [showCheckInSuccessModal, setShowCheckInSuccessModal] = useState(false);
+  const [checkInSuccessData, setCheckInSuccessData] = useState<{
+    eventName: string;
+    attendeeName: string;
+  } | null>(null);
+  
+  // Event details modal state
+  const [showEventDetailsModal, setShowEventDetailsModal] = useState(false);
+  const [selectedEventForDetails, setSelectedEventForDetails] = useState<AssignedEvent | null>(null);
+  
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
 
   const loadAssignedEvents = async (isRefresh = false) => {
     if (!activeAddress || !eventRegistryId || !profileRegistryId) {
@@ -125,6 +147,98 @@ const MyAssignedEvents = () => {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  // Check-in handler for assignees
+  const handleQRScan = async (qrData: any) => {
+    if (!selectedEventForCheckIn || !attendanceRegistryId || !registrationRegistryId) {
+      return;
+    }
+
+    setCheckingInUser(true);
+    try {
+      console.log("🔍 Starting check-in process for assignee...", {
+        qrData,
+        selectedEventForCheckIn,
+        currentAccount: currentAccount?.address,
+        attendanceRegistryId,
+        registrationRegistryId,
+      });
+
+      // Validate QR data format
+      let validation;
+      if (qrData.pass_id && qrData.user_address) {
+        // New format with pass_id
+        validation = {
+          isValid: true,
+          attendeeAddress: qrData.user_address,
+          passId: qrData.pass_id,
+        };
+      } else if (qrData.p && qrData.u) {
+        // Short format
+        validation = {
+          isValid: true,
+          attendeeAddress: qrData.u,
+          passId: qrData.p,
+        };
+      } else {
+        throw new Error("Invalid QR code format");
+      }
+
+      if (!validation.isValid) {
+        throw new Error("Invalid QR code");
+      }
+
+      // Use the appropriate check-in method based on QR data format
+      let tx;
+      if (validation.passId) {
+        // Use pass_id method
+        tx = sdk.attendanceVerification.checkInAttendeeWithPassId(
+          selectedEventForCheckIn,
+          validation.attendeeAddress,
+          validation.passId,
+          attendanceRegistryId,
+          registrationRegistryId
+        );
+      } else {
+        // Use legacy method
+        tx = sdk.attendanceVerification.checkInAttendee(
+          selectedEventForCheckIn,
+          validation.attendeeAddress,
+          attendanceRegistryId,
+          registrationRegistryId,
+          qrData
+        );
+      }
+
+      const result = await signAndExecute({ transaction: tx });
+      console.log("✅ Check-in transaction successful:", result);
+
+      // Show success modal
+      const event = assignedEvents.find(e => e.id === selectedEventForCheckIn);
+      setCheckInSuccessData({
+        eventName: event?.name || 'Event',
+        attendeeName: validation.attendeeAddress.slice(0, 8) + '...' + validation.attendeeAddress.slice(-6)
+      });
+      setShowCheckInSuccessModal(true);
+      
+      // Close scanner
+      setShowQRScanner(false);
+      setSelectedEventForCheckIn(null);
+      
+      // Refresh events to update attendee count
+      await loadAssignedEvents(true);
+    } catch (error) {
+      console.error("❌ Check-in failed:", error);
+      alert("Check-in failed. Please try again.");
+    } finally {
+      setCheckingInUser(false);
+    }
+  };
+
+  const handleStartCheckIn = (eventId: string) => {
+    setSelectedEventForCheckIn(eventId);
+    setShowQRScanner(true);
   };
 
   useEffect(() => {
@@ -356,6 +470,36 @@ const MyAssignedEvents = () => {
                       <Eye className="h-4 w-4 mr-2" />
                       View Event
                     </Button>
+                    
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedEventForDetails(event);
+                        setShowEventDetailsModal(true);
+                      }}
+                      className="w-full lg:w-auto"
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Event Details
+                    </Button>
+                    
+                    {/* Check-in button for active events */}
+                    {event.status === "active" && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleStartCheckIn(event.id)}
+                        disabled={checkingInUser}
+                        className="w-full lg:w-auto"
+                      >
+                        {checkingInUser ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <QrCode className="h-4 w-4 mr-2" />
+                        )}
+                        {checkingInUser ? "Checking In..." : "Check In Attendees"}
+                      </Button>
+                    )}
+                    
                     {event.is_child && event.parent_id && (
                       <Button
                         variant="outline"
@@ -409,6 +553,209 @@ const MyAssignedEvents = () => {
           </Card>
         )}
       </div>
+
+      {/* Event Details Modal for Assignees */}
+      {showEventDetailsModal && selectedEventForDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm p-4">
+          <div className="bg-card border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
+            {/* Header */}
+            <div className="sticky top-0 bg-card border-b border-border p-6 z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-foreground">{selectedEventForDetails.name}</h2>
+                  <div className="flex items-center gap-4 mt-2">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedEventForDetails.status)}`}>
+                      {selectedEventForDetails.status.charAt(0).toUpperCase() + selectedEventForDetails.status.slice(1)}
+                    </span>
+                    <span className="text-foreground-secondary text-sm">
+                      {selectedEventForDetails.is_child ? "Sub-Event" : "Main Event"}
+                    </span>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setShowEventDetailsModal(false)}>
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Event Information */}
+              <div className="bg-card-secondary rounded-lg p-6 border border-border">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Event Information</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-foreground-secondary">Description</label>
+                    <p className="text-foreground mt-1 bg-card p-3 rounded-lg border border-border">
+                      {selectedEventForDetails.description || "No description provided"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground-secondary">Location</label>
+                    <p className="text-foreground mt-1 bg-card p-3 rounded-lg border border-border">
+                      {selectedEventForDetails.location}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Event Details Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Timing */}
+                <div className="bg-card-secondary rounded-lg p-6 border border-border">
+                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Timing
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium text-foreground-secondary">Start Time</label>
+                      <p className="text-foreground">
+                        {new Date(selectedEventForDetails.start_time).toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-foreground-secondary">End Time</label>
+                      <p className="text-foreground">
+                        {new Date(selectedEventForDetails.end_time).toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-foreground-secondary">Duration</label>
+                      <p className="text-foreground">
+                        {Math.floor((selectedEventForDetails.end_time - selectedEventForDetails.start_time) / (1000 * 60 * 60))}h{" "}
+                        {Math.floor(((selectedEventForDetails.end_time - selectedEventForDetails.start_time) % (1000 * 60 * 60)) / (1000 * 60))}m
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Attendance */}
+                <div className="bg-card-secondary rounded-lg p-6 border border-border">
+                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Attendance
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium text-foreground-secondary">Capacity</label>
+                      <p className="text-foreground">{selectedEventForDetails.capacity} attendees</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-foreground-secondary">Current Attendees</label>
+                      <p className="text-foreground">{selectedEventForDetails.current_attendees || 0} attendees</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-foreground-secondary">Progress</label>
+                      <div className="mt-2">
+                        <div className="w-full bg-border rounded-full h-2">
+                          <div
+                            className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-500"
+                            style={{
+                              width: `${Math.min(
+                                ((selectedEventForDetails.current_attendees || 0) / (selectedEventForDetails.capacity || 1)) * 100,
+                                100
+                              )}%`,
+                            }}
+                          ></div>
+                        </div>
+                        <p className="text-sm text-foreground-secondary mt-1">
+                          {Math.round(((selectedEventForDetails.current_attendees || 0) / (selectedEventForDetails.capacity || 1)) * 100)}% full
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Assignee Actions */}
+              {selectedEventForDetails.status === "active" && (
+                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
+                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Users className="h-5 w-5 text-blue-600" />
+                    Assignee Actions
+                  </h3>
+                  <div className="bg-blue-100 dark:bg-blue-900/30 rounded-lg p-4 mb-4">
+                    <p className="text-blue-800 dark:text-blue-200 text-sm">
+                      <strong>Your Role:</strong> As an assignee, you can help check in attendees for this event. 
+                      You cannot activate, complete, or delete events - only the organizer can perform these actions.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setShowEventDetailsModal(false);
+                      handleStartCheckIn(selectedEventForDetails.id);
+                    }}
+                    disabled={checkingInUser}
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+                  >
+                    {checkingInUser ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <QrCode className="h-4 w-4 mr-2" />
+                    )}
+                    {checkingInUser ? "Checking In..." : "Check In Attendees"}
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 p-6 border-t border-border">
+              <Button variant="outline" onClick={() => setShowEventDetailsModal(false)}>
+                Close
+              </Button>
+              <Button onClick={() => window.open(`/event/${selectedEventForDetails.id}`, '_blank')}>
+                View Public Page
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Scanner Modal */}
+      {showQRScanner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-lg p-6 max-w-md mx-4 shadow-lg">
+            <h3 className="text-lg font-semibold mb-4 text-center">Scan QR Code</h3>
+            <p className="text-sm text-foreground-secondary mb-4 text-center">
+              Scan the attendee's QR code to check them in
+            </p>
+            <QRScanner
+              isOpen={showQRScanner}
+              eventId={selectedEventForCheckIn || ""}
+              onScan={handleQRScan}
+              onClose={() => {
+                setShowQRScanner(false);
+                setSelectedEventForCheckIn(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Check-in Success Modal */}
+      {showCheckInSuccessModal && checkInSuccessData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
+            <CheckCircle className="h-16 w-16 mx-auto mb-4 text-green-600" />
+            <h3 className="text-xl font-semibold mb-2 text-green-600">Check-in Successful!</h3>
+            <p className="text-foreground mb-4">
+              <span className="font-medium">{checkInSuccessData.attendeeName}</span> has been checked in to{" "}
+              <span className="font-medium">{checkInSuccessData.eventName}</span>
+            </p>
+            <Button
+              onClick={() => {
+                setShowCheckInSuccessModal(false);
+                setCheckInSuccessData(null);
+              }}
+              className="w-full"
+            >
+              Continue
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
