@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useCurrentAccount } from '@mysten/dapp-kit';
+import { Settings } from 'lucide-react';
 import { useAriyaSDK, type TreasuryStatus } from '../lib/sdk';
 import { useNetworkVariable } from '../config/sui';
 import TreasuryStats from '../components/TreasuryStats';
 import AdminControls from '../components/AdminControls';
 import TreasuryHistory from '../components/TreasuryHistory';
+import WalletConnectionPrompt from '../components/WalletConnectionPrompt';
 
 const TreasuryDashboard: React.FC = () => {
   const [treasuryData, setTreasuryData] = useState<TreasuryStatus | null>(null);
@@ -59,6 +61,16 @@ const TreasuryDashboard: React.FC = () => {
   useEffect(() => {
     loadTreasuryData();
   }, [platformTreasuryId, currentAccount?.address]);
+
+  if (!currentAccount) {
+    return (
+      <WalletConnectionPrompt
+        title="Connect Your Wallet"
+        description="Please connect your wallet to access the treasury dashboard."
+        icon={<Settings className="h-16 w-16 mx-auto mb-6 text-foreground-muted" />}
+      />
+    );
+  }
 
   if (loading) {
     return (

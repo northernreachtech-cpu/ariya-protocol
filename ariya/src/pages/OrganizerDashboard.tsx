@@ -33,9 +33,11 @@ import { useAriyaSDK } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
 import { Transaction } from "@mysten/sui/transactions";
 import { TelegramService } from "../lib/firebase";
+import { useZkLogin } from "../contexts/ZkLoginContext";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import StatCard from "../components/StatCard";
+import WalletConnectionPrompt from "../components/WalletConnectionPrompt";
 import AirdropCreationModal from "../components/AirdropCreationModal";
 // import AirdropAnalytics from "../components/AirdropAnalytics";
 import AssigneeSelector from "../components/AssigneeSelector";
@@ -160,15 +162,17 @@ const RegisteredUsersList = ({ eventId, sdk }: { eventId: string; sdk: any }) =>
 };
 
 // Checked-in Users List Component
-const CheckedInUsersList = ({ eventId, sdk }: { eventId: string; sdk: any }) => {
+const CheckedInUsersList = ({ eventId, sdk, attendanceRegistryId }: { eventId: string; sdk: any; attendanceRegistryId: string }) => {
   const [users, setUsers] = useState<Array<{ wallet: string; checkedInAt: number }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadUsers = async () => {
+      if (!attendanceRegistryId) return;
+      
       try {
         setLoading(true);
-        const checkedInUsers = await sdk.eventManagement.getEventCheckedInUsers(eventId, "dummy");
+        const checkedInUsers = await sdk.eventManagement.getEventCheckedInUsers(eventId, attendanceRegistryId);
         setUsers(checkedInUsers);
       } catch (error) {
         console.error("Error loading checked-in users:", error);
@@ -178,7 +182,7 @@ const CheckedInUsersList = ({ eventId, sdk }: { eventId: string; sdk: any }) => 
     };
 
     loadUsers();
-  }, [eventId, sdk]);
+  }, [eventId, sdk, attendanceRegistryId]);
 
   if (loading) {
     return (
@@ -235,6 +239,7 @@ const EventDetailsModal = ({
   onUpdateAssignee,
   sdk,
   profileRegistryId,
+  attendanceRegistryId,
   onShowActivateConfirm,
   onShowCompleteConfirm,
   onShowDeleteConfirm,
@@ -252,6 +257,7 @@ const EventDetailsModal = ({
   onUpdateAssignee: (event: Event) => void;
   sdk: any;
   profileRegistryId: string;
+  attendanceRegistryId: string;
   onShowActivateConfirm: (event: Event) => void;
   onShowCompleteConfirm: (event: Event) => void;
   onShowDeleteConfirm: (event: Event) => void;
@@ -376,42 +382,42 @@ const EventDetailsModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-card border border-border rounded-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
+    <div className="fixed inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-card border border-border rounded-lg max-w-5xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto shadow-lg">
         {/* Header */}
-        <div className="sticky top-0 bg-card border-b border-border p-6 z-10">
-      <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-foreground">{event.name}</h2>
-              <div className="flex items-center gap-4 mt-2">
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStateColor(event.state)}`}>
+        <div className="sticky top-0 bg-card border-b border-border p-4 sm:p-6 z-10">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground break-words">{event.name}</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2">
+                <span className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getStateColor(event.state)}`}>
                   {getStateText(event.state)}
                 </span>
-                <span className="text-foreground-secondary text-sm">
+                <span className="text-foreground-secondary text-xs sm:text-sm">
                   {event.is_child ? "Sub-Event" : "Main Event"}
                 </span>
-                <span className="text-foreground-secondary text-sm">
+                <span className="text-foreground-secondary text-xs sm:text-sm">
                   Created {formatDate(event.created_at)}
                 </span>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-5 w-5" />
-          </Button>
+            <Button variant="ghost" size="sm" onClick={onClose} className="flex-shrink-0">
+              <X className="h-4 w-4 sm:h-5 sm:w-5" />
+            </Button>
+          </div>
         </div>
-      </div>
 
         {/* Content */}
-        <div className="p-6 space-y-8">
+        <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
           {/* Basic Information */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Event Details */}
             <div className="lg:col-span-2">
-              <div className="bg-card-secondary rounded-lg p-6 border border-border">
-                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
+              <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+                  <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
                   Event Information
-            </h3>
+                </h3>
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-foreground-secondary">Description</label>
@@ -442,11 +448,11 @@ const EventDetailsModal = ({
 
             {/* Timing Information */}
             <div>
-              <div className="bg-card-secondary rounded-lg p-6 border border-border">
-                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
+              <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+                  <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                   Timing
-            </h3>
+                </h3>
             <div className="space-y-4">
                       <div>
                     <label className="text-sm font-medium text-foreground-secondary">Start Time</label>
@@ -472,154 +478,154 @@ const EventDetailsModal = ({
                   </div>
                   
           {/* Capacity, Attendance & Financial */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Capacity & Attendance */}
-            <div className="bg-card-secondary rounded-lg p-6 border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Users className="h-5 w-5" />
+            <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                 Capacity & Attendance
               </h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-card p-4 rounded-lg border border-border text-center">
-                    <div className="text-2xl font-bold text-primary">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="bg-card p-3 sm:p-4 rounded-lg border border-border text-center">
+                    <div className="text-xl sm:text-2xl font-bold text-primary">
                       {(event.capacity || 0).toLocaleString()}
                     </div>
-                    <div className="text-sm text-foreground-secondary">Capacity</div>
+                    <div className="text-xs sm:text-sm text-foreground-secondary">Capacity</div>
                   </div>
-                  <div className="bg-card p-4 rounded-lg border border-border text-center">
-                    <div className="text-2xl font-bold text-secondary">
+                  <div className="bg-card p-3 sm:p-4 rounded-lg border border-border text-center">
+                    <div className="text-xl sm:text-2xl font-bold text-secondary">
                       {(event.current_attendees || 0).toLocaleString()}
                     </div>
-                    <div className="text-sm text-foreground-secondary">Attendees</div>
+                    <div className="text-xs sm:text-sm text-foreground-secondary">Attendees</div>
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-foreground-secondary">Attendance Rate</span>
-                    <span className="text-sm font-medium text-foreground">
+                    <span className="text-xs sm:text-sm font-medium text-foreground-secondary">Attendance Rate</span>
+                    <span className="text-xs sm:text-sm font-medium text-foreground">
                       {(event.capacity || 0) > 0 ? (((event.current_attendees || 0) / (event.capacity || 1)) * 100).toFixed(1) : 0}%
                     </span>
                   </div>
-                  <div className="w-full bg-border rounded-full h-3">
+                  <div className="w-full bg-border rounded-full h-2 sm:h-3">
                     <div 
-                      className="bg-gradient-to-r from-primary to-secondary h-3 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-primary to-secondary h-2 sm:h-3 rounded-full transition-all duration-300"
                       style={{ width: `${(event.capacity || 0) > 0 ? ((event.current_attendees || 0) / (event.capacity || 1)) * 100 : 0}%` }}
                     ></div>
                   </div>
                 </div>
               </div>
-                  </div>
+            </div>
 
             {/* Financial Information */}
-            <div className="bg-card-secondary rounded-lg p-6 border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+            <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
                 Financial
               </h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-card p-4 rounded-lg border border-border text-center">
-                    <div className="text-2xl font-bold text-green-600">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="bg-card p-3 sm:p-4 rounded-lg border border-border text-center">
+                    <div className="text-xl sm:text-2xl font-bold text-green-600">
                       {((event.fee_amount || 0) / 1000000000).toFixed(2)}
                     </div>
-                    <div className="text-sm text-foreground-secondary">Fee (SUI)</div>
-                    </div>
-                  <div className="bg-card p-4 rounded-lg border border-border text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                      {(((event.fee_amount || 0) * (event.current_attendees || 0)) / 1000000000).toFixed(2)}
+                    <div className="text-xs sm:text-sm text-foreground-secondary">Fee (SUI)</div>
                   </div>
-                    <div className="text-sm text-foreground-secondary">Revenue (SUI)</div>
-            </div>
+                  <div className="bg-card p-3 sm:p-4 rounded-lg border border-border text-center">
+                    <div className="text-xl sm:text-2xl font-bold text-green-600">
+                      {(((event.fee_amount || 0) * (event.current_attendees || 0)) / 1000000000).toFixed(2)}
+                    </div>
+                    <div className="text-xs sm:text-sm text-foreground-secondary">Revenue (SUI)</div>
+                  </div>
                 </div>
-                <div className="bg-card p-3 rounded-lg border border-border">
-                  <div className="text-sm text-foreground-secondary mb-1">Revenue Calculation</div>
+                <div className="bg-card p-2 sm:p-3 rounded-lg border border-border">
+                  <div className="text-xs sm:text-sm text-foreground-secondary mb-1">Revenue Calculation</div>
                   <div className="text-xs text-foreground-muted">
                     {((event.fee_amount || 0) / 1000000000).toFixed(2)} SUI × {(event.current_attendees || 0)} attendees
                   </div>
                 </div>
               </div>
-        </div>
-      </div>
+            </div>
+          </div>
 
           {/* Sponsors */}
           {event.sponsors.length > 0 && (
-            <div className="bg-card-secondary rounded-lg p-6 border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Gift className="h-5 w-5" />
+            <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+                <Gift className="h-4 w-4 sm:h-5 sm:w-5" />
                 Sponsors ({event.sponsors.length})
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {event.sponsors.map((sponsor, index) => (
-                  <div key={index} className="bg-card p-4 rounded-lg border border-border text-center hover:bg-card-secondary transition-colors">
-                    <div className="text-lg font-semibold text-foreground">{sponsor}</div>
+                  <div key={index} className="bg-card p-3 sm:p-4 rounded-lg border border-border text-center hover:bg-card-secondary transition-colors">
+                    <div className="text-sm sm:text-lg font-semibold text-foreground">{sponsor}</div>
                     <div className="text-xs text-foreground-muted mt-1">Sponsor #{index + 1}</div>
-              </div>
+                  </div>
                 ))}
-            </div>
+              </div>
             </div>
           )}
 
           {/* Sponsor Conditions */}
-          <div className="bg-card-secondary rounded-lg p-6 border border-border">
-            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Star className="h-5 w-5" />
+          <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+            <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+              <Star className="h-4 w-4 sm:h-5 sm:w-5" />
               Sponsor Performance Conditions
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-card p-4 rounded-lg border border-border text-center">
-                <div className="text-2xl font-bold text-blue-600">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              <div className="bg-card p-3 sm:p-4 rounded-lg border border-border text-center">
+                <div className="text-xl sm:text-2xl font-bold text-blue-600">
                   {(event.sponsor_conditions?.min_attendees || 0).toLocaleString()}
-                  </div>
-                <div className="text-sm text-foreground-secondary">Min Attendees</div>
+                </div>
+                <div className="text-xs sm:text-sm text-foreground-secondary">Min Attendees</div>
                 <div className="text-xs text-foreground-muted mt-1">Required for payout</div>
-                  </div>
-              <div className="bg-card p-4 rounded-lg border border-border text-center">
-                <div className="text-2xl font-bold text-green-600">
+              </div>
+              <div className="bg-card p-3 sm:p-4 rounded-lg border border-border text-center">
+                <div className="text-xl sm:text-2xl font-bold text-green-600">
                   {((event.sponsor_conditions?.min_completion_rate || 0) / 100).toFixed(1)}%
-                  </div>
-                <div className="text-sm text-foreground-secondary">Min Completion Rate</div>
+                </div>
+                <div className="text-xs sm:text-sm text-foreground-secondary">Min Completion Rate</div>
                 <div className="text-xs text-foreground-muted mt-1">Event success threshold</div>
-                    </div>
-              <div className="bg-card p-4 rounded-lg border border-border text-center">
-                <div className="text-2xl font-bold text-yellow-600">
+              </div>
+              <div className="bg-card p-3 sm:p-4 rounded-lg border border-border text-center">
+                <div className="text-xl sm:text-2xl font-bold text-yellow-600">
                   {((event.sponsor_conditions?.min_avg_rating || 0) / 100).toFixed(1)}/5
                 </div>
-                <div className="text-sm text-foreground-secondary">Min Avg Rating</div>
+                <div className="text-xs sm:text-sm text-foreground-secondary">Min Avg Rating</div>
                 <div className="text-xs text-foreground-muted mt-1">Quality benchmark</div>
               </div>
-                </div>
-              </div>
+            </div>
+          </div>
 
           {/* Custom Benchmarks */}
           {event.sponsor_conditions?.custom_benchmarks?.length > 0 && (
-            <div className="bg-card-secondary rounded-lg p-6 border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Settings className="h-5 w-5" />
+            <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+                <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
                 Custom Benchmarks ({event.sponsor_conditions.custom_benchmarks.length})
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {event.sponsor_conditions.custom_benchmarks.map((benchmark, index) => (
-                  <div key={index} className="bg-card p-4 rounded-lg border border-border">
+                  <div key={index} className="bg-card p-3 sm:p-4 rounded-lg border border-border">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-foreground font-medium">{benchmark.metric_name}</span>
-                      <span className="text-sm text-foreground-secondary">#{index + 1}</span>
+                      <span className="text-sm sm:text-base text-foreground font-medium">{benchmark.metric_name}</span>
+                      <span className="text-xs sm:text-sm text-foreground-secondary">#{index + 1}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-foreground-secondary">Target Value:</span>
-                      <span className="text-foreground font-medium">{benchmark.target_value}</span>
+                      <span className="text-xs sm:text-sm text-foreground-secondary">Target Value:</span>
+                      <span className="text-sm sm:text-base text-foreground font-medium">{benchmark.target_value}</span>
                     </div>
                     <div className="flex items-center justify-between mt-1">
-                      <span className="text-sm text-foreground-secondary">Comparison:</span>
-                      <span className={`text-sm font-medium ${
+                      <span className="text-xs sm:text-sm text-foreground-secondary">Comparison:</span>
+                      <span className={`text-xs sm:text-sm font-medium ${
                         benchmark.comparison_type === 0 ? 'text-green-600' : 
                         benchmark.comparison_type === 1 ? 'text-red-600' : 'text-blue-600'
                       }`}>
                         {benchmark.comparison_type === 0 ? "≥ (Greater than or equal)" : 
                          benchmark.comparison_type === 1 ? "≤ (Less than or equal)" : 
                          "== (Equal to)"}
-                          </span>
-                        </div>
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -627,29 +633,29 @@ const EventDetailsModal = ({
           )}
 
           {/* Additional Details */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Event Management Details */}
-            <div className="bg-card-secondary rounded-lg p-6 border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Settings className="h-5 w-5" />
+            <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+                <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
                 Event Management
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-foreground-secondary">Assignee</label>
-                  <div className="flex items-center justify-between mt-1">
+                  <label className="text-xs sm:text-sm font-medium text-foreground-secondary">Assignee</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-1 gap-2">
                     <div className="flex-1">
                       {loadingAssignee ? (
                         <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="text-foreground-muted">Loading assignee info...</span>
-                      </div>
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                          <span className="text-xs sm:text-sm text-foreground-muted">Loading assignee info...</span>
+                        </div>
                       ) : assigneeProfile ? (
                         <div className="space-y-1">
-                          <div className="font-medium text-foreground">
+                          <div className="text-sm sm:text-base font-medium text-foreground">
                             {event.assignee === "self" ? "You (Event Organizer)" : assigneeProfile.name}
-                    </div>
-                          <div className="text-sm text-foreground-secondary">
+                          </div>
+                          <div className="text-xs sm:text-sm text-foreground-secondary">
                             {event.assignee === "self" ? (
                               "Managing this event yourself"
                             ) : (
@@ -657,7 +663,7 @@ const EventDetailsModal = ({
                                 {event.assignee.startsWith('0x') && (
                                   <div className="font-mono text-xs text-foreground-muted">
                                     {formatAddress(event.assignee)}
-                </div>
+                                  </div>
                                 )}
                                 <div className="flex items-center gap-2">
                                   {assigneeProfile.x_username && (
@@ -666,20 +672,20 @@ const EventDetailsModal = ({
                                   {assigneeProfile.telegram_username && (
                                     <span className="text-blue-500 text-xs">t.me/{assigneeProfile.telegram_username.replace('t.me/', '')}</span>
                                   )}
-              </div>
-            </div>
+                                </div>
+                              </div>
                             )}
-              </div>
-              </div>
+                          </div>
+                        </div>
                       ) : (
                         <div className="space-y-1">
-                          <div className="font-medium text-foreground">
+                          <div className="text-sm sm:text-base font-medium text-foreground">
                             {event.assignee === "self" ? "You (Event Organizer)" : event.assignee}
-              </div>
+                          </div>
                           {event.assignee !== "self" && (
-                            <div className="text-sm text-foreground-secondary font-mono">
+                            <div className="text-xs sm:text-sm text-foreground-secondary font-mono">
                               {formatAddress(event.assignee)}
-            </div>
+                            </div>
                           )}
                         </div>
                       )}
@@ -688,14 +694,14 @@ const EventDetailsModal = ({
                       size="sm"
                       variant="outline"
                       onClick={() => onUpdateAssignee(event)}
-                      className="ml-2 flex-shrink-0"
+                      className="w-full sm:w-auto flex-shrink-0"
                     >
                       Edit
-              </Button>
-            </div>
+                    </Button>
+                  </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground-secondary">Event Type</label>
+                  <label className="text-xs sm:text-sm font-medium text-foreground-secondary">Event Type</label>
                   <div className="flex items-center gap-2 mt-1">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                       event.is_child ? 'bg-blue-100 text-blue-700 dark:bg-blue-400/20 dark:text-blue-400' : 'bg-green-100 text-green-700 dark:bg-green-400/20 dark:text-green-400'
@@ -706,14 +712,14 @@ const EventDetailsModal = ({
                 </div>
                 {event.is_child && (
                   <div>
-                    <label className="text-sm font-medium text-foreground-secondary">Parent Event ID</label>
+                    <label className="text-xs sm:text-sm font-medium text-foreground-secondary">Parent Event ID</label>
                     <p className="text-foreground mt-1 font-mono text-xs bg-card p-2 rounded border border-border break-all">
                       {event.parent_id}
                     </p>
-        </div>
-      )}
+                  </div>
+                )}
                 <div>
-                  <label className="text-sm font-medium text-foreground-secondary">Event ID</label>
+                  <label className="text-xs sm:text-sm font-medium text-foreground-secondary">Event ID</label>
                   <p className="text-foreground mt-1 font-mono text-xs bg-card p-2 rounded border border-border break-all">
                     {event.id}
                   </p>
@@ -722,125 +728,127 @@ const EventDetailsModal = ({
             </div>
 
             {/* Metadata */}
-            <div className="bg-card-secondary rounded-lg p-6 border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Upload className="h-5 w-5" />
+            <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+                <Upload className="h-4 w-4 sm:h-5 sm:w-5" />
                 Media & Metadata
               </h3>
-            <div className="space-y-4">
-              <div>
-                  <label className="text-sm font-medium text-foreground-secondary">Metadata URI</label>
+              <div className="space-y-3 sm:space-y-4">
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-foreground-secondary">Metadata URI</label>
                   <div className="mt-1">
                     {event.metadata_uri ? (
-                      <div className="bg-card p-3 rounded border border-border">
+                      <div className="bg-card p-2 sm:p-3 rounded border border-border">
                         <p className="text-foreground text-xs break-all">
                           {event.metadata_uri}
                         </p>
-              </div>
+                      </div>
                     ) : (
-                      <p className="text-foreground-muted text-sm">No metadata provided</p>
+                      <p className="text-foreground-muted text-xs sm:text-sm">No metadata provided</p>
                     )}
-              </div>
+                  </div>
                 </div>
                 {event.metadata_uri && (
-              <div>
-                    <label className="text-sm font-medium text-foreground-secondary">Banner Image</label>
+                  <div>
+                    <label className="text-xs sm:text-sm font-medium text-foreground-secondary">Banner Image</label>
                     <div className="mt-2">
                       <img 
                         src={event.metadata_uri} 
                         alt="Event banner" 
-                        className="w-full h-40 object-cover rounded-lg border border-border"
+                        className="w-full h-32 sm:h-40 object-cover rounded-lg border border-border"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
                         }}
-                />
-              </div>
-                </div>
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
           {/* Registered and Checked-in Users */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Registered Users */}
-            <div className="bg-card-secondary rounded-lg p-6 border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Users className="h-5 w-5" />
+            <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                 Registered Users ({event.current_attendees || 0})
               </h3>
               <RegisteredUsersList eventId={event.id} sdk={sdk} />
             </div>
 
             {/* Checked-in Users */}
-            <div className="bg-card-secondary rounded-lg p-6 border border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                <CheckCircle className="h-5 w-5" />
+            <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                 Checked-in Users
               </h3>
-              <CheckedInUsersList eventId={event.id} sdk={sdk} />
+              <CheckedInUsersList eventId={event.id} sdk={sdk} attendanceRegistryId={attendanceRegistryId} />
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between items-center p-6 border-t border-border">
+        <div className="flex flex-col gap-4 p-4 sm:p-6 border-t border-border">
           {/* Event Actions */}
           <div className="flex flex-col gap-3">
             {/* Organizer Role Notice */}
             <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
-              <p className="text-green-800 dark:text-green-200 text-sm">
+              <p className="text-green-800 dark:text-green-200 text-xs sm:text-sm">
                 <strong>Organizer Role:</strong> You have full control over this event including activation, completion, and deletion.
               </p>
             </div>
             
             {/* Action Buttons */}
-            <div className="flex gap-2">
-            {event.state === 0 && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  onShowActivateConfirm(event);
-                }}
-              >
-                <Play className="mr-1 h-3 w-3" />
-                Activate Event
-              </Button>
-            )}
-            
-            {event.state === 1 && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  onShowCompleteConfirm(event);
-                }}
-              >
-                <CheckCircle className="mr-1 h-3 w-3" />
-                Complete Event
-              </Button>
-            )}
-            
-            {event.state === 0 && event.current_attendees === 0 && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
-                onClick={() => {
-                  onShowDeleteConfirm(event);
-                }}
-              >
-                <Trash2 className="mr-1 h-3 w-3" />
-                Delete Event
-              </Button>
-            )}
+            <div className="flex flex-col sm:flex-row gap-2">
+              {event.state === 0 && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    onShowActivateConfirm(event);
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  <Play className="mr-1 h-3 w-3" />
+                  Activate Event
+                </Button>
+              )}
+              
+              {event.state === 1 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    onShowCompleteConfirm(event);
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  <CheckCircle className="mr-1 h-3 w-3" />
+                  Complete Event
+                </Button>
+              )}
+              
+              {event.state === 0 && event.current_attendees === 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full sm:w-auto text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                  onClick={() => {
+                    onShowDeleteConfirm(event);
+                  }}
+                >
+                  <Trash2 className="mr-1 h-3 w-3" />
+                  Delete Event
+                </Button>
+              )}
             </div>
             
             {/* Sub-Event Management Actions */}
             {event.is_child && event.state === 1 && (
               <div className="mt-3 pt-3 border-t border-border">
-                <h4 className="text-sm font-medium text-foreground-secondary mb-2">Sub-Event Management</h4>
-                <div className="flex flex-wrap gap-2">
+                <h4 className="text-xs sm:text-sm font-medium text-foreground-secondary mb-2">Sub-Event Management</h4>
+                <div className="flex flex-col sm:flex-row gap-2">
                   {/* Create Community Button */}
                   {(() => {
                     const existingCommunity = eventCommunities[event.id];
@@ -850,7 +858,7 @@ const EventDetailsModal = ({
                       return (
                         <Button
                           size="sm"
-                          className="flex-1 min-w-[140px]"
+                          className="w-full sm:flex-1 sm:min-w-[140px]"
                           variant="outline"
                           disabled={true}
                         >
@@ -864,7 +872,7 @@ const EventDetailsModal = ({
                       return (
                         <Button
                           size="sm"
-                          className="flex-1 min-w-[140px]"
+                          className="w-full sm:flex-1 sm:min-w-[140px]"
                           variant="outline"
                           disabled={true}
                         >
@@ -877,7 +885,7 @@ const EventDetailsModal = ({
                     return (
                       <Button
                         size="sm"
-                        className="flex-1 min-w-[140px]"
+                        className="w-full sm:flex-1 sm:min-w-[140px]"
                         variant="outline"
                         onClick={() => onCreateCommunity(event)}
                         disabled={creatingCommunity}
@@ -892,7 +900,7 @@ const EventDetailsModal = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 min-w-[140px]"
+                    className="w-full sm:flex-1 sm:min-w-[140px]"
                     onClick={() => onSetEventMetadata(event)}
                     disabled={
                       settingMetadataEvent === event.id ||
@@ -918,11 +926,11 @@ const EventDetailsModal = ({
           </div>
           
           {/* Right side buttons */}
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={onClose}>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <Button variant="outline" onClick={onClose} className="w-full sm:w-auto" size="sm">
               Close
             </Button>
-            <Button onClick={() => window.open(`/event/${event.id}`, '_blank')}>
+            <Button onClick={() => window.open(`/event/${event.id}`, '_blank')} className="w-full sm:w-auto" size="sm">
               View Public Page
             </Button>
           </div>
@@ -1020,8 +1028,13 @@ const OrganizerDashboard = () => {
   useScrollToTop();
   const navigate = useNavigate();
   const currentAccount = useCurrentAccount();
+  const { zkAddress, isZkAuthenticated } = useZkLogin();
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const sdk = useAriyaSDK();
+
+  // Get the active address (either wallet or zkLogin)
+  currentAccount?.address || zkAddress;
+  const isAuthenticated = currentAccount || isZkAuthenticated;
   const eventRegistryId = useNetworkVariable("eventRegistryId");
   const attendanceRegistryId = useNetworkVariable("attendanceRegistryId");
   const registrationRegistryId = useNetworkVariable("registrationRegistryId");
@@ -1060,6 +1073,7 @@ const OrganizerDashboard = () => {
   );
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareEventLink, setShareEventLink] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
   const [showCommunityModal, setShowCommunityModal] = useState(false);
   const [communityEvent, setCommunityEvent] = useState<Event | null>(null);
   const [creatingCommunity, setCreatingCommunity] = useState(false);
@@ -1076,6 +1090,7 @@ const OrganizerDashboard = () => {
     [eventId: string]: boolean;
   }>({});
   const [checkingInUser, setCheckingInUser] = useState(false);
+  const [checkingOutUser, setCheckingOutUser] = useState(false);
   const [eventsWithNFTEnabled, setEventsWithNFTEnabled] = useState<{
     [eventId: string]: boolean;
   }>({});
@@ -1421,6 +1436,7 @@ const OrganizerDashboard = () => {
     event_id: string;
   }) => {
     try {
+      setCheckingOutUser(true);
       // Expect qrData.user_address and qrData.event_id
       if (!qrData.user_address || !qrData.event_id) {
         setSuccessMessage("Invalid QR code for check-out");
@@ -1440,6 +1456,8 @@ const OrganizerDashboard = () => {
       await loadOrganizerData();
     } catch {
       alert("Failed to check out attendee. Please try again.");
+    } finally {
+      setCheckingOutUser(false);
     }
   };
 
@@ -2384,6 +2402,16 @@ const OrganizerDashboard = () => {
     checkProfiles();
   }, [currentAccount, sdk, navigate, profileRegistryId]);
 
+  if (!isAuthenticated) {
+    return (
+      <WalletConnectionPrompt
+        title="Connect Your Wallet"
+        description="Please connect your wallet or sign in with Google to access the organizer dashboard."
+        icon={<Users className="h-16 w-16 mx-auto mb-6 text-foreground-muted" />}
+      />
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -2545,7 +2573,6 @@ const OrganizerDashboard = () => {
               value={totalEvents}
               icon={Calendar}
               color="primary"
-              trend={{ value: 12, isPositive: true }}
               description="Events created"
             />
             <StatCard
@@ -2553,7 +2580,6 @@ const OrganizerDashboard = () => {
               value={totalAttendees}
               icon={Users}
               color="secondary"
-              trend={{ value: 8, isPositive: true }}
               description="Across all events"
             />
             <StatCard
@@ -2561,7 +2587,6 @@ const OrganizerDashboard = () => {
               value={`${totalRevenue.toFixed(2)} SUI`}
               icon={DollarSign}
               color="accent"
-              trend={{ value: 15, isPositive: true }}
               description="Registration earnings"
             />
             <StatCard
@@ -2777,9 +2802,10 @@ const OrganizerDashboard = () => {
                                   className="flex-1 min-w-[120px]"
                                   variant="secondary"
                                   onClick={() => handleCheckOut(event.id)}
+                                  disabled={checkingOutUser}
                                 >
                                   <QrCode className="mr-1 h-3 w-3" />
-                                  Check-out
+                                  {checkingOutUser ? "Processing..." : "Check-out"}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -3216,6 +3242,7 @@ const OrganizerDashboard = () => {
           onUpdateAssignee={handleUpdateAssignee}
           sdk={sdk}
           profileRegistryId={profileRegistryId}
+          attendanceRegistryId={attendanceRegistryId}
           onShowActivateConfirm={(event) => {
             setEventToActivateFromDetails(event);
             setShowActivateConfirmModal(true);
@@ -3377,10 +3404,13 @@ const OrganizerDashboard = () => {
               <Button
                 onClick={() => {
                   navigator.clipboard.writeText(shareEventLink);
+                  setLinkCopied(true);
+                  setTimeout(() => setLinkCopied(false), 2000);
                 }}
                 className="w-full mb-2"
+                variant={linkCopied ? "secondary" : "primary"}
               >
-                Copy Link
+                {linkCopied ? "✓ Copied!" : "Copy Link"}
               </Button>
               <Button
                 variant="outline"

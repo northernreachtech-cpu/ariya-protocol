@@ -314,16 +314,16 @@ const UserDashboard = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center pt-20 sm:pt-24">
         <div className="text-center max-w-md mx-auto px-4">
-          <User className="h-16 w-16 mx-auto mb-6 text-foreground-muted" />
-          <h2 className="text-2xl font-bold text-foreground mb-4">
+          <User className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-4 sm:mb-6 text-foreground-muted" />
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-3 sm:mb-4">
             Connect Your Wallet
           </h2>
-          <p className="text-foreground-secondary mb-6">
+          <p className="text-sm sm:text-base text-foreground-secondary mb-4 sm:mb-6">
             Please connect your wallet or sign in with Google to access your dashboard.
           </p>
-          <Button onClick={() => navigate("/")}>
+          <Button onClick={() => navigate("/")} className="w-full sm:w-auto">
             Go to Home
           </Button>
         </div>
@@ -333,27 +333,27 @@ const UserDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 sm:pb-12">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-6 sm:pb-8 lg:pb-12">
         {/* User Profile Section */}
-        <Card className="mb-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+        <Card className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
             <ProfilePicture
               src={userProfile?.photoUrl}
               size="xl"
-              className="flex-shrink-0"
+              className="flex-shrink-0 mx-auto sm:mx-0"
             />
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
+            <div className="flex-1 min-w-0 w-full">
+              <div className="flex flex-col gap-4">
+                <div className="text-center sm:text-left">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-2">
                     {userProfile?.name || "User Profile"}
                   </h1>
                   {userProfile?.bio && (
-                    <p className="text-foreground-secondary mb-3">
+                    <p className="text-sm sm:text-base text-foreground-secondary mb-3">
                       {userProfile.bio}
                     </p>
                   )}
-                  <div className="flex flex-wrap gap-4 text-sm">
+                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm">
                     {userProfile?.telegramUsername && (
                       <span className="text-foreground-secondary">
                         📱 {userProfile.telegramUsername}
@@ -366,18 +366,17 @@ const UserDashboard = () => {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex justify-center sm:justify-start">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowProfileUpdateModal(true)}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 w-full sm:w-auto"
                   >
                     <Edit3 className="h-4 w-4" />
                     Edit Profile
                   </Button>
                 </div>
-
               </div>
             </div>
           </div>
@@ -385,44 +384,49 @@ const UserDashboard = () => {
 
         {/* Subscription Status */}
         {subscription ? (
-          <Card className="mb-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <Crown className="h-6 w-6 text-primary" />
+          <Card className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="p-2 sm:p-3 bg-primary/10 rounded-lg flex-shrink-0">
+                  <Crown className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base sm:text-lg font-semibold text-foreground">
                     {sdk.subscription.getSubscriptionTypeName(subscription.subscription_type)} Plan
                   </h3>
-                  <p className="text-sm text-foreground-secondary">
+                  <p className="text-xs sm:text-sm text-foreground-secondary">
                     {subscription.is_active ? 'Active' : 'Inactive'} • Since {new Date(subscription.start_date).toLocaleDateString()}
                   </p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => navigate("/subscription")}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate("/subscription")}
+                className="w-full sm:w-auto"
+              >
                 Manage Subscription
               </Button>
             </div>
           </Card>
         ) : (
           /* Fallback: Show subscription status when not loaded */
-          <Card className="mb-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <Crown className="h-6 w-6 text-primary" />
+          <Card className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="p-2 sm:p-3 bg-primary/10 rounded-lg flex-shrink-0">
+                  <Crown className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base sm:text-lg font-semibold text-foreground">
                     Free Plan
                   </h3>
-                  <p className="text-sm text-foreground-secondary">
+                  <p className="text-xs sm:text-sm text-foreground-secondary">
                     Setting up your subscription...
                   </p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" disabled>
+              <Button variant="outline" size="sm" disabled className="w-full sm:w-auto">
                 Loading...
               </Button>
             </div>
@@ -431,26 +435,27 @@ const UserDashboard = () => {
 
         {/* Assigned Events Section */}
         {hasProfile && (
-          <Card className="mb-8">
-            <div className="flex items-center justify-between mb-6">
+          <Card className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
+                <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
                   <Calendar className="h-5 w-5 text-primary" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">
+                <div className="min-w-0">
+                  <h3 className="text-base sm:text-lg font-semibold text-foreground">
                     Events Assigned to You
                   </h3>
-                  <p className="text-sm text-foreground-secondary">
+                  <p className="text-xs sm:text-sm text-foreground-secondary">
                     Events you've been assigned to manage
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => navigate("/my-assigned-events")}
+                  className="flex-1 sm:flex-none"
                 >
                   View All
                 </Button>
@@ -459,6 +464,7 @@ const UserDashboard = () => {
                   size="sm"
                   onClick={loadAssignedEvents}
                   disabled={loadingAssignedEvents}
+                  className="flex-1 sm:flex-none"
                 >
                   {loadingAssignedEvents ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -475,53 +481,52 @@ const UserDashboard = () => {
                 <p className="text-sm text-foreground-secondary">Loading assigned events...</p>
               </div>
             ) : assignedEvents.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {assignedEvents.map((event) => (
                   <div
                     key={event.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-card-secondary rounded-lg border border-border hover:bg-card transition-colors"
+                    className="flex flex-col gap-3 sm:gap-4 p-3 sm:p-4 bg-card-secondary rounded-lg border border-border hover:bg-card transition-colors"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-semibold text-foreground truncate">
-                          {event.name}
-                        </h4>
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ml-2 flex-shrink-0 ${getStatusColor(
-                            event.status
-                          )}`}
-                        >
-                          {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                        </span>
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-semibold text-foreground text-sm sm:text-base flex-1 min-w-0">
+                        {event.name}
+                      </h4>
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${getStatusColor(
+                          event.status
+                        )}`}
+                      >
+                        {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap items-start gap-2 sm:gap-4 text-xs sm:text-sm text-foreground-secondary">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <MapPin className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{event.location}</span>
                       </div>
-                      
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-foreground-secondary">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          <span className="truncate">{event.location}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{new Date(event.start_time).toLocaleDateString()}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          <span>{event.current_attendees || 0}/{event.capacity} attendees</span>
-                        </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3 flex-shrink-0" />
+                        <span>{new Date(event.start_time).toLocaleDateString()}</span>
                       </div>
-
-                      {event.description && (
-                        <p className="text-sm text-foreground-muted mt-2 line-clamp-2">
-                          {event.description}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-1">
+                        <Users className="h-3 w-3 flex-shrink-0" />
+                        <span>{event.current_attendees || 0}/{event.capacity} attendees</span>
+                      </div>
                     </div>
 
-                    <div className="flex gap-2 flex-shrink-0">
+                    {event.description && (
+                      <p className="text-xs sm:text-sm text-foreground-muted line-clamp-2">
+                        {event.description}
+                      </p>
+                    )}
+
+                    <div className="flex justify-end">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => navigate(`/event/${event.id}`)}
+                        className="w-full sm:w-auto"
                       >
                         <Eye className="h-3 w-3 mr-1" />
                         View
@@ -531,18 +536,19 @@ const UserDashboard = () => {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8">
-                <Calendar className="h-12 w-12 mx-auto mb-3 text-foreground-muted" />
-                <h4 className="text-lg font-semibold text-foreground-secondary mb-2">
+              <div className="text-center py-6 sm:py-8">
+                <Calendar className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 text-foreground-muted" />
+                <h4 className="text-base sm:text-lg font-semibold text-foreground-secondary mb-2">
                   No Assigned Events
                 </h4>
-                <p className="text-sm text-foreground-muted mb-4">
+                <p className="text-xs sm:text-sm text-foreground-muted mb-4">
                   You haven't been assigned to manage any events yet.
                 </p>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => navigate("/events")}
+                  className="w-full sm:w-auto"
                 >
                   Browse Events
                 </Button>
@@ -553,17 +559,17 @@ const UserDashboard = () => {
 
         {/* Profile Creation Prompt (if user doesn't have a profile) */}
         {!hasProfile ? (
-          <div className="text-center py-12 sm:py-16">
-            <div className="mb-6">
-              <User className="h-16 w-16 mx-auto text-foreground-muted" />
+          <div className="text-center py-8 sm:py-12 lg:py-16">
+            <div className="mb-4 sm:mb-6">
+              <User className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-foreground-muted" />
             </div>
-            <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
+            <h3 className="text-lg sm:text-xl font-semibold mb-2 text-foreground-secondary">
               Complete Your Profile
             </h3>
-            <p className="text-foreground-muted mb-6 max-w-md mx-auto">
+            <p className="text-sm sm:text-base text-foreground-muted mb-4 sm:mb-6 max-w-md mx-auto px-4">
               You need to create your profile before you can access the full dashboard features.
             </p>
-            <Button onClick={() => setShowProfileModal(true)}>
+            <Button onClick={() => setShowProfileModal(true)} className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Create Profile
             </Button>
@@ -571,43 +577,44 @@ const UserDashboard = () => {
         ) : (
           /* Organizer Dashboard Content (if user is organizer) */
           isOrganizer ? (
-            <div className="text-center py-12 sm:py-16">
-              <div className="mb-6">
-                <Calendar className="h-16 w-16 mx-auto text-foreground-muted" />
+            <div className="text-center py-8 sm:py-12 lg:py-16">
+              <div className="mb-4 sm:mb-6">
+                <Calendar className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-foreground-muted" />
               </div>
-              <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
+              <h3 className="text-lg sm:text-xl font-semibold mb-2 text-foreground-secondary">
                 Organizer Dashboard
               </h3>
-              <p className="text-foreground-muted mb-6 max-w-md mx-auto">
+              <p className="text-sm sm:text-base text-foreground-muted mb-4 sm:mb-6 max-w-md mx-auto px-4">
                 You're an organizer! Your events and management tools will appear
                 here.
               </p>
-              <Button onClick={() => navigate("/dashboard/organizer")}>
+              <Button onClick={() => navigate("/dashboard/organizer")} className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Go to Organizer Dashboard
               </Button>
             </div>
           ) : (
             /* Regular User Content (if not organizer) */
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               {/* Welcome Section */}
-              <div className="text-center py-8">
-                <div className="mb-6">
-                  <User className="h-16 w-16 mx-auto text-foreground-muted" />
+              <div className="text-center py-6 sm:py-8">
+                <div className="mb-4 sm:mb-6">
+                  <User className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-foreground-muted" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
+                <h3 className="text-lg sm:text-xl font-semibold mb-2 text-foreground-secondary">
                   Welcome to Ariya!
                 </h3>
-                <p className="text-foreground-muted mb-6 max-w-md mx-auto">
+                <p className="text-sm sm:text-base text-foreground-muted mb-4 sm:mb-6 max-w-md mx-auto px-4">
                   Your profile is set up. Browse events or become an organizer to
                   create your own events.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button onClick={() => navigate("/events")}>Browse Events</Button>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center px-4">
+                  <Button onClick={() => navigate("/events")} className="w-full sm:w-auto">Browse Events</Button>
                   <Button
                     variant="outline"
                     onClick={handleBecomeOrganizer}
                     disabled={isCreatingOrganizer}
+                    className="w-full sm:w-auto"
                   >
                     {isCreatingOrganizer ? "Creating..." : "Become Organizer"}
                   </Button>
@@ -633,21 +640,22 @@ const UserDashboard = () => {
 
               {/* Assigned Events Section */}
               {assignedEvents.length > 0 && (
-                <Card className="p-6">
-                  <h3 className="text-lg font-semibold mb-4 text-foreground">
+                <Card className="p-4 sm:p-6">
+                  <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-foreground">
                     Assigned Events
                   </h3>
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {assignedEvents.map((event) => (
-                      <div key={event.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                        <div>
-                          <h4 className="font-medium text-foreground">{event.name}</h4>
-                          <p className="text-sm text-foreground-muted">{event.description}</p>
+                      <div key={event.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 border border-border rounded-lg">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-foreground text-sm sm:text-base">{event.name}</h4>
+                          <p className="text-xs sm:text-sm text-foreground-muted line-clamp-2">{event.description}</p>
                         </div>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => navigate(`/events/${event.id}`)}
+                          className="w-full sm:w-auto"
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           View

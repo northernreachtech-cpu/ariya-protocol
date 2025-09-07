@@ -41,9 +41,9 @@ const LandingPage = () => {
     },
     {
       icon: <Coins className="h-8 w-8 text-accent" />,
-      title: "Sponsor Dashboard",
+      title: "Organizer's Dashboard",
       description:
-        "Track KPIs and manage event sponsorships with escrow protection.",
+        "Manage your events, track attendance, and monitor revenue with comprehensive analytics.",
     },
   ];
 

@@ -23,6 +23,7 @@ import {
 import Card from "../components/Card";
 import Button from "../components/Button";
 import useScrollToTop from "../hooks/useScrollToTop";
+import WalletConnectionPrompt from "../components/WalletConnectionPrompt";
 
 const Community = () => {
   useScrollToTop();
@@ -192,6 +193,16 @@ const Community = () => {
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (!currentAccount) {
+    return (
+      <WalletConnectionPrompt
+        title="Connect Your Wallet"
+        description="Please connect your wallet to access community features."
+        icon={<Users className="h-16 w-16 mx-auto mb-6 text-foreground-muted" />}
+      />
     );
   }
 

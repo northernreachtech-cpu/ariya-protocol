@@ -235,23 +235,23 @@ const Events = () => {
       <div className="min-h-screen bg-background pt-24">
         <div className="container mx-auto px-4">
           {/* Header Skeleton */}
-          <div className="text-center mb-12">
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <div className="h-12 bg-skeleton rounded w-64"></div>
-              <div className="w-20 h-8 bg-skeleton rounded"></div>
+          <div className="text-center mb-8 sm:mb-12">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-4">
+              <div className="h-8 sm:h-12 bg-skeleton rounded w-48 sm:w-64"></div>
+              <div className="w-full sm:w-20 h-8 bg-skeleton rounded"></div>
             </div>
-            <div className="h-6 bg-skeleton rounded w-96 mx-auto"></div>
+            <div className="h-4 sm:h-6 bg-skeleton rounded w-80 sm:w-96 mx-auto"></div>
           </div>
 
           {/* Search and Filters Skeleton */}
-          <div className="mb-8">
+          <div className="mb-6 sm:mb-8">
             <div className="max-w-4xl mx-auto">
-              <div className="h-14 bg-skeleton rounded-lg mb-6"></div>
-              <div className="flex flex-wrap gap-2 justify-center">
+              <div className="h-12 sm:h-14 bg-skeleton rounded-lg mb-4 sm:mb-6"></div>
+              <div className="flex flex-wrap gap-2 justify-center px-2">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div
                     key={i}
-                    className="w-20 h-10 bg-skeleton rounded-lg"
+                    className="w-16 sm:w-20 h-8 sm:h-10 bg-skeleton rounded-lg"
                   ></div>
                 ))}
               </div>
@@ -259,7 +259,7 @@ const Events = () => {
           </div>
 
           {/* Events Grid Skeleton */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {Array.from({ length: 6 }).map((_, index) => (
               <EventCardSkeleton key={index} />
             ))}
@@ -277,10 +277,10 @@ const Events = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="text-center mb-12"
+          className="text-center mb-8 sm:mb-12"
         >
-          <div className="flex items-center justify-center gap-4 mb-4">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-livvic font-bold text-foreground">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-4">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-livvic font-bold text-foreground">
               Discover Events
             </h1>
             <Button
@@ -288,7 +288,7 @@ const Events = () => {
               size="sm"
               onClick={handleRefresh}
               disabled={loading}
-              className="ml-4"
+              className="w-full sm:w-auto"
             >
               <RefreshCw
                 className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
@@ -296,7 +296,7 @@ const Events = () => {
               Refresh
             </Button>
           </div>
-          <p className="text-lg sm:text-xl text-foreground-secondary max-w-3xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl text-foreground-secondary max-w-3xl mx-auto leading-relaxed px-4">
             Find and join amazing events happening around you
           </p>
         </motion.div>
@@ -306,28 +306,28 @@ const Events = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="mb-8"
+          className="mb-6 sm:mb-8"
         >
           <div className="max-w-4xl mx-auto">
             {/* Search Bar */}
-            <div className="relative mb-6">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-foreground-muted h-5 w-5" />
+            <div className="relative mb-4 sm:mb-6">
+              <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-foreground-muted h-4 w-4 sm:h-5 sm:w-5" />
               <input
                 type="text"
                 placeholder="Search events, locations, or categories..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-card border border-border rounded-lg text-foreground placeholder-foreground-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 bg-card border border-border rounded-lg text-foreground placeholder-foreground-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 text-sm sm:text-base"
               />
             </div>
 
             {/* Category Filters */}
-            <div className="flex flex-wrap gap-2 justify-center">
+            <div className="flex flex-wrap gap-2 justify-center px-2">
               {categories.map((category) => (
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${
                     selectedCategory === category
                       ? "bg-primary text-white"
                       : "bg-card border border-border text-foreground-secondary hover:text-foreground hover:border-primary/50"
@@ -363,7 +363,7 @@ const Events = () => {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredEvents.map((event, index) => (
                 <motion.div
                   key={event.id}
@@ -375,9 +375,9 @@ const Events = () => {
                     className="h-full hover:shadow-lg transition-all duration-300 group cursor-pointer"
                     onClick={() => navigate(`/event/${event.id}`)}
                   >
-                    <Card className="h-full" hover={true}>
+                    <Card className="h-full p-0" hover={true}>
                       {/* Event Image */}
-                      <div className="relative h-48 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-t-lg overflow-hidden mb-4">
+                      <div className="relative h-40 sm:h-48 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-t-lg overflow-hidden mb-3 sm:mb-4">
                         {event.image && event.image !== "/api/placeholder/400/250" ? (
                           <img 
                             src={event.image} 
@@ -394,8 +394,8 @@ const Events = () => {
                             <Calendar className="h-16 w-16 text-white/60" />
                           </div>
                         </div>
-                        <div className="absolute top-4 right-4">
-                          <span className="px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-sm font-medium text-foreground flex items-center gap-1">
+                        <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+                          <span className="px-2 sm:px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-xs sm:text-sm font-medium text-foreground flex items-center gap-1">
                             {event.fee_amount > 0 ? (
                               <>
                                 <DollarSign className="h-3 w-3" />
@@ -412,37 +412,37 @@ const Events = () => {
                       </div>
 
                       {/* Event Content */}
-                      <div className="p-6">
-                        <div className="mb-4">
-                          <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors duration-200">
+                      <div className="p-4 sm:p-6">
+                        <div className="mb-3 sm:mb-4">
+                          <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors duration-200 line-clamp-2">
                             {event.title}
                           </h3>
-                          <p className="text-foreground-muted text-sm leading-relaxed">
+                          <p className="text-foreground-muted text-xs sm:text-sm leading-relaxed line-clamp-2">
                             {event.description}
                           </p>
                         </div>
 
                         {/* Event Details */}
-                        <div className="space-y-3 mb-6">
-                          <div className="flex items-center text-sm text-foreground-secondary">
-                            <MapPin className="h-4 w-4 mr-2" />
+                        <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
+                          <div className="flex items-center text-xs sm:text-sm text-foreground-secondary">
+                            <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-2 flex-shrink-0" />
                             <span className="truncate">{event.location}</span>
                           </div>
-                          <div className="flex items-center text-sm text-foreground-secondary">
-                            <Calendar className="h-4 w-4 mr-2" />
-                            {formatDate(event.date)} at {event.time}
+                          <div className="flex items-center text-xs sm:text-sm text-foreground-secondary">
+                            <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-2 flex-shrink-0" />
+                            <span className="truncate">{formatDate(event.date)} at {event.time}</span>
                           </div>
-                          <div className="flex items-center text-sm text-foreground-secondary">
-                            <Users className="h-4 w-4 mr-2" />
-                            {event.attendees}/{event.maxAttendees} attendees
+                          <div className="flex items-center text-xs sm:text-sm text-foreground-secondary">
+                            <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-2 flex-shrink-0" />
+                            <span>{event.attendees}/{event.maxAttendees} attendees</span>
                           </div>
                           {event.rating > 0 && (
-                            <div className="flex items-center text-sm text-foreground-secondary">
-                              <Star className="h-4 w-4 mr-2 text-yellow-500" />
-                              {event.rating.toFixed(1)}/5.0 rating
+                            <div className="flex items-center text-xs sm:text-sm text-foreground-secondary">
+                              <Star className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-yellow-500 flex-shrink-0" />
+                              <span>{event.rating.toFixed(1)}/5.0 rating</span>
                             </div>
                           )}
-                          <div className="flex items-center text-sm text-foreground-secondary">
+                          <div className="flex items-center text-xs sm:text-sm text-foreground-secondary">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               event.state === 0 ? 'bg-yellow-500/20 text-yellow-400' :
                               event.state === 1 ? 'bg-green-500/20 text-green-400' :
@@ -460,13 +460,13 @@ const Events = () => {
                         {/* Action Button */}
                         <Button
                           className="w-full group-hover:bg-primary/90 transition-all duration-200"
-                          size="lg"
+                          size="md"
                           onClick={() => {
                             navigate(`/event/${event.id}`);
                           }}
                         >
-                          <span>View Details</span>
-                          <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
+                          <span className="text-sm sm:text-base">View Details</span>
+                          <ArrowRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform duration-200" />
                         </Button>
                       </div>
                     </Card>
@@ -483,9 +483,9 @@ const Events = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
-            className="text-center"
+            className="text-center mt-8 sm:mt-12"
           >
-            <Button variant="outline" size="lg">
+            <Button variant="outline" size="lg" className="w-full sm:w-auto">
               Load More Events
             </Button>
           </motion.div>

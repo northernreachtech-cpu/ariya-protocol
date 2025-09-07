@@ -7,16 +7,23 @@ import { useAriyaSDK } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
 import { Transaction } from "@mysten/sui/transactions";
 import { suiClient } from "../config/sui";
+import { useZkLogin } from "../contexts/ZkLoginContext";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import CommunityCardSkeleton from "../components/CommunityCardSkeleton";
+import WalletConnectionPrompt from "../components/WalletConnectionPrompt";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle, XCircle, Clock, Users, Lock, Unlock } from "lucide-react";
 
 const Communities = () => {
   const currentAccount = useCurrentAccount();
+  const { zkAddress, isZkAuthenticated } = useZkLogin();
   // const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const sdk = useAriyaSDK();
+
+  // Get the active address (either wallet or zkLogin)
+  const activeAddress = currentAccount?.address || zkAddress;
+  const isAuthenticated = currentAccount || isZkAuthenticated;
   const communityRegistryId = useNetworkVariable("communityRegistryId");
   const nftRegistryId = useNetworkVariable("nftRegistryId");
   const registrationRegistryId = useNetworkVariable("registrationRegistryId");
@@ -42,7 +49,7 @@ const Communities = () => {
 
   useEffect(() => {
     const fetchCommunities = async () => {
-      if (!currentAccount || !communityRegistryId || !nftRegistryId) return;
+      if (!activeAddress || !communityRegistryId || !nftRegistryId) return;
       setLoading(true);
       try {
         // Get all communities (across all events)
@@ -52,7 +59,7 @@ const Communities = () => {
 
         // Get user's joined communities (has access objects)
         const user = await sdk.communityAccess.getUserCommunities(
-          currentAccount.address,
+          activeAddress,
           communityRegistryId
         );
         console.log("🔍 User's joined communities:", user);
@@ -60,7 +67,7 @@ const Communities = () => {
 
         // Get user's active communities (verified active membership)
         const active = await sdk.communityAccess.getActiveUserCommunities(
-          currentAccount.address,
+          activeAddress,
           communityRegistryId,
           nftRegistryId
         );
@@ -73,7 +80,7 @@ const Communities = () => {
         for (const community of user) {
           const check = await sdk.communityAccess.isActiveCommunityMember(
             community.id,
-            currentAccount.address,
+            activeAddress,
             communityRegistryId,
             nftRegistryId
           );
@@ -98,13 +105,13 @@ const Communities = () => {
       }
     };
     fetchCommunities();
-  }, [currentAccount, sdk, communityRegistryId, nftRegistryId]);
+  }, [activeAddress, sdk, communityRegistryId, nftRegistryId]);
 
   // Check for PoA NFT membership after event statuses are loaded
   useEffect(() => {
     const checkPoANFTMembership = async () => {
       if (
-        !currentAccount ||
+        !activeAddress ||
         !communityRegistryId ||
         !nftRegistryId ||
         allCommunities.length === 0
@@ -137,7 +144,7 @@ const Communities = () => {
               // Check their membership status
               const check = await sdk.communityAccess.isActiveCommunityMember(
                 community.id,
-                currentAccount.address,
+                activeAddress,
                 communityRegistryId,
                 nftRegistryId
               );
@@ -155,7 +162,7 @@ const Communities = () => {
   }, [
     userEventStatuses,
     allCommunities,
-    currentAccount,
+    activeAddress,
     sdk,
     communityRegistryId,
     nftRegistryId,
@@ -204,7 +211,7 @@ const Communities = () => {
 
   const checkUserEventStatus = async (eventId: string) => {
     if (
-      !currentAccount ||
+      !activeAddress ||
       !registrationRegistryId ||
       !attendanceRegistryId ||
       !nftRegistryId
@@ -216,7 +223,7 @@ const Communities = () => {
       // Check registration status
       const registration = await sdk.identityAccess.getRegistrationStatus(
         eventId,
-        currentAccount.address,
+        activeAddress,
         registrationRegistryId
       );
 
@@ -227,14 +234,14 @@ const Communities = () => {
         tx.moveCall({
           target: `${sdk.attendanceVerification.getPackageId()}::attendance_verification::get_attendance_status`,
           arguments: [
-            tx.pure.address(currentAccount.address),
+            tx.pure.address(activeAddress),
             tx.pure.id(eventId),
             tx.object(attendanceRegistryId),
           ],
         });
         const result = await suiClient.devInspectTransactionBlock({
           transactionBlock: tx,
-          sender: currentAccount.address,
+          sender: activeAddress,
         });
 
         if (result && result.results && result.results.length > 0) {
@@ -256,14 +263,14 @@ const Communities = () => {
         tx.moveCall({
           target: `${sdk.attendanceVerification.getPackageId()}::nft_minting::has_proof_of_attendance`,
           arguments: [
-            tx.pure.address(currentAccount.address),
+            tx.pure.address(activeAddress),
             tx.pure.id(eventId),
             tx.object(nftRegistryId),
           ],
         });
         const result = await suiClient.devInspectTransactionBlock({
           transactionBlock: tx,
-          sender: currentAccount.address,
+          sender: activeAddress,
         });
 
         if (result && result.results && result.results.length > 0) {
@@ -454,6 +461,16 @@ const Communities = () => {
       message: "View event details to join community",
     };
   };
+
+  if (!isAuthenticated) {
+    return (
+      <WalletConnectionPrompt
+        title="Connect Your Wallet"
+        description="Please connect your wallet or sign in with Google to view and join communities."
+        icon={<Users className="h-16 w-16 mx-auto mb-6 text-foreground-muted" />}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-6 sm:pb-10">

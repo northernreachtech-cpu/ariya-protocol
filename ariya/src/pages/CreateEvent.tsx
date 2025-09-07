@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Loader2,
   X,
+  Calendar,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -20,9 +21,12 @@ import { useZkLogin } from "../contexts/ZkLoginContext";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import AssigneeSelector from "../components/AssigneeSelector";
+import WalletConnectionPrompt from "../components/WalletConnectionPrompt";
 import useScrollToTop from "../hooks/useScrollToTop";
 import { suiClient, useNetworkVariable } from "../config/sui";
 import { TelegramService } from "../lib/firebase";
+import { DatePicker, TimePicker } from "antd";
+import dayjs from "dayjs";
 
 // Get ImgBB API key from environment variable
 const IMGBB_KEY = import.meta.env.VITE_IMGBB_API_KEY;
@@ -52,8 +56,8 @@ const CreateEvent = () => {
     title: "",
     description: "",
     location: "",
-    date: "",
-    time: "",
+    date: null as dayjs.Dayjs | null,
+    time: null as dayjs.Dayjs | null,
     maxAttendees: "",
     feeAmount: "", // Add fee amount field
     minAttendees: "", // Add sponsor conditions
@@ -154,8 +158,26 @@ const CreateEvent = () => {
     }));
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | dayjs.Dayjs | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Allow: backspace, delete, tab, escape, enter, decimal point
+    if ([8, 9, 27, 13, 46, 110, 190].indexOf(e.keyCode) !== -1 ||
+        // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+        (e.keyCode === 65 && e.ctrlKey === true) ||
+        (e.keyCode === 67 && e.ctrlKey === true) ||
+        (e.keyCode === 86 && e.ctrlKey === true) ||
+        (e.keyCode === 88 && e.ctrlKey === true) ||
+        // Allow: home, end, left, right, down, up
+        (e.keyCode >= 35 && e.keyCode <= 40)) {
+      return;
+    }
+    // Ensure that it is a number and stop the keypress
+    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+      e.preventDefault();
+    }
   };
 
   const handleSponsorKeyPress = (e: React.KeyboardEvent) => {
@@ -230,7 +252,13 @@ const CreateEvent = () => {
 
 
       // Convert date and time to timestamp (Move expects milliseconds)
-      const startTime = new Date(`${formData.date}T${formData.time}`).getTime();
+      if (!formData.date || !formData.time) {
+        setError("Please select both date and time for the event");
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const startTime = formData.date.hour(formData.time.hour()).minute(formData.time.minute()).valueOf();
       const endTime = startTime + 3600 * 2 * 1000; // Default 2 hours duration in milliseconds
       
 
@@ -271,31 +299,31 @@ const CreateEvent = () => {
             if (eventId) {
               
               // Send event creation notification to organizer
-              if (activeAddress) {
+              if (activeAddress && formData.date && formData.time) {
                 try {
                   await TelegramService.sendEventCreationNotification(
                     activeAddress,
                     formData.title,
-                    formData.date,
-                    formData.time
+                    formData.date.format('YYYY-MM-DD'),
+                    formData.time.format('HH:mm')
                   );
                 } catch (error) {
                 }
               }
               
               // Schedule event reminder (24 hours before event)
-              if (activeAddress) {
+              if (activeAddress && formData.date && formData.time) {
                 try {
-                  const eventDateTime = new Date(`${formData.date}T${formData.time}`);
-                  const reminderTime = new Date(eventDateTime.getTime() - 24 * 60 * 60 * 1000); // 24 hours before
-                  const now = new Date();
+                  const eventDateTime = formData.date.hour(formData.time.hour()).minute(formData.time.minute());
+                  const reminderTime = eventDateTime.subtract(24, 'hour');
+                  const now = dayjs();
                   
-                  if (reminderTime > now) {
-                    const timeUntil = Math.ceil((reminderTime.getTime() - now.getTime()) / (1000 * 60 * 60)); // hours
+                  if (reminderTime.isAfter(now)) {
+                    const timeUntil = Math.ceil(reminderTime.diff(now, 'hour', true)); // hours
                     await TelegramService.scheduleEventReminder(
                       activeAddress,
                       formData.title,
-                      formData.date,
+                      formData.date.format('YYYY-MM-DD'),
                       `${timeUntil} hours`
                     );
                   }
@@ -347,6 +375,16 @@ const CreateEvent = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <WalletConnectionPrompt
+        title="Connect Your Wallet"
+        description="Please connect your wallet or sign in with Google to create events."
+        icon={<Calendar className="h-16 w-16 mx-auto mb-6 text-foreground-muted" />}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -516,23 +554,28 @@ const CreateEvent = () => {
                   <label className="block text-sm font-medium mb-2 text-foreground">
                     Date
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={formData.date}
-                    onChange={(e) => handleInputChange("date", e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground"
+                    onChange={(date) => handleInputChange("date", date)}
+                    disabledDate={(current) => current && current < dayjs().startOf('day')}
+                    className="w-full"
+                    size="large"
+                    placeholder="Select date"
+                    format="YYYY-MM-DD"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2 text-foreground">
                     Time
                   </label>
-                  <input
-                    type="time"
+                  <TimePicker
                     value={formData.time}
-                    onChange={(e) => handleInputChange("time", e.target.value)}
-                    className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground"
+                    onChange={(time) => handleInputChange("time", time)}
+                    className="w-full"
+                    size="large"
+                    placeholder="Select time"
+                    format="HH:mm"
+                    minuteStep={15}
                   />
                 </div>
               </div>
@@ -547,6 +590,7 @@ const CreateEvent = () => {
                   onChange={(e) =>
                     handleInputChange("maxAttendees", e.target.value)
                   }
+                  onKeyDown={handleNumberKeyDown}
                   className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground placeholder-foreground-muted"
                   placeholder="No limit"
                 />
@@ -564,6 +608,7 @@ const CreateEvent = () => {
                   onChange={(e) =>
                     handleInputChange("feeAmount", e.target.value)
                   }
+                  onKeyDown={handleNumberKeyDown}
                   className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground placeholder-foreground-muted"
                   placeholder="0.0"
                 />
@@ -599,6 +644,7 @@ const CreateEvent = () => {
                     onChange={(e) =>
                       handleInputChange("minAttendees", e.target.value)
                     }
+                    onKeyDown={handleNumberKeyDown}
                     className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground placeholder-foreground-muted"
                     placeholder="0"
                   />
@@ -615,6 +661,7 @@ const CreateEvent = () => {
                     onChange={(e) =>
                       handleInputChange("minCompletionRate", e.target.value)
                     }
+                    onKeyDown={handleNumberKeyDown}
                     className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground placeholder-foreground-muted"
                     placeholder="0"
                   />
@@ -632,6 +679,7 @@ const CreateEvent = () => {
                     onChange={(e) =>
                       handleInputChange("minAvgRating", e.target.value)
                     }
+                    onKeyDown={handleNumberKeyDown}
                     className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:border-primary focus:outline-none text-sm sm:text-base text-foreground placeholder-foreground-muted"
                     placeholder="0.0"
                   />
@@ -808,7 +856,7 @@ const CreateEvent = () => {
                       Date
                     </h4>
                     <p className="text-sm sm:text-base text-foreground">
-                      {formData.date || "Not specified"}
+                      {formData.date ? formData.date.format('YYYY-MM-DD') : "Not specified"}
                     </p>
                   </div>
                   <div className="border border-border rounded-lg p-3 sm:p-4 bg-card">
@@ -816,7 +864,7 @@ const CreateEvent = () => {
                       Time
                     </h4>
                     <p className="text-sm sm:text-base text-foreground">
-                      {formData.time || "Not specified"}
+                      {formData.time ? formData.time.format('HH:mm') : "Not specified"}
                     </p>
                   </div>
                 </div>
@@ -918,7 +966,6 @@ const CreateEvent = () => {
                 onClick={handleSubmit}
                 className="w-full sm:w-auto order-1 sm:order-2"
                 size="lg"
-                disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <>

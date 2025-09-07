@@ -81,11 +81,6 @@ const Navbar = () => {
           icon: <Calendar size={16} />,
         },
         { name: "My Events", href: "/my-events", icon: <Calendar size={16} /> },
-        {
-          name: "Create Event",
-          href: "/event/create",
-          icon: <Calendar size={16} />,
-        },
       ],
     },
     {

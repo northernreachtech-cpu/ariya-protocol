@@ -181,6 +181,7 @@ const EventDetails = () => {
   const [attendanceState, setAttendanceState] = useState(
     navAttendanceState ?? null
   );
+  const [registeredUsersCount, setRegisteredUsersCount] = useState(0);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_hasRecord, setHasRecord] = useState(navHasRecord ?? null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -195,6 +196,7 @@ const EventDetails = () => {
   } | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareEventLink, setShareEventLink] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [organizerProfile, setOrganizerProfile] = useState<unknown>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -652,6 +654,18 @@ const EventDetails = () => {
         
         if (eventData) {
           setEvent(eventData);
+          
+          // Fetch registered users count
+          try {
+            const registeredCount = await sdk.eventManagement.getEventAttendeeCount(
+              id,
+              registrationRegistryId
+            );
+            setRegisteredUsersCount(registeredCount);
+          } catch (error) {
+            console.error("Error fetching registered users count:", error);
+            setRegisteredUsersCount(0);
+          }
         } else {
           setEvent(eventData);
         }
@@ -1181,6 +1195,8 @@ const EventDetails = () => {
     }
   };
 
+  // Remove wallet connection prompt - show event details even without wallet
+
   if (loading) {
     return <EventDetailsSkeleton />;
   }
@@ -1272,7 +1288,7 @@ const EventDetails = () => {
               <div className="flex items-center">
                 <Users className="mr-2 h-5 w-5" />
                 <span>
-                  {event.current_attendees}/{event.capacity} attendees
+                  {registeredUsersCount}/{event.capacity} attendees
                 </span>
               </div>
               <div className="flex items-center">
@@ -1433,18 +1449,13 @@ const EventDetails = () => {
             <Card className="p-4 sm:p-6">
               <div className="text-center mb-6">
                 <div className="text-3xl font-bold text-primary mb-1">
-                  {event.current_attendees}
+                  {registeredUsersCount}
                 </div>
                 <div className="text-foreground-secondary">attending</div>
                 {attendanceState !== null && (
                   <div className="mt-2">
                     {(() => {
                       const currentState = Array.isArray(attendanceState) ? attendanceState[0] : attendanceState;
-                      console.log("🔍 Attendance State - Current UI state:", {
-                        attendanceState,
-                        currentState,
-                        stateText: getAttendanceStatusText(attendanceState)
-                      });
                       
                       return (
                         <span
@@ -1521,7 +1532,7 @@ const EventDetails = () => {
                     {(attendanceState === 1 ||
                       (Array.isArray(attendanceState) &&
                         attendanceState[0] === 1)) &&
-                      hasPoACapability && (
+                      hasPoACapability && isAuthenticated && (
                         <Button
                           size="lg"
                           className="w-full mb-2"
@@ -1535,7 +1546,7 @@ const EventDetails = () => {
                       )}
                     {(attendanceState === 1 ||
                       (Array.isArray(attendanceState) &&
-                        attendanceState[0] === 1)) && (
+                        attendanceState[0] === 1)) && isAuthenticated && (
                       <Button
                         size="lg"
                         className="w-full"
@@ -1558,7 +1569,7 @@ const EventDetails = () => {
                     {(attendanceState === 2 ||
                       (Array.isArray(attendanceState) &&
                         attendanceState[0] === 2)) &&
-                      !hasMintedNFT && (
+                      !hasMintedNFT && isAuthenticated && (
                         <Button
                           variant="outline"
                           size="lg"
@@ -1681,7 +1692,7 @@ const EventDetails = () => {
                     Capacity
                   </div>
                   <div className="font-medium text-foreground">
-                    {event.current_attendees} / {event.capacity} people
+                    {registeredUsersCount} / {event.capacity} people
                   </div>
                 </div>
               </div>
@@ -1739,10 +1750,13 @@ const EventDetails = () => {
             <Button
               onClick={() => {
                 navigator.clipboard.writeText(shareEventLink);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2000);
               }}
               className="w-full mb-2"
+              variant={linkCopied ? "secondary" : "primary"}
             >
-              Copy Link
+              {linkCopied ? "✓ Copied!" : "Copy Link"}
             </Button>
             <Button
               variant="outline"

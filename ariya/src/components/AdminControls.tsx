@@ -29,6 +29,24 @@ const AdminControls: React.FC<AdminControlsProps> = ({
     return (amount / 1e9).toFixed(4);
   };
 
+  const handleNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Allow: backspace, delete, tab, escape, enter, decimal point
+    if ([8, 9, 27, 13, 46, 110, 190].indexOf(e.keyCode) !== -1 ||
+        // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+        (e.keyCode === 65 && e.ctrlKey === true) ||
+        (e.keyCode === 67 && e.ctrlKey === true) ||
+        (e.keyCode === 86 && e.ctrlKey === true) ||
+        (e.keyCode === 88 && e.ctrlKey === true) ||
+        // Allow: home, end, left, right, down, up
+        (e.keyCode >= 35 && e.keyCode <= 40)) {
+      return;
+    }
+    // Ensure that it is a number and stop the keypress
+    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+      e.preventDefault();
+    }
+  };
+
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
@@ -182,6 +200,7 @@ const AdminControls: React.FC<AdminControlsProps> = ({
                 max={formatSUI(currentBalance)}
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
+                onKeyDown={handleNumberKeyDown}
                 placeholder="Enter amount to withdraw"
                 className="w-full px-3 py-2 border border-border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-input-background text-foreground"
                 disabled={loading}

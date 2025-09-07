@@ -272,16 +272,16 @@ const MyAssignedEvents = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center pt-20 sm:pt-24">
         <div className="text-center max-w-md mx-auto px-4">
-          <Calendar className="h-16 w-16 mx-auto mb-6 text-foreground-muted" />
-          <h2 className="text-2xl font-bold text-foreground mb-4">
+          <Calendar className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-4 sm:mb-6 text-foreground-muted" />
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-3 sm:mb-4">
             Connect Your Wallet
           </h2>
-          <p className="text-foreground-secondary mb-6">
+          <p className="text-sm sm:text-base text-foreground-secondary mb-4 sm:mb-6">
             Please connect your wallet or sign in with Google to view your assigned events.
           </p>
-          <Button onClick={() => navigate("/")}>
+          <Button onClick={() => navigate("/")} className="w-full sm:w-auto">
             Go to Home
           </Button>
         </div>
@@ -291,10 +291,10 @@ const MyAssignedEvents = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center pt-20 sm:pt-24">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-foreground-secondary">Loading your assigned events...</p>
+          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mx-auto mb-3 sm:mb-4 text-primary" />
+          <p className="text-sm sm:text-base text-foreground-secondary">Loading your assigned events...</p>
         </div>
       </div>
     );
@@ -302,10 +302,10 @@ const MyAssignedEvents = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 sm:pb-12">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-6 sm:pb-8 lg:pb-12">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="flex items-center gap-3 sm:gap-4">
             <Button
               variant="outline"
               size="sm"
@@ -313,55 +313,59 @@ const MyAssignedEvents = () => {
               className="flex-shrink-0"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
+              <span className="hidden sm:inline">Back to Dashboard</span>
+              <span className="sm:hidden">Back</span>
             </Button>
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-livvic font-bold bg-gradient-to-r from-primary to-secondary text-transparent bg-clip-text mb-2">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-livvic font-bold bg-gradient-to-r from-primary to-secondary text-transparent bg-clip-text mb-1 sm:mb-2">
                 My Assigned Events
               </h1>
-              <p className="text-foreground-secondary text-sm sm:text-base">
+              <p className="text-foreground-secondary text-xs sm:text-sm lg:text-base">
                 Events you've been assigned to manage
               </p>
             </div>
           </div>
 
-          <Button
-            onClick={() => loadAssignedEvents(true)}
-            disabled={refreshing}
-            variant="outline"
-            className="flex-shrink-0"
-          >
-            {refreshing ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            {refreshing ? "Refreshing..." : "Refresh"}
-          </Button>
+          <div className="flex justify-end">
+            <Button
+              onClick={() => loadAssignedEvents(true)}
+              disabled={refreshing}
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+            >
+              {refreshing ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              {refreshing ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
-        <Card className="mb-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+        <Card className="mb-4 sm:mb-6">
+          <div className="flex flex-col gap-3 sm:gap-4">
             {/* Search */}
-            <div className="flex-1 relative">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-foreground-muted" />
               <input
                 type="text"
                 placeholder="Search events by name, location, or description..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-card-secondary border border-border rounded-lg text-foreground placeholder-foreground-muted focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none"
+                className="w-full pl-10 pr-4 py-2 sm:py-3 bg-card-secondary border border-border rounded-lg text-foreground placeholder-foreground-muted focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm sm:text-base"
               />
             </div>
 
             {/* Status Filter */}
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-foreground-muted" />
+              <Filter className="h-4 w-4 text-foreground-muted flex-shrink-0" />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="px-3 py-2 bg-card-secondary border border-border rounded-lg text-foreground focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none"
+                className="flex-1 px-3 py-2 bg-card-secondary border border-border rounded-lg text-foreground focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm sm:text-base"
               >
                 <option value="all">All Status</option>
                 <option value="upcoming">Upcoming</option>
@@ -374,63 +378,65 @@ const MyAssignedEvents = () => {
 
         {/* Events List */}
         {filteredEvents.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {filteredEvents.map((event) => (
               <Card
                 key={event.id}
-                className="p-4 sm:p-6 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
+                className="p-3 sm:p-4 lg:p-6 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
               >
-                <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+                <div className="flex flex-col gap-4 sm:gap-6">
                   {/* Event Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-1 sm:mb-2 truncate">
-                          {event.name}
-                        </h3>
-                        {event.description && (
-                          <p className="text-foreground-secondary text-sm mb-2 line-clamp-2">
-                            {event.description}
-                          </p>
-                        )}
-                      </div>
+                    <div className="flex flex-col gap-3 mb-3 sm:mb-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-foreground mb-1 sm:mb-2 line-clamp-2">
+                            {event.name}
+                          </h3>
+                          {event.description && (
+                            <p className="text-foreground-secondary text-xs sm:text-sm mb-2 line-clamp-2">
+                              {event.description}
+                            </p>
+                          )}
+                        </div>
 
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                            event.status
-                          )}`}
-                        >
-                          {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                        </span>
-                        {event.is_child && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-400/20 dark:text-blue-400">
-                            Sub-Event
+                        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 flex-shrink-0">
+                          <span
+                            className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                              event.status
+                            )}`}
+                          >
+                            {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
                           </span>
-                        )}
+                          {event.is_child && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-400/20 dark:text-blue-400">
+                              Sub-Event
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     {/* Event Details */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-foreground-muted flex-shrink-0" />
+                        <MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-foreground-muted flex-shrink-0" />
                         <span className="text-foreground-secondary truncate">{event.location}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-foreground-muted flex-shrink-0" />
+                        <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-foreground-muted flex-shrink-0" />
                         <span className="text-foreground-secondary">
                           {new Date(event.start_time).toLocaleDateString()}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-foreground-muted flex-shrink-0" />
+                        <Users className="h-3 w-3 sm:h-4 sm:w-4 text-foreground-muted flex-shrink-0" />
                         <span className="text-foreground-secondary">
                           {event.current_attendees || 0}/{event.capacity} attendees
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-foreground-muted flex-shrink-0" />
+                        <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-foreground-muted flex-shrink-0" />
                         <span className="text-foreground-secondary">
                           {event.sponsors.length} sponsors
                         </span>
@@ -438,18 +444,18 @@ const MyAssignedEvents = () => {
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="mt-4">
+                    <div className="mt-3 sm:mt-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-foreground-secondary">
+                        <span className="text-xs sm:text-sm text-foreground-secondary">
                           Attendance
                         </span>
-                        <span className="text-sm text-foreground">
+                        <span className="text-xs sm:text-sm text-foreground">
                           {Math.round(((event.current_attendees || 0) / (event.capacity || 1)) * 100)}%
                         </span>
                       </div>
-                      <div className="w-full bg-border rounded-full h-2">
+                      <div className="w-full bg-border rounded-full h-1.5 sm:h-2">
                         <div
-                          className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-500"
+                          className="bg-gradient-to-r from-primary to-secondary h-1.5 sm:h-2 rounded-full transition-all duration-500"
                           style={{
                             width: `${Math.min(
                               ((event.current_attendees || 0) / (event.capacity || 1)) * 100,
@@ -462,26 +468,30 @@ const MyAssignedEvents = () => {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex flex-col gap-2 lg:flex-shrink-0">
-                    <Button
-                      onClick={() => navigate(`/event/${event.id}`)}
-                      className="w-full lg:w-auto"
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Event
-                    </Button>
-                    
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedEventForDetails(event);
-                        setShowEventDetailsModal(true);
-                      }}
-                      className="w-full lg:w-auto"
-                    >
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Event Details
-                    </Button>
+                  <div className="flex flex-col gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Button
+                        onClick={() => navigate(`/event/${event.id}`)}
+                        size="sm"
+                        className="w-full"
+                      >
+                        <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                        View Event
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedEventForDetails(event);
+                          setShowEventDetailsModal(true);
+                        }}
+                        size="sm"
+                        className="w-full"
+                      >
+                        <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                        Event Details
+                      </Button>
+                    </div>
                     
                     {/* Check-in button for active events */}
                     {event.status === "active" && (
@@ -489,12 +499,13 @@ const MyAssignedEvents = () => {
                         variant="outline"
                         onClick={() => handleStartCheckIn(event.id)}
                         disabled={checkingInUser}
-                        className="w-full lg:w-auto"
+                        size="sm"
+                        className="w-full"
                       >
                         {checkingInUser ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2 animate-spin" />
                         ) : (
-                          <QrCode className="h-4 w-4 mr-2" />
+                          <QrCode className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                         )}
                         {checkingInUser ? "Checking In..." : "Check In Attendees"}
                       </Button>
@@ -504,9 +515,10 @@ const MyAssignedEvents = () => {
                       <Button
                         variant="outline"
                         onClick={() => navigate(`/event/${event.parent_id}`)}
-                        className="w-full lg:w-auto"
+                        size="sm"
+                        className="w-full"
                       >
-                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                         View Parent Event
                       </Button>
                     )}
@@ -516,18 +528,18 @@ const MyAssignedEvents = () => {
             ))}
           </div>
         ) : (
-          <Card className="text-center py-12 sm:py-16">
-            <Calendar className="h-16 w-16 mx-auto mb-6 text-foreground-muted" />
-            <h3 className="text-xl font-semibold mb-2 text-foreground-secondary">
+          <Card className="text-center py-8 sm:py-12 lg:py-16">
+            <Calendar className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-4 sm:mb-6 text-foreground-muted" />
+            <h3 className="text-lg sm:text-xl font-semibold mb-2 text-foreground-secondary">
               {searchTerm || statusFilter !== "all" ? "No Events Found" : "No Assigned Events"}
             </h3>
-            <p className="text-foreground-muted mb-6 max-w-md mx-auto">
+            <p className="text-sm sm:text-base text-foreground-muted mb-4 sm:mb-6 max-w-md mx-auto px-4">
               {searchTerm || statusFilter !== "all" 
                 ? "Try adjusting your search or filter criteria."
                 : "You haven't been assigned to manage any events yet. Event organizers can assign you to manage their events."
               }
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center px-4">
               {searchTerm || statusFilter !== "all" ? (
                 <Button
                   variant="outline"
@@ -535,17 +547,19 @@ const MyAssignedEvents = () => {
                     setSearchTerm("");
                     setStatusFilter("all");
                   }}
+                  className="w-full sm:w-auto"
                 >
                   Clear Filters
                 </Button>
               ) : (
-                <Button onClick={() => navigate("/events")}>
+                <Button onClick={() => navigate("/events")} className="w-full sm:w-auto">
                   Browse Events
                 </Button>
               )}
               <Button
                 variant="outline"
                 onClick={() => navigate("/dashboard")}
+                className="w-full sm:w-auto"
               >
                 Back to Dashboard
               </Button>
@@ -556,43 +570,43 @@ const MyAssignedEvents = () => {
 
       {/* Event Details Modal for Assignees */}
       {showEventDetailsModal && selectedEventForDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm p-4">
-          <div className="bg-card border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm p-2 sm:p-4">
+          <div className="bg-card border border-border rounded-lg max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto shadow-lg">
             {/* Header */}
-            <div className="sticky top-0 bg-card border-b border-border p-6 z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-foreground">{selectedEventForDetails.name}</h2>
-                  <div className="flex items-center gap-4 mt-2">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedEventForDetails.status)}`}>
+            <div className="sticky top-0 bg-card border-b border-border p-4 sm:p-6 z-10">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground break-words">{selectedEventForDetails.name}</h2>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2">
+                    <span className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(selectedEventForDetails.status)}`}>
                       {selectedEventForDetails.status.charAt(0).toUpperCase() + selectedEventForDetails.status.slice(1)}
                     </span>
-                    <span className="text-foreground-secondary text-sm">
+                    <span className="text-foreground-secondary text-xs sm:text-sm">
                       {selectedEventForDetails.is_child ? "Sub-Event" : "Main Event"}
                     </span>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setShowEventDetailsModal(false)}>
-                  <X className="h-5 w-5" />
+                <Button variant="ghost" size="sm" onClick={() => setShowEventDetailsModal(false)} className="flex-shrink-0">
+                  <X className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </div>
             </div>
 
             {/* Content */}
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               {/* Event Information */}
-              <div className="bg-card-secondary rounded-lg p-6 border border-border">
-                <h3 className="text-lg font-semibold text-foreground mb-4">Event Information</h3>
-                <div className="space-y-4">
+              <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">Event Information</h3>
+                <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-foreground-secondary">Description</label>
-                    <p className="text-foreground mt-1 bg-card p-3 rounded-lg border border-border">
+                    <label className="text-xs sm:text-sm font-medium text-foreground-secondary">Description</label>
+                    <p className="text-foreground mt-1 bg-card p-3 rounded-lg border border-border text-sm sm:text-base">
                       {selectedEventForDetails.description || "No description provided"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground-secondary">Location</label>
-                    <p className="text-foreground mt-1 bg-card p-3 rounded-lg border border-border">
+                    <label className="text-xs sm:text-sm font-medium text-foreground-secondary">Location</label>
+                    <p className="text-foreground mt-1 bg-card p-3 rounded-lg border border-border text-sm sm:text-base">
                       {selectedEventForDetails.location}
                     </p>
                   </div>
@@ -600,29 +614,29 @@ const MyAssignedEvents = () => {
               </div>
 
               {/* Event Details Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-4 sm:gap-6">
                 {/* Timing */}
-                <div className="bg-card-secondary rounded-lg p-6 border border-border">
-                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
+                <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+                  <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+                    <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                     Timing
                   </h3>
                   <div className="space-y-3">
                     <div>
-                      <label className="text-sm font-medium text-foreground-secondary">Start Time</label>
-                      <p className="text-foreground">
+                      <label className="text-xs sm:text-sm font-medium text-foreground-secondary">Start Time</label>
+                      <p className="text-foreground text-sm sm:text-base">
                         {new Date(selectedEventForDetails.start_time).toLocaleString()}
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-foreground-secondary">End Time</label>
-                      <p className="text-foreground">
+                      <label className="text-xs sm:text-sm font-medium text-foreground-secondary">End Time</label>
+                      <p className="text-foreground text-sm sm:text-base">
                         {new Date(selectedEventForDetails.end_time).toLocaleString()}
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-foreground-secondary">Duration</label>
-                      <p className="text-foreground">
+                      <label className="text-xs sm:text-sm font-medium text-foreground-secondary">Duration</label>
+                      <p className="text-foreground text-sm sm:text-base">
                         {Math.floor((selectedEventForDetails.end_time - selectedEventForDetails.start_time) / (1000 * 60 * 60))}h{" "}
                         {Math.floor(((selectedEventForDetails.end_time - selectedEventForDetails.start_time) % (1000 * 60 * 60)) / (1000 * 60))}m
                       </p>
@@ -631,26 +645,26 @@ const MyAssignedEvents = () => {
                 </div>
 
                 {/* Attendance */}
-                <div className="bg-card-secondary rounded-lg p-6 border border-border">
-                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Users className="h-5 w-5" />
+                <div className="bg-card-secondary rounded-lg p-4 sm:p-6 border border-border">
+                  <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                     Attendance
                   </h3>
                   <div className="space-y-3">
                     <div>
-                      <label className="text-sm font-medium text-foreground-secondary">Capacity</label>
-                      <p className="text-foreground">{selectedEventForDetails.capacity} attendees</p>
+                      <label className="text-xs sm:text-sm font-medium text-foreground-secondary">Capacity</label>
+                      <p className="text-foreground text-sm sm:text-base">{selectedEventForDetails.capacity} attendees</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-foreground-secondary">Current Attendees</label>
-                      <p className="text-foreground">{selectedEventForDetails.current_attendees || 0} attendees</p>
+                      <label className="text-xs sm:text-sm font-medium text-foreground-secondary">Current Attendees</label>
+                      <p className="text-foreground text-sm sm:text-base">{selectedEventForDetails.current_attendees || 0} attendees</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-foreground-secondary">Progress</label>
+                      <label className="text-xs sm:text-sm font-medium text-foreground-secondary">Progress</label>
                       <div className="mt-2">
-                        <div className="w-full bg-border rounded-full h-2">
+                        <div className="w-full bg-border rounded-full h-1.5 sm:h-2">
                           <div
-                            className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-500"
+                            className="bg-gradient-to-r from-primary to-secondary h-1.5 sm:h-2 rounded-full transition-all duration-500"
                             style={{
                               width: `${Math.min(
                                 ((selectedEventForDetails.current_attendees || 0) / (selectedEventForDetails.capacity || 1)) * 100,
@@ -659,7 +673,7 @@ const MyAssignedEvents = () => {
                             }}
                           ></div>
                         </div>
-                        <p className="text-sm text-foreground-secondary mt-1">
+                        <p className="text-xs sm:text-sm text-foreground-secondary mt-1">
                           {Math.round(((selectedEventForDetails.current_attendees || 0) / (selectedEventForDetails.capacity || 1)) * 100)}% full
                         </p>
                       </div>
@@ -670,13 +684,13 @@ const MyAssignedEvents = () => {
 
               {/* Assignee Actions */}
               {selectedEventForDetails.status === "active" && (
-                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
-                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Users className="h-5 w-5 text-blue-600" />
+                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-4 sm:p-6 border border-blue-200 dark:border-blue-800">
+                  <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                     Assignee Actions
                   </h3>
-                  <div className="bg-blue-100 dark:bg-blue-900/30 rounded-lg p-4 mb-4">
-                    <p className="text-blue-800 dark:text-blue-200 text-sm">
+                  <div className="bg-blue-100 dark:bg-blue-900/30 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                    <p className="text-blue-800 dark:text-blue-200 text-xs sm:text-sm">
                       <strong>Your Role:</strong> As an assignee, you can help check in attendees for this event. 
                       You cannot activate, complete, or delete events - only the organizer can perform these actions.
                     </p>
@@ -687,12 +701,13 @@ const MyAssignedEvents = () => {
                       handleStartCheckIn(selectedEventForDetails.id);
                     }}
                     disabled={checkingInUser}
-                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    size="sm"
                   >
                     {checkingInUser ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2 animate-spin" />
                     ) : (
-                      <QrCode className="h-4 w-4 mr-2" />
+                      <QrCode className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                     )}
                     {checkingInUser ? "Checking In..." : "Check In Attendees"}
                   </Button>
@@ -701,11 +716,11 @@ const MyAssignedEvents = () => {
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-3 p-6 border-t border-border">
-              <Button variant="outline" onClick={() => setShowEventDetailsModal(false)}>
+            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 p-4 sm:p-6 border-t border-border">
+              <Button variant="outline" onClick={() => setShowEventDetailsModal(false)} className="w-full sm:w-auto" size="sm">
                 Close
               </Button>
-              <Button onClick={() => window.open(`/event/${selectedEventForDetails.id}`, '_blank')}>
+              <Button onClick={() => window.open(`/event/${selectedEventForDetails.id}`, '_blank')} className="w-full sm:w-auto" size="sm">
                 View Public Page
               </Button>
             </div>
@@ -715,10 +730,10 @@ const MyAssignedEvents = () => {
 
       {/* QR Scanner Modal */}
       {showQRScanner && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-lg p-6 max-w-md mx-4 shadow-lg">
-            <h3 className="text-lg font-semibold mb-4 text-center">Scan QR Code</h3>
-            <p className="text-sm text-foreground-secondary mb-4 text-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm p-2 sm:p-4">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 shadow-lg">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-center">Scan QR Code</h3>
+            <p className="text-xs sm:text-sm text-foreground-secondary mb-3 sm:mb-4 text-center">
               Scan the attendee's QR code to check them in
             </p>
             <QRScanner
@@ -736,11 +751,11 @@ const MyAssignedEvents = () => {
 
       {/* Check-in Success Modal */}
       {showCheckInSuccessModal && checkInSuccessData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-lg p-8 max-w-sm mx-4 shadow-lg text-center">
-            <CheckCircle className="h-16 w-16 mx-auto mb-4 text-green-600" />
-            <h3 className="text-xl font-semibold mb-2 text-green-600">Check-in Successful!</h3>
-            <p className="text-foreground mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm p-2 sm:p-4">
+          <div className="bg-card border border-border rounded-lg p-6 sm:p-8 max-w-sm w-full mx-2 sm:mx-4 shadow-lg text-center">
+            <CheckCircle className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4 text-green-600" />
+            <h3 className="text-lg sm:text-xl font-semibold mb-2 text-green-600">Check-in Successful!</h3>
+            <p className="text-sm sm:text-base text-foreground mb-4">
               <span className="font-medium">{checkInSuccessData.attendeeName}</span> has been checked in to{" "}
               <span className="font-medium">{checkInSuccessData.eventName}</span>
             </p>
@@ -750,6 +765,7 @@ const MyAssignedEvents = () => {
                 setCheckInSuccessData(null);
               }}
               className="w-full"
+              size="sm"
             >
               Continue
             </Button>

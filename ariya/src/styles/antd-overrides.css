@@ -1,0 +1,79 @@
+/* Ant Design DatePicker and TimePicker custom styles to match existing form inputs */
+
+.ant-picker {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-radius: 0.5rem !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 3rem !important;
+}
+
+.ant-picker:hover {
+  border-color: hsl(var(--border)) !important;
+}
+
+.ant-picker-focused,
+.ant-picker:focus-within {
+  border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) !important;
+}
+
+.ant-picker-input > input {
+  background-color: transparent !important;
+  color: hsl(var(--foreground)) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+}
+
+.ant-picker-input > input::placeholder {
+  color: hsl(var(--foreground-muted)) !important;
+}
+
+.ant-picker-suffix {
+  color: hsl(var(--foreground-muted)) !important;
+}
+
+.ant-picker-clear {
+  color: hsl(var(--foreground-muted)) !important;
+}
+
+.ant-picker-clear:hover {
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Responsive font sizes */
+@media (min-width: 640px) {
+  .ant-picker {
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+  }
+  
+  .ant-picker-input > input {
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+  }
+}
+
+/* Dark mode specific adjustments */
+.dark .ant-picker {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .ant-picker-input > input {
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .ant-picker-input > input::placeholder {
+  color: hsl(var(--foreground-muted)) !important;
+}
+
+.dark .ant-picker-suffix {
+  color: hsl(var(--foreground-muted)) !important;
+}

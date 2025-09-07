@@ -16,8 +16,10 @@ import { Transaction } from "@mysten/sui/transactions";
 import { useAriyaSDK } from "../lib/sdk";
 import { useNetworkVariable } from "../config/sui";
 import { suiClient } from "../config/sui";
+import { useZkLogin } from "../contexts/ZkLoginContext";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import WalletConnectionPrompt from "../components/WalletConnectionPrompt";
 import useScrollToTop from "../hooks/useScrollToTop";
 import type { UserSubscription, SubscriptionPricing } from "../lib/sdk";
 import { SUBSCRIPTION_TYPES } from "../lib/sdk";
@@ -25,8 +27,13 @@ import { SUBSCRIPTION_TYPES } from "../lib/sdk";
 const SubscriptionManagement = () => {
   useScrollToTop();
   const currentAccount = useCurrentAccount();
+  const { isZkAuthenticated } = useZkLogin();
   const sdk = useAriyaSDK();
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
+
+  // Get the active address (either wallet or zkLogin)
+  // ccurrentAccount?.address || zkAddress;
+  const isAuthenticated = currentAccount || isZkAuthenticated;
   
   // Network variables
   const subscriptionRegistryId = useNetworkVariable("subscriptionRegistryId");
@@ -241,6 +248,16 @@ const SubscriptionManagement = () => {
         return <Users className="h-6 w-6" />;
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <WalletConnectionPrompt
+        title="Connect Your Wallet"
+        description="Please connect your wallet or sign in with Google to manage your subscription."
+        icon={<Crown className="h-16 w-16 mx-auto mb-6 text-foreground-muted" />}
+      />
+    );
+  }
 
   if (loading) {
     return (
