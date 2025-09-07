@@ -222,10 +222,10 @@ const Navbar = () => {
         <div
           className={cn(
             "md:hidden transition-all duration-300 overflow-hidden font-open-sans",
-            isMenuOpen ? "max-h-screen pb-4" : "max-h-0"
+            isMenuOpen ? "max-h-[calc(100vh-4rem)] pb-4" : "max-h-0"
           )}
         >
-          <div className="pt-4 space-y-2">
+          <div className="pt-4 space-y-2 max-h-[calc(100vh-8rem)] overflow-y-auto">
             {menuItems.map((item) => {
               if (item.type === "link" && item.href && item.name && item.icon) {
                 return (
