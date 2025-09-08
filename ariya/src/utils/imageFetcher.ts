@@ -67,14 +67,9 @@ export const resolveImageUrl = async (imageUrl: string): Promise<string> => {
   const provider = detectImageProvider(imageUrl);
   
   if (provider === 'walrus') {
-    // For Walrus URLs, try to find a Cloudinary equivalent
-    // This is a simple heuristic - you might need to adjust based on your storage pattern
-    const cloudinaryFallback = imageUrl.replace(
-      /https:\/\/aggregator\.walrus-testnet\.walrus\.space\/v1\/blobs\//,
-      'https://res.cloudinary.com/kellytrex/image/upload/v1756398115/'
-    );
-    
-    return await fetchImageWithFallback(imageUrl, cloudinaryFallback);
+    // For Walrus URLs, use them directly without fallback
+    // Walrus URLs should work directly
+    return await fetchImageWithFallback(imageUrl);
   } else if (provider === 'cloudinary') {
     // For Cloudinary URLs, they should work directly
     return await fetchImageWithFallback(imageUrl);

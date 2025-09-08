@@ -206,9 +206,17 @@ const ConvenerMarketplace = () => {
                   {/* Header */}
                   <div className="flex items-start justify-between mb-6">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white font-bold text-lg">
-                        {organizer.userProfile?.name?.charAt(0)?.toUpperCase() || '?'}
-                      </div>
+                      {organizer.userProfile?.photo_url ? (
+                        <img
+                          src={organizer.userProfile.photo_url}
+                          alt={organizer.userProfile?.name || 'Organizer'}
+                          className="w-12 h-12 rounded-full object-cover border border-border"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white font-bold text-lg">
+                          {organizer.userProfile?.name?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
+                      )}
                       <div className="flex flex-col">
                         <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
                           {organizer.userProfile?.name || 'Unknown Organizer'}

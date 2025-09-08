@@ -15,7 +15,7 @@ export interface UploadResult {
 }
 
 // Upload to Cloudinary as fallback
-const uploadToCloudinary = async (file: File): Promise<UploadResult> => {
+export const uploadToCloudinary = async (file: File): Promise<UploadResult> => {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
@@ -54,17 +54,10 @@ export const uploadImageWithFallback = async (
     console.log("📤 Attempting Walrus upload...");
     const walrusResult = await uploadToWalrus(file, userAddress, epochs);
     
-    // Try to create a Cloudinary fallback URL for this Walrus upload
-    const cloudinaryFallback = walrusResult.imageUrl.replace(
-      /https:\/\/aggregator\.walrus-testnet\.walrus\.space\/v1\/blobs\//,
-      'https://res.cloudinary.com/kellytrex/image/upload/v1756398115/'
-    );
-    
     return {
       blobId: walrusResult.blobId,
       imageUrl: walrusResult.imageUrl,
       provider: 'walrus',
-      fallbackUrl: cloudinaryFallback,
     };
   } catch (walrusError) {
     console.warn("⚠️ Walrus upload failed, trying Cloudinary fallback:", walrusError);

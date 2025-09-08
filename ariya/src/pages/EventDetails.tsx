@@ -248,7 +248,29 @@ const EventDetails = () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (p: any) => normalize(p.address) === normalize(organizerAddress)
       );
-      if (profile) {
+      
+      if (profile && profileRegistryId) {
+        // Fetch the complete user profile data like the organizers page does
+        const userProfile = await sdk.eventManagement.getUserProfileByAddress(
+          organizerAddress,
+          profileRegistryId
+        );
+        
+        if (userProfile) {
+          // Combine organizer data with user profile data
+          const completeProfile = {
+            ...profile,
+            name: userProfile.name,
+            bio: userProfile.bio,
+            photo_url: userProfile.photo_url,
+            telegram_username: userProfile.telegram_username,
+            x_username: userProfile.x_username,
+          };
+          setOrganizerProfile(completeProfile);
+        } else {
+          setOrganizerProfile(profile);
+        }
+      } else if (profile) {
         setOrganizerProfile(profile);
       } else {
         setProfileError("Organizer profile not found.");
@@ -1805,7 +1827,6 @@ const EventDetails = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm animate-fade-in">
           <div className="relative bg-card/80 backdrop-blur-2xl border border-border shadow-2xl rounded-2xl max-w-md w-full mx-4 p-0 overflow-hidden animate-slide-up">
             <div className="flex flex-col items-center justify-center pt-8 pb-2 bg-gradient-to-r from-primary/80 to-secondary/80">
-              <span className="text-5xl mb-2">👤</span>
               <h3 className="text-2xl font-bold text-white drop-shadow mb-1">
                 Organizer Profile
               </h3>
@@ -1822,11 +1843,20 @@ const EventDetails = () => {
                 <div className="text-red-500 text-center">{profileError}</div>
               ) : organizerProfile ? (
                 <>
+                  {console.log("🔍 Organizer Profile Data:", organizerProfile)}
                   <div className="flex flex-col items-center mb-2">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white font-bold text-2xl mb-2">
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      {(organizerProfile as any).name?.charAt(0).toUpperCase() || "?"}
-                    </div>
+                    {(organizerProfile as any).photo_url ? (
+                      <img
+                        src={(organizerProfile as any).photo_url}
+                        alt={(organizerProfile as any).name || 'Organizer'}
+                        className="w-16 h-16 rounded-full object-cover border border-border mb-2"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white font-bold text-2xl mb-2">
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {(organizerProfile as any).name?.charAt(0).toUpperCase() || "?"}
+                      </div>
+                    )}
                     <div className="text-xl font-semibold text-primary mb-1">
                       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                       {(organizerProfile as any).name || "Unnamed Organizer"}

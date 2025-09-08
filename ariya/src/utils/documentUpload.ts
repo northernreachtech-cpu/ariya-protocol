@@ -133,17 +133,10 @@ export const uploadDocumentWithFallback = async (
     console.log("📤 Attempting Walrus upload...");
     const walrusResult = await uploadToWalrus(file, userAddress, epochs);
     
-    // Create a Cloudinary fallback URL for this Walrus upload
-    const cloudinaryFallback = walrusResult.imageUrl.replace(
-      /https:\/\/aggregator\.walrus-testnet\.walrus\.space\/v1\/blobs\//,
-      'https://res.cloudinary.com/kellytrex/document/upload/v1756398115/'
-    );
-    
     return {
       documentId: walrusResult.blobId,
       documentUrl: walrusResult.imageUrl,
       provider: 'walrus',
-      fallbackUrl: cloudinaryFallback,
       fileName: file.name,
       fileSize: file.size,
       mimeType: file.type,

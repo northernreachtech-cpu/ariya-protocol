@@ -1,8 +1,8 @@
 import { useState, useRef } from "react";
-import { useCurrentAccount } from "@mysten/dapp-kit";
+
 import Button from "./Button";
-import { uploadImageWithFallback } from "../utils/cloudStorage";
-import { useZkLogin } from "../contexts/ZkLoginContext";
+
+// import { useZkLogin } from "../contexts/ZkLoginContext";
 
 interface ProfilePictureUploadProps {
   onUploadComplete: (blobId: string, imageUrl: string) => void;
@@ -13,13 +13,12 @@ const ProfilePictureUpload = ({
   onUploadComplete,
   currentImageUrl,
 }: ProfilePictureUploadProps) => {
-  const currentAccount = useCurrentAccount();
+
   
   // Safely access zkLogin context
-  let zkAddress: string | null = null;
   try {
-    const { zkAddress: zkAddr } = useZkLogin();
-    zkAddress = zkAddr;
+    // const { zkAddress } = useZkLogin();
+    // zkAddress is available if needed
   } catch (error) {
     // ZkLoginProvider not available, continue without zkLogin
   }
@@ -32,16 +31,16 @@ const ProfilePictureUpload = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const handleWalrusUpload = async (file: File): Promise<string> => {
-    const activeAddress = currentAccount?.address || zkAddress;
-    
-    if (!activeAddress) {
-      throw new Error("No wallet or zkLogin connected");
+  const handleCloudinaryUpload = async (file: File): Promise<string> => {
+    try {
+      const { uploadToCloudinary } = await import("../utils/cloudStorage");
+      const result = await uploadToCloudinary(file);
+      console.log(`✅ Image uploaded via Cloudinary:`, result.imageUrl);
+      return result.imageUrl;
+    } catch (error) {
+      console.error("Cloudinary upload failed:", error);
+      throw new Error("Failed to upload image to Cloudinary");
     }
-
-    const result = await uploadImageWithFallback(file, activeAddress);
-    console.log(`✅ Image uploaded via ${result.provider}:`, result.imageUrl);
-    return result.imageUrl;
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,11 +78,10 @@ const ProfilePictureUpload = ({
     setSuccess(null);
 
     try {
-      const blobId = await handleWalrusUpload(file);
-      const imageUrl = `https://aggregator.walrus-testnet.walrus.space/v1/blobs/${blobId}`;
+      const imageUrl = await handleCloudinaryUpload(file);
 
-      onUploadComplete(blobId, imageUrl);
-      setSuccess("Image uploaded successfully to Walrus!");
+      onUploadComplete("", imageUrl);
+      setSuccess("Image uploaded successfully to Cloudinary!");
     } catch (err) {
       console.error("Upload error:", err);
       setError(err instanceof Error ? err.message : "Upload failed");
@@ -142,7 +140,7 @@ const ProfilePictureUpload = ({
               disabled={uploading}
               className="flex-1"
             >
-              {uploading ? "Uploading..." : "Upload to Walrus"}
+              {uploading ? "Uploading..." : "Upload to Cloudinary"}
             </Button>
           )}
         </div>
@@ -155,8 +153,7 @@ const ProfilePictureUpload = ({
 
         {/* Info */}
         <p className="text-xs text-foreground-secondary mt-2">
-          Images are stored on Walrus (decentralized storage) for 10 epochs. Max
-          size: 5MB. Supported formats: JPG, PNG, GIF.
+          Images are stored on Cloudinary. Max size: 5MB. Supported formats: JPG, PNG, GIF.
         </p>
       </div>
     </div>
