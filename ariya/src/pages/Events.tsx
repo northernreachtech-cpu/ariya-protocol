@@ -10,6 +10,7 @@ import {
   ArrowRight,
   DollarSign,
   CheckCircle,
+  Eye,
 } from "lucide-react";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useNavigate } from "react-router-dom";
@@ -378,23 +379,35 @@ const Events = () => {
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                 >
                   <div
-                    className="h-full hover:shadow-lg transition-all duration-300 group cursor-pointer"
+                    className="h-full hover:shadow-lg transition-all duration-300 md:group cursor-pointer"
                     onClick={() => navigate(`/event/${event.id}`)}
                   >
-                    <Card className="h-full p-0 overflow-hidden" hover={true}>
+                    <Card className="h-full p-0 overflow-hidden md:overflow-visible" hover={true}>
                       {/* Event Image */}
-                      <div className="relative bg-gradient-to-br from-primary/20 to-secondary/20">
+                      <div 
+                        className="relative bg-gradient-to-br from-primary/20 to-secondary/20 cursor-pointer overflow-hidden md:overflow-visible group md:group-hover:group"
+                        style={{ aspectRatio: '16/9', minHeight: '200px' }}
+                        onClick={() => navigate(`/event/${event.id}`)}
+                      >
                         {event.image && event.image !== "/api/placeholder/400/250" ? (
-                          <div className="relative w-full" style={{ aspectRatio: '16/9', minHeight: '200px' }}>
+                          <div className="relative w-full h-full overflow-hidden md:overflow-visible">
                             <img 
                               src={event.image} 
                               alt={event.title}
-                              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                              className="w-full h-full object-cover group-hover:object-contain group-hover:scale-150 group-hover:-translate-y-12 group-hover:z-50 transition-all duration-700 ease-out absolute inset-0"
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
                                 e.currentTarget.nextElementSibling?.classList.remove('hidden');
                               }}
                             />
+                            {/* Hover overlay */}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-500 ease-out flex items-center justify-center z-40">
+                              <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 delay-200 transform translate-y-4 group-hover:translate-y-0">
+                                <div className="bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg">
+                                  <Eye className="h-6 w-6 text-primary" />
+                                </div>
+                              </div>
+                            </div>
                             <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
                               <span className="px-2 sm:px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-xs sm:text-sm font-medium text-foreground flex items-center gap-1">
                                 {event.fee_amount > 0 ? (
@@ -412,9 +425,9 @@ const Events = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="relative h-48 sm:h-56 flex items-center justify-center">
+                          <div className="relative h-full flex items-center justify-center group cursor-pointer" onClick={() => navigate(`/event/${event.id}`)}>
                             <div className="flex items-center justify-center h-full">
-                              <Calendar className="h-16 w-16 text-white/60" />
+                              <Calendar className="h-16 w-16 text-white/60 group-hover:text-white/80 transition-colors duration-300" />
                             </div>
                             <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
                               <span className="px-2 sm:px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-xs sm:text-sm font-medium text-foreground flex items-center gap-1">
