@@ -110,7 +110,7 @@ export { useNetworkVariable, useNetworkVariables, networkConfig };
 
 // Create Sui client instance
 export const suiClient = new SuiClient({
-  url: networkConfig.testnet.url, // Default to testnet for development
+  url: networkConfig.mainnet.url, // Default to mainnet for development
 });
 
 // Constants

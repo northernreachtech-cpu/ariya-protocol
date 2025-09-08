@@ -6,6 +6,7 @@ use sui::event;
 use sui::clock::{Self, Clock};
 use ariya::event_management::{Self, Event};
 use ariya::nft_minting::{Self, NFTRegistry};
+use ariya::rating_reputation::{Self, RatingRegistry};
 
 // Error codes
 const ENotOrganizer: u64 = 1;
@@ -227,6 +228,7 @@ public fun request_access(
     community_id: ID,
     registry: &mut CommunityRegistry,
     nft_registry: &NFTRegistry,
+    rating_registry: &RatingRegistry,
     clock: &Clock,
     ctx: &mut TxContext
 ): CommunityAccessPass {
@@ -245,7 +247,8 @@ public fun request_access(
         member,
         community.event_id,
         &community.access_config,
-        nft_registry
+        nft_registry,
+        rating_registry
     );
     assert!(eligible, ENotEligible);
     
@@ -418,17 +421,38 @@ fun verify_nft_eligibility(
     event_id: ID,
     config: &AccessConfiguration,
     nft_registry: &NFTRegistry,
+    rating_registry: &RatingRegistry,
 ): bool {
-    if (config.access_type == ACCESS_TYPE_POA) {
-        nft_minting::has_proof_of_attendance(user, event_id, nft_registry)
-    } else if (config.access_type == ACCESS_TYPE_COMPLETION) {
-        nft_minting::has_completion_nft(user, event_id, nft_registry)
-    } else if (config.access_type == ACCESS_TYPE_BOTH) {
-        nft_minting::has_proof_of_attendance(user, event_id, nft_registry) ||
-        nft_minting::has_completion_nft(user, event_id, nft_registry)
+    // Check minimum event rating requirement
+    if (config.min_event_rating > 0) {
+        // Check if user has rated the event
+        if (!rating_reputation::has_user_rated(user, event_id, rating_registry)) {
+            return false
+        };
+        
+        // Get user's rating and check if it meets minimum requirement
+        let (user_rating, _, _) = rating_reputation::get_user_rating(user, event_id, rating_registry);
+        if (user_rating < config.min_event_rating) {
+            return false
+        };
+    };
+    
+    // Check NFT requirements based on require_nft_held setting
+    if (config.require_nft_held) {
+        // Must currently hold the required NFT
+        if (config.access_type == ACCESS_TYPE_POA) {
+            nft_minting::has_proof_of_attendance(user, event_id, nft_registry)
+        } else if (config.access_type == ACCESS_TYPE_COMPLETION) {
+            nft_minting::has_completion_nft(user, event_id, nft_registry)
+        } else if (config.access_type == ACCESS_TYPE_BOTH) {
+            nft_minting::has_proof_of_attendance(user, event_id, nft_registry) ||
+            nft_minting::has_completion_nft(user, event_id, nft_registry)
+        } else {
+            false
+        }
     } else {
-        // Reject any other access type
-        false
+        // No NFT requirement
+        true
     }
 }
 

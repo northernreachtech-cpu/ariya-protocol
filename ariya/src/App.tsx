@@ -130,7 +130,7 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
+      <SuiClientProvider networks={networkConfig} defaultNetwork="mainnet">
         <RegisterEnokiWallets />
         <WalletProvider autoConnect={true}>
           <ThemeProvider>

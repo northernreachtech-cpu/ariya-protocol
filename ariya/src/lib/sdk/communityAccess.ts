@@ -86,6 +86,9 @@ export class CommunityAccessSDK {
       expiryDuration = config.accessRequirements.timeLimit;
     }
 
+    // Determine if NFT is required (Open vs Closed community)
+    const requireNftHeld = config.accessRequirements.nftTypes.length > 0 || minEventRating > 0;
+
     tx.moveCall({
       target: `${this.packageId}::community_access::create_community`,
       arguments: [
@@ -93,7 +96,7 @@ export class CommunityAccessSDK {
         tx.pure.string(config.name), // name: String
         tx.pure.string(config.description), // description: String
         tx.pure.u8(accessType), // access_type: u8
-        tx.pure.bool(true), // require_nft_held: bool
+        tx.pure.bool(requireNftHeld), // require_nft_held: bool
         tx.pure.u64(minEventRating), // min_event_rating: u64
         tx.pure.u64(expiryDuration), // expiry_duration: u64
         tx.pure.string(""), // metadata_uri: String (empty for now)
@@ -117,6 +120,7 @@ export class CommunityAccessSDK {
     communityId: string,
     userAddress: string,
     nftRegistryId: string,
+    ratingRegistryId: string,
     communityRegistryId: string
   ): Transaction {
     const tx = new Transaction();
@@ -127,6 +131,7 @@ export class CommunityAccessSDK {
         tx.pure.id(communityId), // community_id: ID
         tx.object(communityRegistryId), // registry: &mut CommunityRegistry
         tx.object(nftRegistryId), // nft_registry: &NFTRegistry
+        tx.object(ratingRegistryId), // rating_registry: &RatingRegistry
         tx.object(CLOCK_ID), // clock: &Clock
       ],
     });
@@ -766,5 +771,259 @@ export class CommunityAccessSDK {
     });
 
     return tx;
+  }
+
+  /**
+   * Add custom requirement to a community (organizer only)
+   */
+  addCustomRequirement(
+    communityId: string,
+    requirementType: string,
+    value: number,
+    communityRegistryId: string
+  ): Transaction {
+    const tx = new Transaction();
+
+    tx.moveCall({
+      target: `${this.packageId}::community_access::add_custom_requirement`,
+      arguments: [
+        tx.pure.id(communityId),
+        tx.pure.string(requirementType),
+        tx.pure.u64(value),
+        tx.object(communityRegistryId),
+      ],
+    });
+
+    return tx;
+  }
+
+  /**
+   * Remove a member from community (organizer only)
+   */
+  removeMember(
+    communityId: string,
+    memberToRemove: string,
+    reason: string,
+    communityRegistryId: string
+  ): Transaction {
+    const tx = new Transaction();
+
+    tx.moveCall({
+      target: `${this.packageId}::community_access::remove_member`,
+      arguments: [
+        tx.pure.id(communityId),
+        tx.pure.address(memberToRemove),
+        tx.pure.string(reason),
+        tx.object(communityRegistryId),
+      ],
+    });
+
+    return tx;
+  }
+
+  /**
+   * Update member activity timestamp
+   */
+  updateMemberActivity(
+    communityId: string,
+    communityRegistryId: string
+  ): Transaction {
+    const tx = new Transaction();
+
+    tx.moveCall({
+      target: `${this.packageId}::community_access::update_member_activity`,
+      arguments: [
+        tx.pure.id(communityId),
+        tx.object(communityRegistryId),
+        tx.object(CLOCK_ID),
+      ],
+    });
+
+    return tx;
+  }
+
+  /**
+   * Verify access pass for community features
+   */
+  async verifyAccess(
+    accessPassId: string,
+    communityRegistryId: string
+  ): Promise<boolean> {
+    try {
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${this.packageId}::community_access::verify_access`,
+        arguments: [
+          tx.object(accessPassId),
+          tx.object(communityRegistryId),
+          tx.object(CLOCK_ID),
+        ],
+      });
+
+      const result = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: "0x0000000000000000000000000000000000000000000000000000000000000000",
+      });
+
+      if (result && result.results && result.results.length > 0 && result.results[0].returnValues) {
+        const returnVals = result.results[0].returnValues;
+        return Boolean(Array.isArray(returnVals[0]) ? returnVals[0][0] : returnVals[0]);
+      }
+      return false;
+    } catch (e) {
+      console.error("Error verifying access:", e);
+      return false;
+    }
+  }
+
+  /**
+   * Get access configuration for a community
+   */
+  async getAccessConfiguration(
+    communityId: string,
+    communityRegistryId: string
+  ): Promise<{
+    accessType: number;
+    requireNftHeld: boolean;
+    minEventRating: number;
+    expiryDuration: number;
+  } | null> {
+    try {
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${this.packageId}::community_access::get_access_configuration`,
+        arguments: [
+          tx.pure.id(communityId),
+          tx.object(communityRegistryId),
+        ],
+      });
+
+      const result = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: "0x0000000000000000000000000000000000000000000000000000000000000000",
+      });
+
+      if (result && result.results && result.results.length > 0) {
+        const returnVals = result.results[0].returnValues;
+        if (Array.isArray(returnVals) && returnVals.length >= 4) {
+          return {
+            accessType: Number(Array.isArray(returnVals[0]) ? returnVals[0][0] : returnVals[0]),
+            requireNftHeld: Boolean(Array.isArray(returnVals[1]) ? returnVals[1][0] : returnVals[1]),
+            minEventRating: Number(Array.isArray(returnVals[2]) ? returnVals[2][0] : returnVals[2]),
+            expiryDuration: Number(Array.isArray(returnVals[3]) ? returnVals[3][0] : returnVals[3]),
+          };
+        }
+      }
+      return null;
+    } catch (e) {
+      console.error("Error getting access configuration:", e);
+      return null;
+    }
+  }
+
+  /**
+   * Get community organizer address
+   */
+  async getCommunityOrganizer(
+    communityId: string,
+    communityRegistryId: string
+  ): Promise<string | null> {
+    try {
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${this.packageId}::community_access::get_community_organizer`,
+        arguments: [
+          tx.pure.id(communityId),
+          tx.object(communityRegistryId),
+        ],
+      });
+
+      const result = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: "0x0000000000000000000000000000000000000000000000000000000000000000",
+      });
+
+      if (result && result.results && result.results.length > 0 && result.results[0].returnValues) {
+        const returnVals = result.results[0].returnValues;
+        return Array.isArray(returnVals[0]) ? String(returnVals[0][0]) : String(returnVals[0]);
+      }
+      return null;
+    } catch (e) {
+      console.error("Error getting community organizer:", e);
+      return null;
+    }
+  }
+
+  /**
+   * Get event ID associated with a community
+   */
+  async getCommunityEventId(
+    communityId: string,
+    communityRegistryId: string
+  ): Promise<string | null> {
+    try {
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${this.packageId}::community_access::get_community_event_id`,
+        arguments: [
+          tx.pure.id(communityId),
+          tx.object(communityRegistryId),
+        ],
+      });
+
+      const result = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: "0x0000000000000000000000000000000000000000000000000000000000000000",
+      });
+
+      if (result && result.results && result.results.length > 0 && result.results[0].returnValues) {
+        const returnVals = result.results[0].returnValues;
+        return Array.isArray(returnVals[0]) ? String(returnVals[0][0]) : String(returnVals[0]);
+      }
+      return null;
+    } catch (e) {
+      console.error("Error getting community event ID:", e);
+      return null;
+    }
+  }
+
+  /**
+   * Get user memberships across all communities
+   */
+  async getUserMemberships(
+    userAddress: string,
+    communityRegistryId: string
+  ): Promise<Array<{
+    communityId: string;
+    eventId: string;
+    joinedAt: number;
+    expiresAt: number;
+    active: boolean;
+  }>> {
+    try {
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${this.packageId}::community_access::get_user_memberships`,
+        arguments: [
+          tx.pure.address(userAddress),
+          tx.object(communityRegistryId),
+        ],
+      });
+
+      const result = await suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: userAddress,
+      });
+
+      if (result && result.results && result.results.length > 0 && result.results[0].returnValues) {
+        // Parse the vector of memberships
+        // This would need to be implemented based on the actual return format
+        return [];
+      }
+      return [];
+    } catch (e) {
+      console.error("Error getting user memberships:", e);
+      return [];
+    }
   }
 }

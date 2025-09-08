@@ -31,6 +31,7 @@ use ariya::nft_minting::{
     NFTRegistry,
 };
 use ariya::subscription::{Self, UserSubscription, SubscriptionRegistry};
+use ariya::rating_reputation::{Self, RatingRegistry};
 
 // Access types constants
 const ACCESS_TYPE_POA: u8 = 0;
@@ -59,6 +60,7 @@ fun setup_test_environment(scenario: &mut Scenario) {
         identity_access::init_for_testing(test_scenario::ctx(scenario));
         attendance_verification::init_for_testing(test_scenario::ctx(scenario));
         nft_minting::init_for_testing(test_scenario::ctx(scenario));
+        rating_reputation::init_for_testing(test_scenario::ctx(scenario));
         community_access::init_for_testing(test_scenario::ctx(scenario));
         
         // Create and share clock
@@ -225,11 +227,13 @@ fun test_verify_access_valid() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -238,6 +242,7 @@ fun test_verify_access_valid() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -311,11 +316,13 @@ fun test_verify_access_expired() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -324,6 +331,7 @@ fun test_verify_access_expired() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -404,11 +412,13 @@ fun test_update_member_activity() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -417,6 +427,7 @@ fun test_update_member_activity() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -521,11 +532,13 @@ fun test_update_contribution_score() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -534,6 +547,7 @@ fun test_update_contribution_score() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -618,11 +632,13 @@ fun test_remove_member() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -631,6 +647,7 @@ fun test_remove_member() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -730,11 +747,13 @@ fun test_remove_member_not_organizer() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -743,6 +762,7 @@ fun test_remove_member_not_organizer() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -822,11 +842,13 @@ fun test_access_both_types() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -835,6 +857,7 @@ fun test_access_both_types() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -844,11 +867,13 @@ fun test_access_both_types() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -857,6 +882,7 @@ fun test_access_both_types() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -1000,11 +1026,13 @@ fun test_permanent_access() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -1013,6 +1041,7 @@ fun test_permanent_access() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -1132,11 +1161,13 @@ fun test_multiple_communities_same_user_fixed() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass1 = community_access::request_access(
             community_id1,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -1145,6 +1176,7 @@ fun test_multiple_communities_same_user_fixed() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -1153,11 +1185,13 @@ fun test_multiple_communities_same_user_fixed() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass2 = community_access::request_access(
             community_id2,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -1166,6 +1200,7 @@ fun test_multiple_communities_same_user_fixed() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -1201,11 +1236,13 @@ fun test_access_nonexistent_community() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             fake_community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -1214,6 +1251,7 @@ fun test_access_nonexistent_community() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -1440,11 +1478,13 @@ fun test_full_community_lifecycle() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -1453,6 +1493,7 @@ fun test_full_community_lifecycle() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -1461,11 +1502,13 @@ fun test_full_community_lifecycle() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -1474,6 +1517,7 @@ fun test_full_community_lifecycle() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -2092,11 +2136,13 @@ fun test_request_access_with_poa_nft() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -2105,6 +2151,7 @@ fun test_request_access_with_poa_nft() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -2163,11 +2210,13 @@ fun test_request_access_with_completion_nft() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -2176,6 +2225,7 @@ fun test_request_access_with_completion_nft() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     
@@ -2210,7 +2260,7 @@ fun test_request_access_without_nft() {
         event_id,
         ORGANIZER,
         ACCESS_TYPE_POA,
-        false,
+        true,
         ACCESS_DURATION
     );
     
@@ -2220,11 +2270,13 @@ fun test_request_access_without_nft() {
         let mut registry = test_scenario::take_shared<CommunityRegistry>(&scenario);
         let nft_registry = test_scenario::take_shared<NFTRegistry>(&scenario);
         let clock = test_scenario::take_shared<Clock>(&scenario);
+        let rating_registry = test_scenario::take_shared<RatingRegistry>(&scenario);
         
         let pass = community_access::request_access(
             community_id,
             &mut registry,
             &nft_registry,
+            &rating_registry,
             &clock,
             test_scenario::ctx(&mut scenario)
         );
@@ -2233,6 +2285,7 @@ fun test_request_access_without_nft() {
         
         test_scenario::return_shared(registry);
         test_scenario::return_shared(nft_registry);
+        test_scenario::return_shared(rating_registry);
         test_scenario::return_shared(clock);
     };
     

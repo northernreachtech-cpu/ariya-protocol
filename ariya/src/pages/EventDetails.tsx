@@ -470,10 +470,12 @@ const EventDetails = () => {
       }
 
       // User needs to join or rejoin the community
+      const ratingRegistryId = useNetworkVariable("ratingRegistryId");
       const tx = sdk.communityAccess.requestCommunityAccess(
         communityId,
         activeAddress,
         nftRegistryId,
+        ratingRegistryId,
         communityRegistryId
       );
 

@@ -46,6 +46,7 @@ import ErrorModal from "../components/ErrorModal";
 import DocumentFlowCard from "../components/DocumentFlowCard";
 import CreateDocumentFlowModal from "../components/CreateDocumentFlowModal";
 import SubmitDocumentModal from "../components/SubmitDocumentModal";
+import CommunityCreationModal from "../components/CommunityCreationModal";
 
 import RatingStars from "../components/RatingStars";
 import QRScanner from "../components/QRScanner";
@@ -1077,8 +1078,6 @@ const OrganizerDashboard = () => {
   const [showCommunityModal, setShowCommunityModal] = useState(false);
   const [communityEvent, setCommunityEvent] = useState<Event | null>(null);
   const [creatingCommunity, setCreatingCommunity] = useState(false);
-  const [communityName, setCommunityName] = useState("");
-  const [communityDescription, setCommunityDescription] = useState("");
   const [eventCommunities, setEventCommunities] = useState<{
     [eventId: string]: {
       id: string;
@@ -1729,36 +1728,13 @@ const OrganizerDashboard = () => {
     }
 
     setCommunityEvent(event);
-    setCommunityName(`${event.name} Community`);
-    setCommunityDescription(
-      `Join the live community for ${event.name} attendees`
-    );
     setShowCommunityModal(true);
   };
 
-  const confirmCreateCommunity = async () => {
+  const confirmCreateCommunity = async (config: any) => {
     if (!communityEvent || !organizerProfileId || !communityRegistryId) return;
     setCreatingCommunity(true);
     try {
-      const config = {
-        name: communityName,
-        description: communityDescription,
-        accessRequirements: {
-          nftTypes: ["poa", "completion"] as ("poa" | "completion")[], // Accept both PoA and Completion NFTs
-          minimumRating: undefined,
-          timeLimit: "event_duration" as const,
-          customRequirements: [],
-        },
-        features: {
-          forum: true,
-          resources: false,
-          calendar: false,
-          directory: true,
-          governance: false,
-        },
-        moderators: [currentAccount!.address],
-      };
-
       const tx = sdk.communityAccess.createCommunity(
         communityEvent.id,
         config,
@@ -1767,12 +1743,11 @@ const OrganizerDashboard = () => {
 
       await signAndExecute({ transaction: tx });
       setSuccessMessage(
-        "Community created successfully! Attendees can now join with their PoA or Completion NFTs."
+        `Community "${config.name}" created successfully for ${communityEvent.name}!`
       );
       setShowSuccessModal(true);
       setShowCommunityModal(false);
-      setCommunityName("");
-      setCommunityDescription("");
+      setCommunityEvent(null);
 
       // Refresh community status for this event
       if (communityEvent) {
@@ -1794,8 +1769,9 @@ const OrganizerDashboard = () => {
           "Failed to create community due to a contract error. Please try again.";
       }
 
-      setSuccessMessage(message);
-      setShowSuccessModal(true);
+      setErrorMessage(message);
+      setErrorDetails(error as Error);
+      setShowErrorModal(true);
     } finally {
       setCreatingCommunity(false);
     }
@@ -3425,73 +3401,16 @@ const OrganizerDashboard = () => {
 
         {/* Community Creation Modal */}
         {showCommunityModal && communityEvent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
-            <div className="relative bg-card backdrop-blur-2xl border border-border shadow-2xl rounded-2xl max-w-md w-full mx-4 p-0 overflow-hidden">
-              <div className="flex flex-col items-center justify-center pt-8 pb-2 bg-gradient-to-r from-primary/80 to-secondary/80">
-                <span className="text-5xl mb-2">🌐</span>
-                <h3 className="text-2xl font-bold text-white drop-shadow mb-1 font-livvic">
-                  Create Live Community
-                </h3>
-                <p className="text-white/80 text-sm mb-2 font-open-sans">
-                  Create a community for checked-in attendees
-                </p>
-              </div>
-              <div className="px-8 py-6 flex flex-col gap-4 font-open-sans">
-                <div>
-                  <label className="text-foreground-secondary text-sm font-semibold mb-1 font-livvic block">
-                    Community Name
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full p-3 rounded-lg border border-border bg-card-secondary text-foreground font-semibold focus:ring-2 focus:ring-primary/40 outline-none"
-                    value={communityName}
-                    onChange={(e) => setCommunityName(e.target.value)}
-                    disabled={creatingCommunity}
-                  />
-                </div>
-                <div>
-                  <label className="text-foreground-secondary text-sm font-semibold mb-1 font-livvic block">
-                    Description
-                  </label>
-                  <textarea
-                    className="w-full p-3 rounded-lg border border-border bg-card-secondary text-foreground font-semibold focus:ring-2 focus:ring-primary/40 outline-none"
-                    rows={3}
-                    value={communityDescription}
-                    onChange={(e) => setCommunityDescription(e.target.value)}
-                    disabled={creatingCommunity}
-                  />
-                </div>
-                <div className="text-sm text-foreground-secondary bg-card-secondary p-3 rounded-lg">
-                  <p>
-                    <strong>Access:</strong> PoA or Completion NFT holders
-                  </p>
-                  <p>
-                    <strong>Features:</strong> Forum, Resources, Directory
-                  </p>
-                  <p>
-                    <strong>Duration:</strong> Active during event
-                  </p>
-                </div>
-                <div className="flex gap-3 mt-2">
-                  <Button
-                    onClick={confirmCreateCommunity}
-                    disabled={creatingCommunity || !communityName.trim()}
-                    className="flex-1 bg-gradient-to-r from-primary to-secondary text-white font-bold py-2 rounded-xl shadow-lg hover:from-secondary hover:to-primary transition-all text-base min-w-0 font-livvic"
-                  >
-                    {creatingCommunity ? "Creating..." : "Create Community"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCommunityModal(false)}
-                    className="flex-1 border-0 bg-card-secondary text-foreground font-semibold py-2 rounded-xl hover:bg-card transition-all text-base min-w-0 font-livvic"
-                    disabled={creatingCommunity}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <CommunityCreationModal
+            isOpen={showCommunityModal}
+            onClose={() => {
+              setShowCommunityModal(false);
+              setCommunityEvent(null);
+            }}
+            eventId={communityEvent.id}
+            eventName={communityEvent.name}
+            onCreateCommunity={confirmCreateCommunity}
+          />
         )}
 
         {/* Airdrop Creation Modal */}
