@@ -1327,6 +1327,36 @@ const EventDetails = () => {
               </p>
             </Card>
 
+            {/* Event Image Section */}
+            {event.metadata_uri && (
+              <Card className="p-4 sm:p-6">
+                <h2 className="text-2xl font-semibold mb-4 text-foreground">
+                  Event Banner
+                </h2>
+                <div className="relative">
+                  <img 
+                    src={event.metadata_uri} 
+                    alt={`${event.name} banner`}
+                    className="w-full h-auto max-h-96 object-contain rounded-lg border border-border"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (fallback) {
+                        fallback.classList.remove('hidden');
+                        fallback.classList.add('flex');
+                      }
+                    }}
+                  />
+                  <div className="hidden absolute inset-0 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-lg items-center justify-center">
+                    <div className="text-center">
+                      <Calendar className="h-16 w-16 text-white/60 mx-auto mb-2" />
+                      <p className="text-foreground-secondary">Event banner unavailable</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             {/* Organizer Section */}
             <Card className="p-4 sm:p-6">
               <h2 className="text-2xl font-semibold mb-4 text-foreground">

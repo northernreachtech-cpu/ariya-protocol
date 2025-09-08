@@ -1,15 +1,17 @@
 // Image fetching utility with fallback support
 export interface ImageSource {
   url: string;
-  provider: 'walrus' | 'cloudinary' | 'unknown';
+  provider: 'walrus' | 'cloudinary' | 'imgbb' | 'unknown';
 }
 
 // Detect image provider from URL
-export const detectImageProvider = (url: string): 'walrus' | 'cloudinary' | 'unknown' => {
+export const detectImageProvider = (url: string): 'walrus' | 'cloudinary' | 'imgbb' | 'unknown' => {
   if (url.includes('walrus.space') || url.includes('walrus-testnet')) {
     return 'walrus';
   } else if (url.includes('cloudinary.com') || url.includes('res.cloudinary.com')) {
     return 'cloudinary';
+  } else if (url.includes('imgbb.co') || url.includes('i.ibb.co')) {
+    return 'imgbb';
   }
   return 'unknown';
 };
@@ -75,6 +77,9 @@ export const resolveImageUrl = async (imageUrl: string): Promise<string> => {
     return await fetchImageWithFallback(imageUrl, cloudinaryFallback);
   } else if (provider === 'cloudinary') {
     // For Cloudinary URLs, they should work directly
+    return await fetchImageWithFallback(imageUrl);
+  } else if (provider === 'imgbb') {
+    // For ImgBB URLs, they should work directly
     return await fetchImageWithFallback(imageUrl);
   } else {
     // For unknown URLs, just return as-is

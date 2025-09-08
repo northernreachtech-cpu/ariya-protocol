@@ -5,14 +5,14 @@ interface UseImageWithFallbackResult {
   imageUrl: string;
   isLoading: boolean;
   error: string | null;
-  provider: 'walrus' | 'cloudinary' | 'unknown';
+  provider: 'walrus' | 'cloudinary' | 'imgbb' | 'unknown';
 }
 
 export const useImageWithFallback = (imageUrl: string): UseImageWithFallbackResult => {
   const [resolvedUrl, setResolvedUrl] = useState(imageUrl);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [provider, setProvider] = useState<'walrus' | 'cloudinary' | 'unknown'>('unknown');
+  const [provider, setProvider] = useState<'walrus' | 'cloudinary' | 'imgbb' | 'unknown'>('unknown');
 
   useEffect(() => {
     if (!imageUrl) {

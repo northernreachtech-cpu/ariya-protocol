@@ -42,14 +42,20 @@ interface Event {
   is_child: boolean;
 }
 
-// Helper function to fetch metadata from Walrus
+// Helper function to fetch metadata or handle direct image URLs
 const fetchEventMetadata = async (metadataUri: string) => {
   try {
     if (!metadataUri || metadataUri === "") {
       return null;
     }
     
-    // If it's already a full URL, use it directly
+    // Check if it's a direct image URL (like ImgBB)
+    if (metadataUri.startsWith('http') && (metadataUri.includes('.jpg') || metadataUri.includes('.jpeg') || metadataUri.includes('.png') || metadataUri.includes('.gif') || metadataUri.includes('.webp'))) {
+      // It's a direct image URL, return it as the image
+      return { image: metadataUri };
+    }
+    
+    // If it's already a full URL, try to fetch as JSON metadata
     if (metadataUri.startsWith('http')) {
       const response = await fetch(metadataUri);
       if (response.ok) {
@@ -65,9 +71,9 @@ const fetchEventMetadata = async (metadataUri: string) => {
     }
     
     return null;
-      } catch (error) {
-      return null;
-    }
+  } catch (error) {
+    return null;
+  }
 };
 
 const Events = () => {
@@ -375,40 +381,58 @@ const Events = () => {
                     className="h-full hover:shadow-lg transition-all duration-300 group cursor-pointer"
                     onClick={() => navigate(`/event/${event.id}`)}
                   >
-                    <Card className="h-full p-0" hover={true}>
+                    <Card className="h-full p-0 overflow-hidden" hover={true}>
                       {/* Event Image */}
-                      <div className="relative h-40 sm:h-48 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-t-lg overflow-hidden mb-3 sm:mb-4">
+                      <div className="relative bg-gradient-to-br from-primary/20 to-secondary/20">
                         {event.image && event.image !== "/api/placeholder/400/250" ? (
-                          <img 
-                            src={event.image} 
-                            alt={event.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                            }}
-                          />
-                        ) : null}
-                        <div className={`absolute inset-0 bg-gradient-to-br from-primary/10 to-secondary/10 group-hover:from-primary/20 group-hover:to-secondary/20 transition-all duration-300 ${event.image && event.image !== "/api/placeholder/400/250" ? 'hidden' : ''}`}>
-                          <div className="flex items-center justify-center h-full">
-                            <Calendar className="h-16 w-16 text-white/60" />
+                          <div className="relative w-full" style={{ aspectRatio: '16/9', minHeight: '200px' }}>
+                            <img 
+                              src={event.image} 
+                              alt={event.title}
+                              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                            <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+                              <span className="px-2 sm:px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-xs sm:text-sm font-medium text-foreground flex items-center gap-1">
+                                {event.fee_amount > 0 ? (
+                                  <>
+                                    <DollarSign className="h-3 w-3" />
+                                    ${(event.fee_amount / 1000000000).toFixed(3)}
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="h-3 w-3" />
+                                    Free
+                                  </>
+                                )}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
-                          <span className="px-2 sm:px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-xs sm:text-sm font-medium text-foreground flex items-center gap-1">
-                            {event.fee_amount > 0 ? (
-                              <>
-                                <DollarSign className="h-3 w-3" />
-                                ${(event.fee_amount / 1000000000).toFixed(3)}
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="h-3 w-3" />
-                                Free
-                              </>
-                            )}
-                          </span>
-                        </div>
+                        ) : (
+                          <div className="relative h-48 sm:h-56 flex items-center justify-center">
+                            <div className="flex items-center justify-center h-full">
+                              <Calendar className="h-16 w-16 text-white/60" />
+                            </div>
+                            <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+                              <span className="px-2 sm:px-3 py-1 bg-background/80 backdrop-blur-sm rounded-full text-xs sm:text-sm font-medium text-foreground flex items-center gap-1">
+                                {event.fee_amount > 0 ? (
+                                  <>
+                                    <DollarSign className="h-3 w-3" />
+                                    ${(event.fee_amount / 1000000000).toFixed(3)}
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="h-3 w-3" />
+                                    Free
+                                  </>
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Event Content */}
