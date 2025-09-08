@@ -251,6 +251,7 @@ public fun request_access(
     community_id: ID,
     registry: &mut CommunityRegistry,
     nft_registry: &NFTRegistry,
+    rating_registry: &RatingRegistry,
     clock: &Clock,
     ctx: &mut TxContext
 ): CommunityAccessPass
@@ -274,6 +275,7 @@ const [accessPass] = tx.moveCall({
         tx.pure.id(communityId),
         tx.object(COMMUNITY_REGISTRY_ID),
         tx.object(NFT_REGISTRY_ID),
+        tx.object(RATING_REGISTRY_ID),
         tx.object(CLOCK_ID),
     ],
 });
@@ -515,6 +517,7 @@ const [accessPass] = tx.moveCall({
         tx.pure.id(communityId),
         tx.object(COMMUNITY_REGISTRY_ID),
         tx.object(NFT_REGISTRY_ID),
+        tx.object(RATING_REGISTRY),
         tx.object(CLOCK_ID),
     ],
 });

@@ -129,7 +129,7 @@ public fun create_airdrop(
     let organizer = tx_context::sender(ctx);
     let event_id = event_management::get_event_id(event);
     
-    // Verify sender is either event organizer or event assignee (same pattern as document_flow.move)
+    // Verify sender is either event organizer or event assignee
     let event_organizer = event_management::get_event_organizer(event);
     let assignee = event_management::get_event_assignee(event);
     let assignee_addr = if (assignee == string::utf8(b"self")) {

@@ -6,6 +6,7 @@ use sui::table::{Self, Table};
 use sui::event;
 
 // Error codes
+const EProfileAlreadyExist: u64 = 0;
 const ENotOrganizer: u64 = 1;
 const EEventNotActive: u64 = 2;
 const EEventAlreadyCompleted: u64 = 3;
@@ -173,7 +174,7 @@ public fun create_profile(
     ctx: &mut TxContext
 ): ProfileCap {
     let sender = tx_context::sender(ctx);
-    assert!(!table::contains(&profile_registry.profiles, sender), 0); // Profile already exists
+    assert!(!table::contains(&profile_registry.profiles, sender), EProfileAlreadyExist); // Profile already exists
     
     // Check if x_username is already taken
     if (!string::is_empty(&x_username)) {

@@ -160,6 +160,7 @@ public struct EventInfo has store, drop, copy {
 
 | Error | Code | Description |
 |-------|------|-------------|
+| `EProfileAlreadyExist` | 0 | Profile already exist |
 | `ENotOrganizer` | 1 | Caller is not the event organizer |
 | `EEventNotActive` | 2 | Event is not in the correct state for this operation |
 | `EEventAlreadyCompleted` | 3 | Event has already been completed |
