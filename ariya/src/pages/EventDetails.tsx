@@ -32,6 +32,7 @@ import useScrollToTop from "../hooks/useScrollToTop";
 import DocumentFlowCard from "../components/DocumentFlowCard";
 import CreateDocumentFlowModal from "../components/CreateDocumentFlowModal";
 import SubmitDocumentModal from "../components/SubmitDocumentModal";
+import WalletConnectionModal from "../components/WalletConnectionModal";
 // import AirdropDisplay from "../components/AirdropDisplay";
 // import { useMemo } from "react";
 import { Transaction } from "@mysten/sui/transactions";
@@ -226,6 +227,7 @@ const EventDetails = () => {
   const [documentFlowLoading, setDocumentFlowLoading] = useState(false);
   const [showCreateFlowModal, setShowCreateFlowModal] = useState(false);
   const [showSubmitDocumentModal, setShowSubmitDocumentModal] = useState(false);
+  const [showWalletConnectionModal, setShowWalletConnectionModal] = useState(false);
 
   // useEffect(() => {
   //   setEscrowSDK(new EscrowSettlementSDK(sdk.eventManagement.getPackageId()));
@@ -1533,7 +1535,11 @@ const EventDetails = () => {
 
               <div className="space-y-3 mb-6">
                 {!isAuthenticated ? (
-                  <Button size="lg" className="w-full" disabled>
+                  <Button 
+                    size="lg" 
+                    className="w-full" 
+                    onClick={() => setShowWalletConnectionModal(true)}
+                  >
                     <Users className="mr-2 h-5 w-5" />
                     Connect Wallet to Register
                   </Button>
@@ -2086,6 +2092,14 @@ const EventDetails = () => {
           userAddress={activeAddress}
         />
       )}
+
+      {/* Wallet Connection Modal */}
+      <WalletConnectionModal
+        isOpen={showWalletConnectionModal}
+        onClose={() => setShowWalletConnectionModal(false)}
+        title="Connect to Register"
+        description="Connect your wallet or sign in with Google to register for this event and access all features."
+      />
     </div>
   );
 };
