@@ -5,7 +5,7 @@
 </div>
 
 <h3 align="center">
-  Ephemeral Identity & Attendance Protocol - Ariya
+  Ariya Protocol
 </h3>
 
 <br/>
@@ -19,7 +19,7 @@
 
 <div align="center">
   <span>
-    Ariya Protocol transforms event management through Web3 primitives, offering decentralized identity, verifiable attendance, and community-driven governance. Built on Sui blockchain for scalability and performance.
+    Ariya Protocol is a Web3-powered event protocol bringing trust, transparency, and community ownership to event management.
   </span>
 </div>
 
@@ -79,11 +79,9 @@ Ariya Protocol enables seamless event management through blockchain-native featu
 - Automated funding release upon final document approval
 
 
-## Development Status
+## Status
 
-> [!WARNING]
-> Ariya Protocol is in **ALPHA** and should be considered experimental.
-> Use testnet for development and testing.
+> Ariya Protocol is **Live** on Sui.
 
 ## Documentation
 
