@@ -81,7 +81,7 @@ Ariya Protocol enables seamless event management through blockchain-native featu
 
 ## Status
 
-> Ariya Protocol is **Live** on Sui.
+> Ariya Protocol is **Live** on Sui Mainnet.
 
 ## Documentation
 
