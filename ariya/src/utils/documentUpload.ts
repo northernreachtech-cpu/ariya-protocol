@@ -109,13 +109,14 @@ const uploadToCloudinary = async (file: File): Promise<DocumentUploadResult> => 
   };
 };
 
-// Main document upload function with fallback
+// Main document upload function using Aggregator/Publisher approach
 export const uploadDocumentWithFallback = async (
   file: File,
   userAddress: string,
+  network: string,
   epochs: number = 30
 ): Promise<DocumentUploadResult> => {
-  console.log("🔄 Starting document upload with fallback...");
+  console.log("🔄 Starting document upload with Walrus Publisher...");
   console.log("📄 File details:", {
     name: file.name,
     size: file.size,
@@ -129,9 +130,9 @@ export const uploadDocumentWithFallback = async (
   }
 
   try {
-    // Try Walrus first
-    console.log("📤 Attempting Walrus upload...");
-    const walrusResult = await uploadToWalrus(file, userAddress, epochs);
+    // Use Walrus Publisher REST API for upload
+    console.log("📤 Attempting Walrus Publisher upload...");
+    const walrusResult = await uploadToWalrus(file, userAddress, network, epochs);
     
     return {
       documentId: walrusResult.blobId,
@@ -142,32 +143,18 @@ export const uploadDocumentWithFallback = async (
       mimeType: file.type,
     };
   } catch (walrusError) {
-    console.warn("⚠️ Walrus upload failed, trying Cloudinary fallback:", walrusError);
-    
-    try {
-      // Fallback to Cloudinary
-      console.log("☁️ Attempting Cloudinary upload...");
-      const cloudinaryResult = await uploadToCloudinary(file);
-      
-      console.log("✅ Cloudinary upload successful");
-      return cloudinaryResult;
-    } catch (cloudinaryError) {
-      console.error("❌ Both Walrus and Cloudinary uploads failed:", {
-        walrusError,
-        cloudinaryError,
-      });
-      
-      throw new Error(
-        `Document upload failed on all providers. Walrus: ${walrusError instanceof Error ? walrusError.message : String(walrusError)}, Cloudinary: ${cloudinaryError instanceof Error ? cloudinaryError.message : String(cloudinaryError)}`
-      );
-    }
+    console.error("❌ Walrus SDK upload failed:", walrusError);
+    throw new Error(
+      `Document upload failed: ${walrusError instanceof Error ? walrusError.message : String(walrusError)}`
+    );
   }
 };
 
-// Upload to specific provider
+// Upload to specific provider (Publisher API for walrus)
 export const uploadDocumentToProvider = async (
   file: File,
   userAddress: string,
+  network: string,
   provider: 'walrus' | 'cloudinary' = 'walrus',
   epochs: number = 30
 ): Promise<DocumentUploadResult> => {
@@ -178,7 +165,7 @@ export const uploadDocumentToProvider = async (
   }
 
   if (provider === 'walrus') {
-    const result = await uploadToWalrus(file, userAddress, epochs);
+    const result = await uploadToWalrus(file, userAddress, network, epochs);
     return {
       documentId: result.blobId,
       documentUrl: result.imageUrl,

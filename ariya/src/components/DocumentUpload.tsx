@@ -19,6 +19,7 @@ import {
   type DocumentValidationResult,
   DOCUMENT_CONFIG
 } from '../utils/documentUpload';
+import { useWalrusUpload } from '../hooks/useWalrusUpload';
 
 interface DocumentUploadProps {
   onUploadComplete: (result: DocumentUploadResult) => void;
@@ -42,7 +43,6 @@ interface FileWithPreview extends File {
 const DocumentUpload: React.FC<DocumentUploadProps> = ({
   onUploadComplete,
   onUploadError,
-  userAddress,
   maxFiles = 5,
   acceptedTypes = DOCUMENT_CONFIG.allowedTypes,
   maxFileSize = DOCUMENT_CONFIG.maxFileSize,
@@ -50,6 +50,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
 }) => {
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const { upload: isReady, currentAccount, network } = useWalrusUpload();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -112,8 +113,18 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
 
 
+    if (!isReady || !currentAccount) {
+      onUploadError('Wallet not connected. Please connect your wallet to upload files.');
+      setFiles(prev => prev.map(f => 
+        f.id === file.id 
+          ? { ...f, uploadStatus: 'error' }
+          : f
+      ));
+      return;
+    }
+
     try {
-      const result = await uploadDocumentWithFallback(file, userAddress);
+      const result = await uploadDocumentWithFallback(file, currentAccount.address, network);
       
       setFiles(prev => prev.map(f => 
         f.id === file.id 

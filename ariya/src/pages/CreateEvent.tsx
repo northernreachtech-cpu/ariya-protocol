@@ -27,9 +27,7 @@ import { suiClient, useNetworkVariable } from "../config/sui";
 import { TelegramService } from "../lib/firebase";
 import { DatePicker, TimePicker } from "antd";
 import dayjs from "dayjs";
-
-// Get ImgBB API key from environment variable
-const IMGBB_KEY = import.meta.env.VITE_IMGBB_API_KEY;
+import { useWalrusUpload } from "../hooks/useWalrusUpload";
 
 const CreateEvent = () => {
   useScrollToTop();
@@ -40,6 +38,7 @@ const CreateEvent = () => {
   const sdk = useAriyaSDK();
   const { mutate: signAndExecute } = useSignAndExecuteTransaction();
   const eventRegistryId = useNetworkVariable("eventRegistryId");
+  const { upload: uploadToWalrus, isReady: isWalrusReady } = useWalrusUpload();
 
   // Get parent event info from URL params
   const parentEventId = searchParams.get("parentId");
@@ -203,6 +202,11 @@ const CreateEvent = () => {
     try {
       setUploadingImage(true);
 
+      if (!isWalrusReady) {
+        setError("Please connect your wallet to upload images");
+        return;
+      }
+
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -214,22 +218,12 @@ const CreateEvent = () => {
       };
       reader.readAsDataURL(file);
 
-      const formData = new FormData();
-      formData.append("image", file);
-
-      const response = await fetch(
-        `https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
-      const url = data.data.url;
-      setFormData((prev) => ({ ...prev, imageUrl: url }));
+      // Upload to Walrus using SDK
+      const result = await uploadToWalrus(file, 10); // 10 epochs for event banners
+      setFormData((prev) => ({ ...prev, imageUrl: result.imageUrl }));
     } catch (error) {
-      setError("Failed to upload image");
+      console.error("Image upload error:", error);
+      setError(error instanceof Error ? error.message : "Failed to upload image");
     } finally {
       setUploadingImage(false);
     }

@@ -41,18 +41,19 @@ export const uploadToCloudinary = async (file: File): Promise<UploadResult> => {
   };
 };
 
-// Main upload function with fallback
+// Main upload function using Publisher REST API
 export const uploadImageWithFallback = async (
   file: File,
   userAddress: string,
+  network: string,
   epochs: number = 30
 ): Promise<UploadResult> => {
-  console.log("🔄 Starting image upload with fallback...");
+  console.log("🔄 Starting image upload with Walrus Publisher...");
 
   try {
-    // Try Walrus first
-    console.log("📤 Attempting Walrus upload...");
-    const walrusResult = await uploadToWalrus(file, userAddress, epochs);
+    // Use Walrus Publisher REST API for upload
+    console.log("📤 Attempting Walrus Publisher upload...");
+    const walrusResult = await uploadToWalrus(file, userAddress, network, epochs);
     
     return {
       blobId: walrusResult.blobId,
@@ -60,37 +61,23 @@ export const uploadImageWithFallback = async (
       provider: 'walrus',
     };
   } catch (walrusError) {
-    console.warn("⚠️ Walrus upload failed, trying Cloudinary fallback:", walrusError);
-    
-    try {
-      // Fallback to Cloudinary
-      console.log("☁️ Attempting Cloudinary upload...");
-      const cloudinaryResult = await uploadToCloudinary(file);
-      
-      console.log("✅ Cloudinary upload successful");
-      return cloudinaryResult;
-    } catch (cloudinaryError) {
-      console.error("❌ Both Walrus and Cloudinary uploads failed:", {
-        walrusError,
-        cloudinaryError,
-      });
-      
-      throw new Error(
-        `Upload failed on all providers. Walrus: ${walrusError instanceof Error ? walrusError.message : String(walrusError)}, Cloudinary: ${cloudinaryError instanceof Error ? cloudinaryError.message : String(cloudinaryError)}`
-      );
-    }
+    console.error("❌ Walrus Publisher upload failed:", walrusError);
+    throw new Error(
+      `Upload failed: ${walrusError instanceof Error ? walrusError.message : String(walrusError)}`
+    );
   }
 };
 
-// Upload to specific provider
+// Upload to specific provider (Publisher API for walrus)
 export const uploadToSpecificProvider = async (
   file: File,
   userAddress: string,
+  network: string,
   provider: 'walrus' | 'cloudinary' = 'walrus',
   epochs: number = 30
 ): Promise<UploadResult> => {
   if (provider === 'walrus') {
-    const result = await uploadToWalrus(file, userAddress, epochs);
+    const result = await uploadToWalrus(file, userAddress, network, epochs);
     return {
       blobId: result.blobId,
       imageUrl: result.imageUrl,
